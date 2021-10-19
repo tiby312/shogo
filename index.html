@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+</head>
+<body>
+  <div id="content" style="display:inline-block;width:600">
+    <div style="font: bold 18px sans-serif">
+      <span id="score_left" style="float:left">0</span>
+      <span id="score_right" style="float:right">0</span>
+    </div>
+    <canvas id="canvas" width="600" height="600"></canvas>
+  </div>
+  
+<script type=module>
+  import { default as init } from './pkg/wasm_pong.js';
+  delete WebAssembly.instantiateStreaming;
+  init('pkg/wasm_pong_bg.wasm');
+</script>
+</body>
+</html>
