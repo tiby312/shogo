@@ -1,9 +1,22 @@
 
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+
+
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub enum Event{
     MouseDown([f64;2])
 }
@@ -15,8 +28,12 @@ pub struct Engine{
     last:f64,
     frame_rate:usize
 }
+
+#[derive(Debug,Copy,Clone)]
+pub struct NoElem;
+
 impl Engine{
-    pub fn new(canvas:&str,frame_rate:usize)->Engine{
+    pub fn new(canvas:&str,frame_rate:usize)->Result<Engine,NoElem>{
         let frame_rate=((1.0 / frame_rate as f64) * 100.0).round() as usize;
 
         let events=Rc::new(RefCell::new(Vec::new()));
@@ -25,23 +42,31 @@ impl Engine{
 
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();    
-        let canvas: web_sys::HtmlCanvasElement = document.get_element_by_id(canvas).unwrap().dyn_into()?;
+        let canvas: web_sys::HtmlCanvasElement = document.get_element_by_id(canvas).ok_or(NoElem)?.dyn_into().unwrap();
     
-        let cb = Closure::wrap(Box::new(|e:web_sys::MouseEvent| {
+        let cb = Closure::wrap(Box::new(move |e:web_sys::MouseEvent| {
             ee.borrow_mut().push(Event::MouseDown([e.client_x() as f64,e.client_y() as f64]));
         }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
         canvas.set_onclick(Some(&cb.as_ref().unchecked_ref()));
+        //TODO dont leak.
+        cb.forget();
 
-        Engine{
+        let window = web_sys::window().expect("should have a window in this context");
+        let performance = window
+            .performance()
+            .expect("performance should be available");
+
+
+        Ok(Engine{
             events,
             buffer:Vec::new(),
-            last:0.0,
+            last:performance.now(),
             frame_rate
-        }
+        })
     }
 
-    async fn next<'a>(&'a mut self)->&[Event]{
+    pub async fn next<'a>(&'a mut self)->Option<&[Event]>{
         
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
@@ -52,16 +77,19 @@ impl Engine{
         let tt=performance.now();
         let diff=performance.now()-self.last;
       
-        let render_r0fps=if self.frame_rate as f64-diff>0.0{
-            delay((self.frame_rate as f64-diff) as usize ).await;
-            false
-        }else{
-            true
-        };
+        if self.frame_rate as f64-diff>0.0{
+            let d=(self.frame_rate as f64-diff) as usize;
+            delay(d).await;
+        }
         
         self.last=tt;
-        self.buffer.append(&mut self.events.borrow_mut());
-        &self.buffer
+        {
+            self.buffer.clear();
+            let ee=&mut self.events.borrow_mut();
+            self.buffer.append(ee);
+            assert!(ee.is_empty());
+        }
+        Some(&self.buffer)
     }
 }
 

@@ -104,10 +104,29 @@ struct Pong {
 
 static mut PONG: Option<Pong> = None;
 
+
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
 
-    engine::delay(1000).await;
+//    console_log!("popo");
+    let mut engine=engine::Engine::new("canvas",10).unwrap();
+//    console_log!("chicken");
+
+
+    while let Some(stuff)=engine.next().await{
+        console_log!("hello!!!! {:?}",stuff);
+    }
 
 
     let window = web_sys::window().unwrap();
