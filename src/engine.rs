@@ -66,7 +66,7 @@ impl Engine {
         })
     }
 
-    pub async fn next<'a>(&'a mut self) -> Option<&[Event]> {
+    pub async fn next<'a>(&'a mut self) -> Result<&[Event],GameError> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -87,7 +87,8 @@ impl Engine {
             self.buffer.append(ee);
             assert!(ee.is_empty());
         }
-        Some(&self.buffer)
+
+        Ok(&self.buffer)
     }
 }
 
@@ -115,9 +116,13 @@ impl MovePacker {
         unimplemented!();
     }
 }
+
+
 struct GameState {}
 impl GameState {
-    fn tick(&mut self, a: GameDelta) {}
+    fn tick(&mut self, a: GameDelta) {
+        //update game state
+    }
 }
 
 struct GameDelta {}
@@ -136,43 +141,47 @@ pub struct MyWebsocket {
 }
 
 impl MyWebsocket {
-    pub async fn new(addr: &str) -> MyWebsocket {
+    pub async fn new(addr: &str) -> Result<MyWebsocket,GameError> {
         let socket_create = WsMeta::connect(addr, None);
-        let (_, socket) = socket_create.await.unwrap();
-        MyWebsocket { socket }
+        let (_, socket) = socket_create.await.map_err(|_|GameError::SocketErr)?;
+        Ok(MyWebsocket { socket })
     }
 
-    pub async fn send<T>(&mut self, a: T) -> Result<(), std::io::Error> {
+    pub async fn send<T>(&mut self, a: T) ->Result<(),GameError> {
         use futures::SinkExt;
         unimplemented!();
     }
 
-    pub async fn recv<T>(&mut self) -> Result<T, std::io::Error> {
+    pub async fn recv<T>(&mut self) ->Result<T,GameError> {
         use futures::StreamExt;
         unimplemented!();
     }
 }
-pub async fn run_game() {
+
+#[derive(Debug,Copy,Clone)]
+pub enum GameError{
+    SocketErr
+}
+
+pub async fn run_game()->Result<(),GameError> {
     
     let s1 = MyWebsocket::new("ws://127.0.0.1:3012");
     let s2 = MyWebsocket::new("ws://127.0.0.1:3012");
 
     let mut engine = Engine::new("canvas", 10).unwrap();
-    
-    
-    let mut s1=s1.await;
-    let mut s2=s2.await;
+        
+    let mut s1=s1.await?;
+    let mut s2=s2.await?;
 
-    let mut gamestate:GameState = s2.recv().await.unwrap();
-
+    let mut gamestate:GameState = s2.recv().await?;
 
     let mut move_acc = MovePacker {};
     loop {
-        s1.send(move_acc.wrap()).await.unwrap();
-        let mut unpacker: MoveUnpacker = s1.recv().await.unwrap();
+        s1.send(move_acc.wrap()).await?;
+        let mut unpacker: MoveUnpacker = s1.recv().await?;
 
         for _ in 0..60 {
-            for event in engine.next().await.unwrap() {
+            for event in engine.next().await?{
                 match event {
                     &Event::MouseDown(mouse_pos) => {
                         move_acc.tick(mouse_pos);
@@ -183,55 +192,12 @@ pub async fn run_game() {
             let (send_back_game, game_delta) = unpacker.tick();
 
             if send_back_game {
-                s2.send(&gamestate).await.unwrap();
+                s2.send(&gamestate).await?;
             }
 
             gamestate.tick(game_delta);
 
             //draw game state
         }
-    }
-}
-
-pub struct GameEngine {
-    events: Vec<Event>,
-    perf: web_sys::Performance,
-    last: f64,
-}
-
-impl GameEngine {
-    pub fn new(a: usize) -> Self {
-        let window = web_sys::window().expect("should have a window in this context");
-        let perf = window
-            .performance()
-            .expect("performance should be available");
-
-        let last = perf.now();
-
-        GameEngine {
-            events: Vec::new(),
-            perf,
-            last,
-        }
-    }
-
-    async fn next_tick<'a>(&'a mut self) -> std::slice::Iter<'a, Event> {
-        let diff = self.perf.now() - self.last;
-
-        // First up we use `Closure::wrap` to wrap up a Rust closure and create
-        // a JS closure.
-        let cb = Closure::wrap(Box::new(|| {
-            //log("interval elapsed!");
-        }) as Box<dyn FnMut()>);
-
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                &cb.as_ref().unchecked_ref(),
-                500,
-            )
-            .unwrap();
-
-        unimplemented!();
     }
 }
