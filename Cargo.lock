@@ -522,6 +522,7 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 name = "wasm-pong"
 version = "0.2.0"
 dependencies = [
+ "futures",
  "gloo",
  "js-sys",
  "wasm-bindgen",

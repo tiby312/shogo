@@ -113,54 +113,117 @@ pub async fn delay(a:usize){
 
 
 
-/*
+struct MovePacker{
+
+}
+impl MovePacker{
+    fn tick(&mut self,a:[f64;2]){
+
+    }
+    fn wrap(&mut self)->Vec<u8>{
+        unimplemented!();
+    }
+    
+}
+struct GameState{
+
+}
+impl GameState{
+    fn tick(&mut self,a:GameDelta){
+
+    }
+}
+
+struct GameDelta{
+
+}
+
+struct MoveUnpacker{
+
+}
+impl MoveUnpacker{
+    fn tick(&mut self)->(bool,GameDelta){
+        unimplemented!();
+    }
+}
+
+
+
 use ws_stream_wasm::*;
 
+
+pub struct MyWebsocket{
+    socket:ws_stream_wasm::WsStream
+}
+
+impl MyWebsocket{
+
+    pub async fn new(addr:&str)->MyWebsocket{
+        let socket_create = WsMeta::connect( addr, None );
+        let (_,socket)=socket_create.await.unwrap();
+        MyWebsocket{
+            socket
+        }
+    }
+
+    pub async fn send<T>(&mut self,a:T)->Result<(),std::io::Error>{
+
+        use futures::SinkExt;
+        unimplemented!();
+    }
+
+    pub async fn receive<T>(&mut self)->Result<T,std::io::Error>{
+
+        use futures::StreamExt;
+        unimplemented!();
+    }
+
+}
 pub async fn run_game() {
-    let socket_create = WsMeta::connect( "ws://127.0.0.1:3012", None );
 
-    let socket2_create = WsMeta::connect( "ws://127.0.0.1:3012", None );
+    let socket_create = MyWebsocket::new( "ws://127.0.0.1:3012");
 
-    let mut game_engine=GameEngine::new(60);
+    let socket2_create = MyWebsocket::new( "ws://127.0.0.1:3012");
 
-    let mut move_acc = MoveAccumulator;
+    let mut move_acc = MovePacker{};
 
-    let mut gamestate = GameState;
+    let mut gamestate = GameState{};
 
-    let (mut socket, _wsio) = socket_create.await.expect("websocket socket creation failed");
-    let (mut socket2, _wsio) = socket2_create.await.expect("websocket socket creation failed");
+    let mut socket = socket_create.await;
+    let mut socket2 = socket2_create.await;
+    
+    let mut engine=Engine::new("canvas",10).unwrap();
 
     loop {
-        socket.send(move_acc.finish()).unwrap();
-        let mut server_client = socket.recv().await.unwrap();
+        socket.send(WsMessage::Binary(move_acc.wrap())).await;
+        let mut unpacker:MoveUnpacker = socket.receive().await.unwrap();
 
         for _ in 0..60 {
 
-            for event in game_engine.next_tick().await{
+            for event in engine.next().await.unwrap(){
                 match event{
                     &Event::MouseDown(mouse_pos)=>{
-                        move_acc.add_move(mouse_pos);
+                        move_acc.tick(mouse_pos);
                     }
                 }
             }
             
-            let (send_back_game,game_delta)=server_client.tick();
+            let (send_back_game,game_delta) = unpacker.tick();
 
             if send_back_game{
-                socket2.send(&gamestate).unwrap();
+                socket2.send(&gamestate).await.unwrap();
             }
 
-            game_delta.apply(&mut gamestate);
-
+            gamestate.tick(game_delta);
 
             //draw game state
         }
     }
 }
-*/
 
 
-/*
+
+
 pub enum Event{
     MouseDown([f64;2])
 }
@@ -209,4 +272,3 @@ impl GameEngine{
 
 }
 
-*/
