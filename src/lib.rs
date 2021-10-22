@@ -113,27 +113,11 @@ extern "C" {
     fn log(s: &str);
 }
 
-use ws_stream_wasm::*;
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
-    let socket_create = WsMeta::connect("ws://127.0.0.1:3012", None);
 
-    let socket2_create = WsMeta::connect("ws://127.0.0.1:3012", None);
-
-    let mut engine = engine::Engine::new("canvas", 10).unwrap();
-
-    let (mut socket, _wsio) = socket_create
-        .await
-        .expect("websocket socket creation failed");
-    let (mut socket2, _wsio) = socket2_create
-        .await
-        .expect("websocket socket creation failed");
-
-    while let Some(events) = engine.next().await {
-        console_log!("hello!!!! {:?}", events);
-        for e in events {}
-    }
+    engine::run_game().await;
 
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();

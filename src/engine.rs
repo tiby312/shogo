@@ -168,30 +168,67 @@ pub enum GameError{
 }
 
 pub struct Renderer{
-
+    max_delay:usize
 }
+
 impl Renderer{
-    fn new(frame_rate:usize)->Renderer{
-        unimplemented!();
+    fn new(max_delay:usize)->Renderer{
+        console_log!("rendered max delay={:?}",max_delay);
+        Renderer{
+            max_delay
+        }
     }
 
-    async fn render<K>(&mut self,a:impl FnOnce()->K)->K{
-        unimplemented!();
+    async fn render(&mut self,a:impl FnOnce())->Result<(),GameError>{
+        unsafe{
+            let j=Box::new(a) as Box<dyn FnOnce()>;
+            let j=std::mem::transmute::<Box<dyn FnOnce()>,Box< (dyn FnOnce()+'static)>>(j);
+            self.render_static(j).await
+        }
+    }
+
+    async fn render_static<K:'static+std::fmt::Debug>(&mut self,a:impl FnOnce()->K+'static)->Result<K,GameError>{
+
+        let window = web_sys::window().unwrap();
+        
+        let (sender,receiver)=futures::channel::oneshot::channel();
+
+        
+        let cb = Closure::once(Box::new(move || {
+            let j=(a)();
+            sender.send(j).unwrap();
+        }) as Box<dyn FnOnce()>);
+
+        let id=window.request_animation_frame(&cb.as_ref().unchecked_ref()).unwrap();
+
+        let de=self.max_delay;
+        futures::select!{
+            a = receiver.fuse() => Ok(a.unwrap()),
+            _ = delay(de).fuse() => {
+                window.cancel_animation_frame(id).unwrap();
+                Err(GameError::SocketErr)
+            }
+        }
+
+        
+        
     }
 }
+
 
 use futures::FutureExt;
 
 pub async fn run_game()->Result<(),GameError> {
-    
-    let frame_rate=10;
+    console_log!("YOYO");
+    let frame_rate=60;
     let s1 = MyWebsocket::new("ws://127.0.0.1:3012");
     let s2 = MyWebsocket::new("ws://127.0.0.1:3012");
 
     let mut engine = Engine::new("canvas", frame_rate).unwrap();
         
-    let mut renderer=Renderer::new(frame_rate);
+    let mut renderer=Renderer::new(20);
 
+    
     let mut s1=s1.await?;
     let mut s2=s2.await?;
 
@@ -200,12 +237,12 @@ pub async fn run_game()->Result<(),GameError> {
     let mut move_acc = MovePacker {};
     loop {
 
-        s1.send(move_acc.wrap()).await;
+        s1.send(move_acc.wrap()).await?;
         let mut unpacker=s1.recv::<MoveUnpacker>().await?;
     
         for _ in 0..frame_rate {
 
-            let dd=renderer.render(||gamestate.draw());
+            let dd=renderer.render(||gamestate.draw().unwrap());
 
             for event in engine.next().await?{
                 match event {
@@ -227,4 +264,5 @@ pub async fn run_game()->Result<(),GameError> {
 
         }
     }
+    
 }
