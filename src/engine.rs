@@ -123,6 +123,10 @@ impl GameState {
     fn tick(&mut self, a: GameDelta) {
         //update game state
     }
+    pub fn draw(&self)->Result<(),GameError>{
+        unimplemented!();
+    }
+    
 }
 
 struct GameDelta {}
@@ -163,13 +167,31 @@ pub enum GameError{
     SocketErr
 }
 
+pub struct Renderer{
+
+}
+impl Renderer{
+    fn new(frame_rate:usize)->Renderer{
+        unimplemented!();
+    }
+
+    async fn render<K>(&mut self,a:impl FnOnce()->K)->K{
+        unimplemented!();
+    }
+}
+
+use futures::FutureExt;
+
 pub async fn run_game()->Result<(),GameError> {
     
+    let frame_rate=10;
     let s1 = MyWebsocket::new("ws://127.0.0.1:3012");
     let s2 = MyWebsocket::new("ws://127.0.0.1:3012");
 
-    let mut engine = Engine::new("canvas", 10).unwrap();
+    let mut engine = Engine::new("canvas", frame_rate).unwrap();
         
+    let mut renderer=Renderer::new(frame_rate);
+
     let mut s1=s1.await?;
     let mut s2=s2.await?;
 
@@ -177,10 +199,14 @@ pub async fn run_game()->Result<(),GameError> {
 
     let mut move_acc = MovePacker {};
     loop {
-        s1.send(move_acc.wrap()).await?;
-        let mut unpacker: MoveUnpacker = s1.recv().await?;
 
-        for _ in 0..60 {
+        s1.send(move_acc.wrap()).await;
+        let mut unpacker=s1.recv::<MoveUnpacker>().await?;
+    
+        for _ in 0..frame_rate {
+
+            let dd=renderer.render(||gamestate.draw());
+
             for event in engine.next().await?{
                 match event {
                     &Event::MouseDown(mouse_pos) => {
@@ -195,9 +221,10 @@ pub async fn run_game()->Result<(),GameError> {
                 s2.send(&gamestate).await?;
             }
 
+            dd.await?;
+
             gamestate.tick(game_delta);
 
-            //draw game state
         }
     }
 }
