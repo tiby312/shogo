@@ -172,7 +172,7 @@ impl MyWebsocket{
         unimplemented!();
     }
 
-    pub async fn receive<T>(&mut self)->Result<T,std::io::Error>{
+    pub async fn recv<T>(&mut self)->Result<T,std::io::Error>{
 
         use futures::StreamExt;
         unimplemented!();
@@ -181,22 +181,18 @@ impl MyWebsocket{
 }
 pub async fn run_game() {
 
-    let socket_create = MyWebsocket::new( "ws://127.0.0.1:3012");
-
-    let socket2_create = MyWebsocket::new( "ws://127.0.0.1:3012");
-
-    let mut move_acc = MovePacker{};
-
-    let mut gamestate = GameState{};
-
-    let mut socket = socket_create.await;
-    let mut socket2 = socket2_create.await;
+    let (mut socket,mut socket2)=futures::join!(
+        MyWebsocket::new( "ws://127.0.0.1:3012"),
+        MyWebsocket::new( "ws://127.0.0.1:3012")
+    );
     
     let mut engine=Engine::new("canvas",10).unwrap();
+    let mut move_acc = MovePacker{};
+    let mut gamestate = GameState{};
 
     loop {
-        socket.send(WsMessage::Binary(move_acc.wrap())).await;
-        let mut unpacker:MoveUnpacker = socket.receive().await.unwrap();
+        socket.send(move_acc.wrap()).await;
+        let mut unpacker:MoveUnpacker = socket.recv().await.unwrap();
 
         for _ in 0..60 {
 
