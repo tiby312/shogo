@@ -18,6 +18,8 @@ pub enum Event {
     MouseDown([f64; 2]),
 }
 
+
+
 pub struct Engine {
     events: Rc<RefCell<Vec<Event>>>,
     buffer: Vec<Event>,
@@ -44,9 +46,18 @@ impl Engine {
             .dyn_into()
             .unwrap();
 
+        let (tl,tr)={
+            //let canvas:web_sys::Element=canvas.dyn_into().unwrap();
+            
+            let bb=canvas.get_bounding_client_rect();
+            let tl=bb.x();
+            let tr=bb.y();
+            (tl,tr)
+        };
+
         let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
             ee.borrow_mut()
-                .push(Event::MouseDown([e.client_x() as f64, e.client_y() as f64]));
+                .push(Event::MouseDown([e.client_x() as f64-tl, e.client_y() as f64-tr]));
         }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
         canvas.set_onclick(Some(&cb.as_ref().unchecked_ref()));

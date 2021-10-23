@@ -54,6 +54,50 @@ impl MoveUnpacker {
 }
 
 
+pub async fn test_game(){
+
+    console_log!("test game start!");
+    let mut engine = engine::Engine::new("canvas", 10).unwrap();
+
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let canvas: web_sys::HtmlCanvasElement = document
+        .get_element_by_id("canvas")
+        .unwrap()
+        .dyn_into()
+        .unwrap();
+
+
+    let ctx = canvas
+    .get_context("2d")
+    .unwrap()
+    .unwrap()
+    .dyn_into::<web_sys::CanvasRenderingContext2d>()
+    .unwrap();
+
+    let mut mouse_pos=[0.0;2];
+    loop{
+        for event in engine.next().await.unwrap(){
+            match event {
+                &engine::Event::MouseDown(m) => {
+                    console_log!("mouse pos={:?}",m);
+                    mouse_pos=m;
+                }
+            }
+        }
+
+        
+        console_log!("clearing");
+        
+        ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+        
+        ctx.fill_rect(0.0,0.0,mouse_pos[0],mouse_pos[1]);
+        
+    }
+}
+
+
+
 pub async fn run_game()->Result<(),engine::GameError> {
     console_log!("YOYO");
     let frame_rate=60;
@@ -106,6 +150,6 @@ pub async fn run_game()->Result<(),engine::GameError> {
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
-    run_game().await;
+    test_game().await;
     Ok(())
 }
