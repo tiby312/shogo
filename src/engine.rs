@@ -109,35 +109,6 @@ pub async fn delay(a: usize) {
         .expect("timeout failed");
 }
 
-struct MovePacker {}
-impl MovePacker {
-    fn tick(&mut self, a: [f64; 2]) {}
-    fn wrap(&mut self) -> Vec<u8> {
-        unimplemented!();
-    }
-}
-
-
-struct GameState {}
-impl GameState {
-    fn tick(&mut self, a: GameDelta) {
-        //update game state
-    }
-    pub fn draw(&self)->Result<(),GameError>{
-        unimplemented!();
-    }
-    
-}
-
-struct GameDelta {}
-
-struct MoveUnpacker {}
-impl MoveUnpacker {
-    fn tick(&mut self) -> (bool, GameDelta) {
-        unimplemented!();
-    }
-}
-
 use ws_stream_wasm::*;
 
 pub struct MyWebsocket {
@@ -172,7 +143,7 @@ pub struct Renderer{
 }
 
 impl Renderer{
-    fn new(max_delay:usize)->Renderer{
+    pub fn new(max_delay:usize)->Renderer{
         console_log!("rendered max delay={:?}",max_delay);
         Renderer{
             max_delay
@@ -180,7 +151,7 @@ impl Renderer{
     }
 
 
-    async fn render<K>(&mut self,a:impl FnOnce()->K)->Result<K,GameError>{
+    pub async fn render<K>(&mut self,a:impl FnOnce()->K)->Result<K,GameError>{
         
         let mut j=None;
         self.render_simple(||{
@@ -228,52 +199,3 @@ impl Renderer{
 
 
 use futures::FutureExt;
-
-pub async fn run_game()->Result<(),GameError> {
-    console_log!("YOYO");
-    let frame_rate=60;
-    let s1 = MyWebsocket::new("ws://127.0.0.1:3012");
-    let s2 = MyWebsocket::new("ws://127.0.0.1:3012");
-
-    let mut engine = Engine::new("canvas", frame_rate).unwrap();
-        
-    let mut renderer=Renderer::new(20);
-
-    
-    let mut s1=s1.await?;
-    let mut s2=s2.await?;
-
-    let mut gamestate:GameState = s2.recv().await?;
-
-    let mut move_acc = MovePacker {};
-    loop {
-
-        s1.send(move_acc.wrap()).await?;
-        let mut unpacker=s1.recv::<MoveUnpacker>().await?;
-    
-        for _ in 0..frame_rate {
-
-            let dd=renderer.render(||gamestate.draw().unwrap());
-
-            for event in engine.next().await?{
-                match event {
-                    &Event::MouseDown(mouse_pos) => {
-                        move_acc.tick(mouse_pos);
-                    }
-                }
-            }
-
-            let (send_back_game, game_delta) = unpacker.tick();
-
-            if send_back_game {
-                s2.send(&gamestate).await?;
-            }
-
-            dd.await?;
-
-            gamestate.tick(game_delta);
-
-        }
-    }
-    
-}
