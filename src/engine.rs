@@ -179,7 +179,18 @@ impl Renderer{
         }
     }
 
-    async fn render(&mut self,a:impl FnOnce())->Result<(),GameError>{
+
+    async fn render<K>(&mut self,a:impl FnOnce()->K)->Result<K,GameError>{
+        
+        let mut j=None;
+        self.render_simple(||{
+            j=Some(a())
+        }).await.unwrap();
+        Ok(j.take().unwrap())
+    }
+
+
+    async fn render_simple(&mut self,a:impl FnOnce())->Result<(),GameError>{
         unsafe{
             let j=Box::new(a) as Box<dyn FnOnce()>;
             let j=std::mem::transmute::<Box<dyn FnOnce()>,Box< (dyn FnOnce()+'static)>>(j);
