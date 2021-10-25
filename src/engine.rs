@@ -15,7 +15,7 @@ use wasm_bindgen::JsCast;
 
 #[derive(Debug)]
 pub enum Event {
-    MouseDown(web_sys::HtmlElement, [f64; 2]),
+    MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
 }
 
 pub struct Engine {
@@ -55,7 +55,7 @@ impl Engine {
         let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
             ee.borrow_mut().push(Event::MouseDown(
                 elem.clone(),
-                [e.client_x() as f64, e.client_y() as f64],
+                e,
             ));
         }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 

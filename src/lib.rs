@@ -80,8 +80,8 @@ fn get_button(name:&str)->web_sys::HtmlElement{
         .unwrap() 
 }
 
-fn convert_coord(canvas:&web_sys::HtmlElement,pos:[f64;2])->[f64;2]{
-    let [x,y]=pos;
+fn convert_coord(canvas:&web_sys::HtmlElement,e:&web_sys::MouseEvent)->[f64;2]{
+    let [x,y]=[e.client_x() as f64, e.client_y() as f64];
     let bb = canvas.get_bounding_client_rect();
     let tl = bb.x();
     let tr = bb.y();
@@ -104,10 +104,10 @@ pub async fn test_game() {
     loop {
         for event in engine.next().await.unwrap() {
             match event {
-                engine::Event::MouseDown(elem, pos) => {
+                engine::Event::MouseDown(elem, mouse_event) => {
                     match elem.id().as_str(){
                         "mycanvas"=>{
-                            let pos=convert_coord(elem,*pos);
+                            let pos=convert_coord(elem,mouse_event);
                             console_log!("mouse pos={:?}", pos);
                             mouse_pos = pos;    
                         },
