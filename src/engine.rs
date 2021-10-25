@@ -16,6 +16,8 @@ use wasm_bindgen::JsCast;
 #[derive(Debug)]
 pub enum Event {
     MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
+    MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
+
 }
 
 pub struct Engine {
@@ -48,7 +50,22 @@ impl Engine {
         })
     }
 
-    pub fn add(&mut self, elem2: web_sys::HtmlElement) {
+    pub fn add_on_mouse_move(&mut self,elem2:web_sys::HtmlElement){
+        let ee = self.events.clone();
+
+        let elem = elem2.clone();
+        let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
+            ee.borrow_mut().push(Event::MouseMove(
+                elem.clone(),
+                e,
+            ));
+        }) as Box<dyn FnMut(web_sys::MouseEvent)>);
+
+        elem2.set_onmousemove(Some(&cb.as_ref().unchecked_ref()));
+        //TODO dont leak.
+        cb.forget();
+    }
+    pub fn add_on_click(&mut self, elem2: web_sys::HtmlElement) {
         let ee = self.events.clone();
 
         let elem = elem2.clone();

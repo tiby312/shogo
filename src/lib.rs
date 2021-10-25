@@ -96,28 +96,25 @@ pub async fn test_game() {
 
     let ctx = get_context_2d(&canvas);
 
-    engine.add(canvas.clone().into());
+    engine.add_on_mouse_move(canvas.clone().into());
 
-    engine.add(get_button("mybutton"));
+    engine.add_on_click(get_button("mybutton"));
 
     let mut mouse_pos = [0.0; 2];
     loop {
         for event in engine.next().await.unwrap() {
             match event {
-                engine::Event::MouseDown(elem, mouse_event) => {
-                    match elem.id().as_str(){
-                        "mycanvas"=>{
-                            let pos=convert_coord(elem,mouse_event);
-                            console_log!("mouse pos={:?}", pos);
-                            mouse_pos = pos;    
-                        },
-                        "mybutton"=>{
-                            console_log!("button pushed!");
-                        },
-                        _=>{}
+                engine::Event::MouseDown(elem, _) => {
+                    if elem.id()=="mybutton"{
+                        console_log!("button pushed!");   
                     }
-
-
+                },
+                engine::Event::MouseMove(elem,mouse_event)=>{
+                    if elem.id()=="mycanvas"{
+                        let pos=convert_coord(elem,mouse_event);
+                        console_log!("mouse pos={:?}", pos);
+                        mouse_pos = pos;   
+                    }
                 }
             }
         }
