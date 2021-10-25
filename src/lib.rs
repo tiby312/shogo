@@ -55,7 +55,7 @@ fn get_canvas(name: &str) -> web_sys::HtmlCanvasElement {
     let document = window.document().unwrap();
 
     document
-        .get_element_by_id("canvas")
+        .get_element_by_id(name)
         .unwrap()
         .dyn_into()
         .unwrap()
@@ -69,6 +69,16 @@ fn get_context_2d(canvas: &web_sys::HtmlCanvasElement) -> web_sys::CanvasRenderi
         .unwrap()
 }
 
+fn get_button(name:&str)->web_sys::HtmlElement{
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+
+    document
+        .get_element_by_id(name)
+        .unwrap()
+        .dyn_into()
+        .unwrap() 
+}
 
 fn convert_coord(canvas:&web_sys::HtmlElement,pos:[f64;2])->[f64;2]{
     let [x,y]=pos;
@@ -82,22 +92,32 @@ pub async fn test_game() {
     console_log!("test game start!");
     let mut engine = engine::Engine::new(10).unwrap();
 
-    let canvas = get_canvas("canvas");
+    let canvas = get_canvas("mycanvas");
 
     let ctx = get_context_2d(&canvas);
 
     engine.add(canvas.clone().into());
+
+    engine.add(get_button("mybutton"));
 
     let mut mouse_pos = [0.0; 2];
     loop {
         for event in engine.next().await.unwrap() {
             match event {
                 engine::Event::MouseDown(elem, pos) => {
-                    if elem.id() == "canvas" {
-                        let pos=convert_coord(elem,*pos);
-                        console_log!("mouse pos={:?}", pos);
-                        mouse_pos = pos;
+                    match elem.id().as_str(){
+                        "mycanvas"=>{
+                            let pos=convert_coord(elem,*pos);
+                            console_log!("mouse pos={:?}", pos);
+                            mouse_pos = pos;    
+                        },
+                        "mybutton"=>{
+                            console_log!("button pushed!");
+                        },
+                        _=>{}
                     }
+
+
                 }
             }
         }
