@@ -101,8 +101,9 @@ pub async fn test_game() {
     engine.add_on_click(get_button("mybutton"));
 
     let mut mouse_pos = [0.0; 2];
-    loop {
-        for event in engine.next().await.unwrap() {
+
+    while let Ok(events)=engine.next().await{
+        for event in events {
             match event {
                 engine::Event::MouseDown(elem, _) => {
                     if elem.id()=="mybutton"{
