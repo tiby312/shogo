@@ -23,32 +23,6 @@ extern "C" {
     fn log(s: &str);
 }
 
-struct MovePacker {}
-impl MovePacker {
-    fn tick(&mut self, a: [f64; 2]) {}
-    fn wrap(&mut self) -> Vec<u8> {
-        unimplemented!();
-    }
-}
-
-struct GameState {}
-impl GameState {
-    fn tick(&mut self, a: GameDelta) {
-        //update game state
-    }
-    pub fn draw(&self) -> Result<(), engine::GameError> {
-        unimplemented!();
-    }
-}
-
-struct GameDelta {}
-
-struct MoveUnpacker {}
-impl MoveUnpacker {
-    fn tick(&mut self) -> (bool, GameDelta) {
-        unimplemented!();
-    }
-}
 
 fn get_canvas(name: &str) -> web_sys::HtmlCanvasElement {
     let window = web_sys::window().unwrap();
@@ -96,9 +70,10 @@ pub async fn test_game() {
 
     let ctx = get_context_2d(&canvas);
 
-    engine.add_on_mouse_move(canvas.clone().into());
+    engine.add_on_mouse_move(&canvas);
 
-    engine.add_on_click(get_button("mybutton"));
+    let my_button=get_button("mybutton");
+    engine.add_on_click(&my_button);
 
     let mut mouse_pos = [0.0; 2];
 
@@ -129,6 +104,33 @@ pub async fn test_game() {
 }
 
 /*
+
+struct MovePacker {}
+impl MovePacker {
+    fn tick(&mut self, a: [f64; 2]) {}
+    fn wrap(&mut self) -> Vec<u8> {
+        unimplemented!();
+    }
+}
+
+struct GameState {}
+impl GameState {
+    fn tick(&mut self, a: GameDelta) {
+        //update game state
+    }
+    pub fn draw(&self) -> Result<(), engine::GameError> {
+        unimplemented!();
+    }
+}
+
+struct GameDelta {}
+
+struct MoveUnpacker {}
+impl MoveUnpacker {
+    fn tick(&mut self) -> (bool, GameDelta) {
+        unimplemented!();
+    }
+}
 pub async fn run_game()->Result<(),engine::GameError> {
     console_log!("YOYO");
     let frame_rate=60;
