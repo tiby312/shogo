@@ -1,9 +1,9 @@
 <html>
 <head>
   <script type=module>
-    import { default as init } from './pkg/wasm_pong.js';
+    import { default as init } from './pkg/demo.js';
     delete WebAssembly.instantiateStreaming;
-    init('pkg/wasm_pong_bg.wasm');
+    init('pkg/demo_bg.wasm');
   </script>
   
 </head>

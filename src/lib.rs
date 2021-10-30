@@ -1,188 +1,201 @@
-mod data;
-mod engine;
 
-use gloo::{
-    events::EventListener,
-    render::{request_animation_frame, AnimationFrame},
-};
-use js_sys::WebAssembly;
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{
-    AudioBuffer, AudioContext, Event, HtmlCanvasElement, KeyboardEvent, WebGlBuffer, WebGlProgram,
-    WebGlRenderingContext, WebGlShader, WebGlTexture, WebGlUniformLocation,
-};
 
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+#[derive(Debug)]
+pub enum Event {
+    MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
+    MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
+
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+pub struct Engine {
+    events: Rc<RefCell<Vec<Event>>>,
+    buffer: Vec<Event>,
+    last: f64,
+    frame_rate: usize,
 }
 
 
-fn get_canvas(name: &str) -> web_sys::HtmlCanvasElement {
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
+impl Engine {
+    pub fn new(frame_rate: usize) -> Engine {
+        let frame_rate = ((1.0 / frame_rate as f64) * 100.0).round() as usize;
 
-    document
-        .get_element_by_id(name)
-        .unwrap()
-        .dyn_into()
-        .unwrap()
-}
-fn get_context_2d(canvas: &web_sys::HtmlCanvasElement) -> web_sys::CanvasRenderingContext2d {
-    canvas
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap()
-}
+        let events = Rc::new(RefCell::new(Vec::new()));
 
-fn get_button(name:&str)->web_sys::HtmlElement{
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
 
-    document
-        .get_element_by_id(name)
-        .unwrap()
-        .dyn_into()
-        .unwrap() 
-}
+        let window = web_sys::window().expect("should have a window in this context");
+        let performance = window
+            .performance()
+            .expect("performance should be available");
 
-fn convert_coord(canvas:&web_sys::HtmlElement,e:&web_sys::MouseEvent)->[f64;2]{
-    let [x,y]=[e.client_x() as f64, e.client_y() as f64];
-    let bb = canvas.get_bounding_client_rect();
-    let tl = bb.x();
-    let tr = bb.y();
-    [x - tl, y - tr]
-}
+        Engine {
+            events,
+            buffer: Vec::new(),
+            last: performance.now(),
+            frame_rate,
+        }
+    }
 
-pub async fn test_game() {
-    console_log!("test game start!");
-    let mut engine = engine::Engine::new(10).unwrap();
+    pub fn add_on_mouse_move(&mut self,elem2:&web_sys::HtmlElement){
+        let ee = self.events.clone();
 
-    let canvas = get_canvas("mycanvas");
+        let elem = elem2.clone();
+        let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
+            ee.borrow_mut().push(Event::MouseMove(
+                elem.clone(),
+                e,
+            ));
+        }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
-    let ctx = get_context_2d(&canvas);
+        elem2.set_onmousemove(Some(&cb.as_ref().unchecked_ref()));
+        //TODO dont leak.
+        cb.forget();
+    }
+    pub fn add_on_click(&mut self, elem2: &web_sys::HtmlElement) {
+        let ee = self.events.clone();
 
-    engine.add_on_mouse_move(&canvas);
+        let elem = elem2.clone();
+        let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
+            ee.borrow_mut().push(Event::MouseDown(
+                elem.clone(),
+                e,
+            ));
+        }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
-    let my_button=get_button("mybutton");
-    engine.add_on_click(&my_button);
+        elem2.set_onclick(Some(&cb.as_ref().unchecked_ref()));
+        //TODO dont leak.
+        cb.forget();
+    }
 
-    let mut mouse_pos = [0.0; 2];
+    pub async fn next<'a>(&'a mut self) -> Option<&[Event]> {
+        let window = web_sys::window().expect("should have a window in this context");
+        let performance = window
+            .performance()
+            .expect("performance should be available");
 
-    while let Ok(events)=engine.next().await{
-        for event in events {
-            match event {
-                engine::Event::MouseDown(elem, _) => {
-                    if elem.id()=="mybutton"{
-                        console_log!("button pushed!");   
-                    }
-                },
-                engine::Event::MouseMove(elem,mouse_event)=>{
-                    if elem.id()=="mycanvas"{
-                        let pos=convert_coord(elem,mouse_event);
-                        console_log!("mouse pos={:?}", pos);
-                        mouse_pos = pos;   
-                    }
-                }
-            }
+        let tt = performance.now();
+        let diff = performance.now() - self.last;
+
+        if self.frame_rate as f64 - diff > 0.0 {
+            let d = (self.frame_rate as f64 - diff) as usize;
+            delay(d).await;
         }
 
-        console_log!("clearing");
+        self.last = tt;
+        {
+            self.buffer.clear();
+            let ee = &mut self.events.borrow_mut();
+            self.buffer.append(ee);
+            assert!(ee.is_empty());
+        }
 
-        ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
-
-        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+        Some(&self.buffer)
     }
 }
+
+pub async fn delay(a: usize) {
+    use std::convert::TryInto;
+
+    let a: i32 = a.try_into().expect("can't delay with that large a value!");
+
+    let promise = js_sys::Promise::new(&mut |resolve, _| {
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, a)
+            .unwrap();
+    });
+
+    wasm_bindgen_futures::JsFuture::from(promise)
+        .await
+        .expect("timeout failed");
+}
+
 
 /*
+use ws_stream_wasm::*;
 
-struct MovePacker {}
-impl MovePacker {
-    fn tick(&mut self, a: [f64; 2]) {}
-    fn wrap(&mut self) -> Vec<u8> {
+pub struct MyWebsocket {
+    socket: ws_stream_wasm::WsStream,
+}
+
+impl MyWebsocket {
+    pub async fn new(addr: &str) -> Result<MyWebsocket, GameError> {
+        let socket_create = WsMeta::connect(addr, None);
+        let (_, socket) = socket_create.await.map_err(|_| GameError::SocketErr)?;
+        Ok(MyWebsocket { socket })
+    }
+
+    pub async fn send<T>(&mut self, a: T) -> Result<(), GameError> {
+        use futures::SinkExt;
+        unimplemented!();
+    }
+
+    pub async fn recv<T>(&mut self) -> Result<T, GameError> {
+        use futures::StreamExt;
         unimplemented!();
     }
 }
 
-struct GameState {}
-impl GameState {
-    fn tick(&mut self, a: GameDelta) {
-        //update game state
-    }
-    pub fn draw(&self) -> Result<(), engine::GameError> {
-        unimplemented!();
-    }
+#[derive(Debug, Copy, Clone)]
+pub enum GameError {
+    SocketErr,
 }
 
-struct GameDelta {}
-
-struct MoveUnpacker {}
-impl MoveUnpacker {
-    fn tick(&mut self) -> (bool, GameDelta) {
-        unimplemented!();
-    }
+pub struct Renderer {
+    max_delay: usize,
 }
-pub async fn run_game()->Result<(),engine::GameError> {
-    console_log!("YOYO");
-    let frame_rate=60;
-    let s1 = engine::MyWebsocket::new("ws://127.0.0.1:3012");
-    let s2 = engine::MyWebsocket::new("ws://127.0.0.1:3012");
 
-    let mut engine = engine::Engine::new("canvas", frame_rate).unwrap();
+impl Renderer {
+    pub fn new(max_delay: usize) -> Renderer {
+        console_log!("rendered max delay={:?}", max_delay);
+        Renderer { max_delay }
+    }
 
-    let mut renderer=engine::Renderer::new(20);
+    pub async fn render<K>(&mut self, a: impl FnOnce() -> K) -> Result<K, GameError> {
+        let mut j = None;
+        self.render_simple(|| j = Some(a())).await.unwrap();
+        Ok(j.take().unwrap())
+    }
 
-
-    let mut s1=s1.await?;
-    let mut s2=s2.await?;
-
-    let mut gamestate:GameState = s2.recv().await?;
-
-    let mut move_acc = MovePacker {};
-    loop {
-
-        s1.send(move_acc.wrap()).await?;
-        let mut unpacker=s1.recv::<MoveUnpacker>().await?;
-
-        for _ in 0..frame_rate {
-
-            let dd=renderer.render(||gamestate.draw().unwrap());
-
-            for event in engine.next().await?{
-                match event {
-                    &engine::Event::MouseDown(mouse_pos) => {
-                        move_acc.tick(mouse_pos);
-                    }
-                }
-            }
-
-            let (send_back_game, game_delta) = unpacker.tick();
-
-            if send_back_game {
-                s2.send(&gamestate).await?;
-            }
-
-            dd.await?;
-
-            gamestate.tick(game_delta);
-
+    async fn render_simple(&mut self, a: impl FnOnce()) -> Result<(), GameError> {
+        unsafe {
+            let j = Box::new(a) as Box<dyn FnOnce()>;
+            let j = std::mem::transmute::<Box<dyn FnOnce()>, Box<(dyn FnOnce() + 'static)>>(j);
+            self.render_static(j).await
         }
     }
 
-}
-*/
+    async fn render_static<K: 'static + std::fmt::Debug>(
+        &mut self,
+        a: impl FnOnce() -> K + 'static,
+    ) -> Result<K, GameError> {
+        let window = web_sys::window().unwrap();
 
-#[wasm_bindgen(start)]
-pub async fn start() -> Result<(), JsValue> {
-    test_game().await;
-    Ok(())
+        let (sender, receiver) = futures::channel::oneshot::channel();
+
+        let cb = Closure::once(Box::new(move || {
+            let j = (a)();
+            sender.send(j).unwrap();
+        }) as Box<dyn FnOnce()>);
+
+        let id = window
+            .request_animation_frame(&cb.as_ref().unchecked_ref())
+            .unwrap();
+
+        let de = self.max_delay;
+        futures::select! {
+            a = receiver.fuse() => Ok(a.unwrap()),
+            _ = delay(de).fuse() => {
+                window.cancel_animation_frame(id).unwrap();
+                Err(GameError::SocketErr)
+            }
+        }
+    }
 }
+
+use futures::FutureExt;
+
+*/
