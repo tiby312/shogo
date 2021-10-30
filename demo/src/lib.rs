@@ -54,7 +54,7 @@ fn convert_coord(canvas:&web_sys::HtmlElement,e:&web_sys::MouseEvent)->[f64;2]{
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
     console_log!("test game start!");
-    let mut engine = wengine::Engine::new(10);
+    let mut engine = wengine::Engine::new(60);
 
     let canvas = get_canvas("mycanvas");
 

@@ -21,7 +21,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(frame_rate: usize) -> Engine {
-        let frame_rate = ((1.0 / frame_rate as f64) * 100.0).round() as usize;
+        let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         let events = Rc::new(RefCell::new(Vec::new()));
 
