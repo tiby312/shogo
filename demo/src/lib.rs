@@ -31,7 +31,7 @@ fn get_context_2d(canvas: &web_sys::HtmlCanvasElement) -> web_sys::CanvasRenderi
         .unwrap()
 }
 
-fn get_button(name:&str)->web_sys::HtmlElement{
+fn get_element(name:&str)->web_sys::HtmlElement{
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
 
@@ -62,7 +62,7 @@ pub async fn start() -> Result<(), JsValue> {
 
     engine.add_on_mouse_move(&canvas);
 
-    let my_button=get_button("mybutton");
+    let my_button=get_element("mybutton");
     engine.add_on_click(&my_button);
 
     let mut mouse_pos = [0.0; 2];
