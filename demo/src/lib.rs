@@ -19,28 +19,50 @@ fn convert_coord(canvas: &web_sys::HtmlElement, e: &web_sys::MouseEvent) -> [f64
     [x - tl, y - tr]
 }
 
+pub struct ElemSet {
+    pub window: web_sys::Window,
+    pub document: web_sys::Document,
+    pub canvas: web_sys::HtmlCanvasElement,
+    pub ctx: web_sys::CanvasRenderingContext2d,
+    pub my_button: web_sys::HtmlElement,
+}
+impl ElemSet {
+    fn new() -> Result<ElemSet, JsValue> {
+        let window = web_sys::window().unwrap_throw();
+        let document = window.document().unwrap_throw();
+        let canvas: web_sys::HtmlCanvasElement = document
+            .get_element_by_id("mycanvas")
+            .unwrap_throw()
+            .dyn_into()?;
+
+        let ctx: web_sys::CanvasRenderingContext2d =
+            canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
+
+        let my_button: web_sys::HtmlElement = document
+            .get_element_by_id("mybutton")
+            .unwrap_throw()
+            .dyn_into()?;
+
+        Ok(ElemSet {
+            window,
+            document,
+            canvas,
+            ctx,
+            my_button,
+        })
+    }
+}
+
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
     console_log!("test game start!");
     let mut engine = wengine::Engine::new(60);
 
-    let document = web_sys::window().unwrap_throw().document().unwrap_throw();
-    let canvas: web_sys::HtmlCanvasElement = document
-        .get_element_by_id("mycanvas")
-        .unwrap_throw()
-        .dyn_into()?;
+    let elems = ElemSet::new()?;
 
-    let ctx: web_sys::CanvasRenderingContext2d =
-        canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
+    engine.add_on_mouse_move(&elems.canvas);
 
-    engine.add_on_mouse_move(&canvas);
-
-    let my_button: web_sys::HtmlElement = document
-        .get_element_by_id("mybutton")
-        .unwrap_throw()
-        .dyn_into()?;
-
-    engine.add_on_click(&my_button);
+    engine.add_on_click(elems.my_button);
 
     let mut mouse_pos = [0.0; 2];
 
@@ -64,9 +86,14 @@ pub async fn start() -> Result<(), JsValue> {
 
         console_log!("clearing");
 
-        ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+        elems.ctx.clear_rect(
+            0.0,
+            0.0,
+            elems.canvas.width() as f64,
+            elems.canvas.height() as f64,
+        );
 
-        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+        elems.ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
 
     Ok(())

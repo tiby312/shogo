@@ -35,7 +35,9 @@ impl Engine {
         }
     }
 
-    pub fn add_on_mouse_move(&mut self, elem2: &web_sys::HtmlElement) {
+    pub fn add_on_mouse_move<K:AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
+        let elem2=elem2.as_ref();
+
         let ee = self.events.clone();
 
         let elem = elem2.clone();
@@ -47,7 +49,9 @@ impl Engine {
         //TODO dont leak.
         cb.forget();
     }
-    pub fn add_on_click(&mut self, elem2: &web_sys::HtmlElement) {
+    pub fn add_on_click<K:AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
+        let elem2=elem2.as_ref();
+
         let ee = self.events.clone();
 
         let elem = elem2.clone();
