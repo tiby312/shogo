@@ -1,4 +1,3 @@
-
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -8,7 +7,6 @@ use wasm_bindgen::JsCast;
 pub enum Event {
     MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
     MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
-
 }
 
 pub struct Engine {
@@ -18,13 +16,11 @@ pub struct Engine {
     frame_rate: usize,
 }
 
-
 impl Engine {
     pub fn new(frame_rate: usize) -> Engine {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         let events = Rc::new(RefCell::new(Vec::new()));
-
 
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
@@ -39,18 +35,15 @@ impl Engine {
         }
     }
 
-    pub fn add_on_mouse_move(&mut self,elem2:&web_sys::HtmlElement){
+    pub fn add_on_mouse_move(&mut self, elem2: &web_sys::HtmlElement) {
         let ee = self.events.clone();
 
         let elem = elem2.clone();
         let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
-            ee.borrow_mut().push(Event::MouseMove(
-                elem.clone(),
-                e,
-            ));
+            ee.borrow_mut().push(Event::MouseMove(elem.clone(), e));
         }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
-        elem2.set_onmousemove(Some(&cb.as_ref().unchecked_ref()));
+        elem2.set_onmousemove(Some(cb.as_ref().unchecked_ref()));
         //TODO dont leak.
         cb.forget();
     }
@@ -59,18 +52,15 @@ impl Engine {
 
         let elem = elem2.clone();
         let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
-            ee.borrow_mut().push(Event::MouseDown(
-                elem.clone(),
-                e,
-            ));
+            ee.borrow_mut().push(Event::MouseDown(elem.clone(), e));
         }) as Box<dyn FnMut(web_sys::MouseEvent)>);
 
-        elem2.set_onclick(Some(&cb.as_ref().unchecked_ref()));
+        elem2.set_onclick(Some(cb.as_ref().unchecked_ref()));
         //TODO dont leak.
         cb.forget();
     }
 
-    pub async fn next<'a>(&'a mut self) -> Option<&[Event]> {
+    pub async fn next(&mut self) -> Option<&[Event]> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -97,8 +87,6 @@ impl Engine {
 }
 
 pub async fn delay(a: usize) {
-    use std::convert::TryInto;
-
     let a: i32 = a.try_into().expect("can't delay with that large a value!");
 
     let promise = js_sys::Promise::new(&mut |resolve, _| {
@@ -112,7 +100,6 @@ pub async fn delay(a: usize) {
         .await
         .expect("timeout failed");
 }
-
 
 /*
 use ws_stream_wasm::*;
