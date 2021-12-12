@@ -58,11 +58,16 @@ pub async fn start() -> Result<(), JsValue> {
     console_log!("test game start!");
     let mut engine = wengine::Engine::new(60);
 
-    let elems = ElemSet::new()?;
+    let ElemSet {
+        canvas,
+        ctx,
+        my_button,
+        ..
+    } = ElemSet::new()?;
 
-    engine.add_on_mouse_move(&elems.canvas);
+    engine.add_on_mouse_move(&canvas);
 
-    engine.add_on_click(elems.my_button);
+    engine.add_on_click(my_button);
 
     let mut mouse_pos = [0.0; 2];
 
@@ -86,14 +91,9 @@ pub async fn start() -> Result<(), JsValue> {
 
         console_log!("clearing");
 
-        elems.ctx.clear_rect(
-            0.0,
-            0.0,
-            elems.canvas.width() as f64,
-            elems.canvas.height() as f64,
-        );
+        ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
 
-        elems.ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
 
     Ok(())
