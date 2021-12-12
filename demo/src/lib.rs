@@ -28,22 +28,17 @@ pub async fn start() -> Result<(), JsValue> {
     let canvas: web_sys::HtmlCanvasElement = document
         .get_element_by_id("mycanvas")
         .unwrap_throw()
-        .dyn_into()
-        .unwrap_throw();
-    let ctx: web_sys::CanvasRenderingContext2d = canvas
-        .get_context("2d")
-        .unwrap_throw()
-        .unwrap_throw()
-        .dyn_into()
-        .unwrap_throw();
+        .dyn_into()?;
+
+    let ctx: web_sys::CanvasRenderingContext2d =
+        canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
 
     engine.add_on_mouse_move(&canvas);
 
     let my_button: web_sys::HtmlElement = document
         .get_element_by_id("mybutton")
         .unwrap_throw()
-        .dyn_into()
-        .unwrap_throw();
+        .dyn_into()?;
 
     engine.add_on_click(&my_button);
 
