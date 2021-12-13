@@ -11,7 +11,7 @@ extern "C" {
     fn log(s: &str);
 }
 
-fn convert_coord(canvas: &web_sys::HtmlElement, e: &web_sys::MouseEvent) -> [f64; 2] {
+fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f64; 2] {
     let [x, y] = [e.client_x() as f64, e.client_y() as f64];
     let bb = canvas.get_bounding_client_rect();
     let tl = bb.x();
@@ -67,7 +67,7 @@ pub async fn start() -> Result<(), JsValue> {
 
     engine.add_on_mouse_move(&canvas);
 
-    engine.add_on_click(my_button);
+    engine.add_on_click(&my_button);
 
     let mut mouse_pos = [0.0; 2];
 
@@ -75,7 +75,7 @@ pub async fn start() -> Result<(), JsValue> {
         for event in events {
             match event {
                 wengine::Event::MouseDown(elem, _) => {
-                    if elem.id() == "mybutton" {
+                    if elem == my_button {
                         console_log!("button pushed!");
                     }
                 }

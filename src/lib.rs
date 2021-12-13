@@ -3,7 +3,7 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub enum Event {
     MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
     MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
@@ -11,7 +11,6 @@ pub enum Event {
 
 pub struct Engine {
     events: Rc<RefCell<Vec<Event>>>,
-    buffer: Vec<Event>,
     last: f64,
     frame_rate: usize,
 }
@@ -29,7 +28,6 @@ impl Engine {
 
         Engine {
             events,
-            buffer: Vec::new(),
             last: performance.now(),
             frame_rate,
         }
@@ -64,7 +62,7 @@ impl Engine {
         cb.forget();
     }
 
-    pub async fn next(&mut self) -> Option<&[Event]> {
+    pub async fn next(&mut self) -> Option<Vec<Event>> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -79,14 +77,14 @@ impl Engine {
         }
 
         self.last = tt;
-        {
-            self.buffer.clear();
-            let ee = &mut self.events.borrow_mut();
-            self.buffer.append(ee);
-            assert!(ee.is_empty());
-        }
+        
+        let mut buffer=Vec::new();
+        let ee = &mut self.events.borrow_mut();
+        buffer.append(ee);
+        assert!(ee.is_empty());
+    
 
-        Some(&self.buffer)
+        Some(buffer)
     }
 }
 
