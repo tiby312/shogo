@@ -3,7 +3,7 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum Event {
     MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
     MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
@@ -33,8 +33,8 @@ impl Engine {
         }
     }
 
-    pub fn add_on_mouse_move<K:AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
-        let elem2=elem2.as_ref();
+    pub fn add_on_mouse_move<K: AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
+        let elem2 = elem2.as_ref();
 
         let ee = self.events.clone();
 
@@ -47,8 +47,8 @@ impl Engine {
         //TODO dont leak.
         cb.forget();
     }
-    pub fn add_on_click<K:AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
-        let elem2=elem2.as_ref();
+    pub fn add_on_click<K: AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
+        let elem2 = elem2.as_ref();
 
         let ee = self.events.clone();
 
@@ -77,12 +77,11 @@ impl Engine {
         }
 
         self.last = tt;
-        
-        let mut buffer=Vec::new();
+
+        let mut buffer = Vec::new();
         let ee = &mut self.events.borrow_mut();
         buffer.append(ee);
         assert!(ee.is_empty());
-    
 
         Some(buffer)
     }
