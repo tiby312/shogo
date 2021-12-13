@@ -80,7 +80,7 @@ pub async fn start() -> Result<(), JsValue> {
                     }
                 }
                 wengine::Event::MouseMove(elem, mouse_event) => {
-                    if elem.id() == "mycanvas" {
+                    if elem == *canvas.as_ref() {
                         let pos = convert_coord(elem, mouse_event);
                         console_log!("mouse pos={:?}", pos);
                         mouse_pos = pos;
