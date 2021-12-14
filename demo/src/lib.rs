@@ -26,44 +26,45 @@ pub struct ElemSet {
     pub ctx: web_sys::CanvasRenderingContext2d,
     pub my_button: web_sys::HtmlElement,
 }
-impl ElemSet {
-    fn new() -> Result<ElemSet, JsValue> {
-        let window = web_sys::window().unwrap_throw();
-        let document = window.document().unwrap_throw();
-        let canvas: web_sys::HtmlCanvasElement = document
-            .get_element_by_id("mycanvas")
-            .unwrap_throw()
-            .dyn_into()?;
+fn new_elem_set() -> Result<ElemSet, JsValue> {
+    let window = web_sys::window().unwrap_throw();
+    let document = window.document().unwrap_throw();
+    let canvas: web_sys::HtmlCanvasElement = document
+        .get_element_by_id("mycanvas")
+        .unwrap_throw()
+        .dyn_into()?;
 
-        let ctx: web_sys::CanvasRenderingContext2d =
-            canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
+    let ctx: web_sys::CanvasRenderingContext2d =
+        canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
 
-        let my_button: web_sys::HtmlElement = document
-            .get_element_by_id("mybutton")
-            .unwrap_throw()
-            .dyn_into()?;
+    let my_button: web_sys::HtmlElement = document
+        .get_element_by_id("mybutton")
+        .unwrap_throw()
+        .dyn_into()?;
 
-        Ok(ElemSet {
-            window,
-            document,
-            canvas,
-            ctx,
-            my_button,
-        })
-    }
+    Ok(ElemSet {
+        window,
+        document,
+        canvas,
+        ctx,
+        my_button,
+    })
 }
 
 #[wasm_bindgen(start)]
-pub async fn start() -> Result<(), JsValue> {
+pub async fn start() {
     console_log!("test game start!");
-    let mut engine = wengine::Engine::new(60);
-
+    
+    
     let ElemSet {
         canvas,
         ctx,
         my_button,
         ..
-    } = ElemSet::new()?;
+    } = new_elem_set().unwrap_throw();
+
+    
+    let mut engine = wengine::Engine::new(30);
 
     engine.add_on_mouse_move(&canvas);
 
@@ -71,30 +72,29 @@ pub async fn start() -> Result<(), JsValue> {
 
     let mut mouse_pos = [0.0; 2];
 
+    let mut color_index = 0;
+    let colors = ["black", "red", "green"];
+
     while let Some(events) = engine.next().await {
         for event in events {
             match event {
                 wengine::Event::MouseDown(elem, _) => {
                     if elem == my_button {
-                        console_log!("button pushed!");
+                        color_index = (color_index + 1) % colors.len();
                     }
                 }
                 wengine::Event::MouseMove(elem, mouse_event) => {
                     if elem == *canvas.as_ref() {
-                        let pos = convert_coord(elem, mouse_event);
-                        console_log!("mouse pos={:?}", pos);
-                        mouse_pos = pos;
+                        mouse_pos = convert_coord(elem, mouse_event);
                     }
                 }
             }
         }
 
-        console_log!("clearing");
+        ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
-        ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+        ctx.set_fill_style(&colors[color_index].into());
 
         ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
-
-    Ok(())
 }
