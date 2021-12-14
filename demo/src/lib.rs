@@ -51,11 +51,12 @@ fn new_elem_set() -> Result<ElemSet, JsValue> {
     })
 }
 
+
 #[wasm_bindgen(start)]
 pub async fn start() {
     console_log!("test game start!");
     
-    
+
     let ElemSet {
         canvas,
         ctx,
@@ -72,15 +73,16 @@ pub async fn start() {
 
     let mut mouse_pos = [0.0; 2];
 
-    let mut color_index = 0;
-    let colors = ["black", "red", "green"];
+    let mut color_iter = ["black", "red", "green"].into_iter().cycle();
+    let mut current_color=color_iter.next().unwrap_throw();
+
 
     while let Some(events) = engine.next().await {
         for event in events {
             match event {
                 wengine::Event::MouseDown(elem, _) => {
                     if elem == my_button {
-                        color_index = (color_index + 1) % colors.len();
+                        current_color=color_iter.next().unwrap_throw();
                     }
                 }
                 wengine::Event::MouseMove(elem, mouse_event) => {
@@ -93,7 +95,7 @@ pub async fn start() {
 
         ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
-        ctx.set_fill_style(&colors[color_index].into());
+        ctx.set_fill_style(&current_color.into());
 
         ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
