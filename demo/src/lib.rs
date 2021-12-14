@@ -20,7 +20,7 @@ pub async fn start() -> Result<(), JsValue> {
         .unwrap_throw()
         .dyn_into()?;
 
-    let mut engine = wengine::Engine::new(30);
+    let mut engine = wengine::engine(30);
 
     engine.add_on_mouse_move(&canvas);
 

@@ -17,34 +17,14 @@ futures = "*"
 [dependencies.web-sys]
 version = "0.3.20"
 features = [
-  'OffscreenCanvas',
   'DomRect',
   'CanvasRenderingContext2d',
   'MouseEvent',
   'ErrorEvent',
-  'MessageEvent',
-  'WebSocket',
   'Performance',
-  'AudioContext',
-  'AudioBuffer',
-  'AudioNode',
-  'AudioBufferSourceNode',
-  'AudioDestinationNode',
   'Document',
   'Element',
   'HtmlCanvasElement',
   'KeyboardEvent',
-  'Node',
-  'WebGlBuffer',
-  'WebGlRenderingContext',
-  'WebGlProgram',
-  'WebGlShader',
-  'WebGlUniformLocation',
-  'WebGlTexture',
   'Window',
 ]
-
-[profile.release]
-opt-level = 'z'
-lto = true
-panic = 'abort'
