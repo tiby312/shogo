@@ -68,7 +68,7 @@ impl Engine {
         cb.forget();
     }
 
-    pub async fn next<'a>(&'a mut self) -> Option<std::iter::Cloned<std::slice::Iter<'a, Event>>> {
+    pub async fn next<'a>(&'a mut self) -> std::iter::Cloned<std::slice::Iter<'a, Event>> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -88,7 +88,7 @@ impl Engine {
         let ee = &mut self.events.borrow_mut();
         self.buffer.append(ee);
 
-        Some(self.buffer.iter().cloned())
+        self.buffer.iter().cloned()
     }
 }
 

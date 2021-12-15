@@ -31,8 +31,8 @@ pub async fn start() -> Result<(), JsValue> {
     let mut color_iter = ["black", "red", "green"].into_iter().cycle();
     let mut current_color = color_iter.next().unwrap_throw();
 
-    while let Some(events) = engine.next().await {
-        for event in events {
+    loop {
+        for event in engine.next().await {
             match event {
                 wengine::Event::MouseDown(elem, _) => {
                     if elem == button {
@@ -53,8 +53,6 @@ pub async fn start() -> Result<(), JsValue> {
 
         ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
-
-    Ok(())
 }
 
 fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f64; 2] {
