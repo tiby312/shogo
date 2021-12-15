@@ -32,7 +32,7 @@ pub async fn start() -> Result<(), JsValue> {
     let mut current_color = color_iter.next().unwrap_throw();
 
     loop {
-        for event in engine.next().await {
+        for event in engine.next().await.events {
             match event {
                 wengine::Event::MouseDown(elem, _) => {
                     if elem == button {

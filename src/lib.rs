@@ -20,6 +20,12 @@ pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
+impl Drop for Engine{
+    fn drop(&mut self){
+        self.clear_all_callbacks();
+    }
+}
+
 impl Engine {
     pub fn new(frame_rate: usize) -> Engine {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
@@ -68,7 +74,11 @@ impl Engine {
         cb.forget();
     }
 
-    pub async fn next<'a>(&'a mut self) -> std::iter::Cloned<std::slice::Iter<'a, Event>> {
+    pub fn clear_all_callbacks(&mut self){
+        //TODO
+    }
+
+    pub async fn next<'a>(&'a mut self) -> Delta<'a> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -88,9 +98,19 @@ impl Engine {
         let ee = &mut self.events.borrow_mut();
         self.buffer.append(ee);
 
-        self.buffer.iter().cloned()
+        Delta{
+            events:self.buffer.iter().cloned()
+        }
+        
+
     }
 }
+
+#[non_exhaustive]
+pub struct Delta<'a>{
+    pub events:std::iter::Cloned<std::slice::Iter<'a, Event>>
+}
+
 
 async fn delay(a: usize) {
     let a: i32 = a.try_into().expect("can't delay with that large a value!");
