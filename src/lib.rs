@@ -11,6 +11,7 @@ pub enum Event {
 
 pub struct Engine {
     events: Rc<RefCell<Vec<Event>>>,
+    buffer: Vec<Event>,
     last: f64,
     frame_rate: usize,
 }
@@ -34,6 +35,7 @@ impl Engine {
             events,
             last: performance.now(),
             frame_rate,
+            buffer: Vec::new(),
         }
     }
 
@@ -66,7 +68,7 @@ impl Engine {
         cb.forget();
     }
 
-    pub async fn next(&mut self) -> Option<Vec<Event>> {
+    pub async fn next<'a>(&'a mut self) -> Option<std::iter::Cloned<std::slice::Iter<'a, Event>>> {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window
             .performance()
@@ -82,12 +84,11 @@ impl Engine {
 
         self.last = tt;
 
-        let mut buffer = Vec::new();
+        self.buffer.clear();
         let ee = &mut self.events.borrow_mut();
-        buffer.append(ee);
-        assert!(ee.is_empty());
+        self.buffer.append(ee);
 
-        Some(buffer)
+        Some(self.buffer.iter().cloned())
     }
 }
 
