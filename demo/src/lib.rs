@@ -22,9 +22,9 @@ pub async fn start() -> Result<(), JsValue> {
 
     let mut engine = wengine::engine(60);
 
-    engine.add_on_mouse_move(&canvas);
+    engine.set_onmousemove(&canvas);
 
-    engine.add_on_click(&button);
+    engine.set_onclick(&button);
 
     let mut mouse_pos = [0.0; 2];
 

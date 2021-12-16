@@ -3,10 +3,12 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+use web_sys::{HtmlElement, MouseEvent};
+
 #[derive(Clone, Debug)]
 pub enum Event {
-    MouseDown(web_sys::HtmlElement, web_sys::MouseEvent),
-    MouseMove(web_sys::HtmlElement, web_sys::MouseEvent),
+    MouseDown(HtmlElement, MouseEvent),
+    MouseMove(HtmlElement, MouseEvent),
 }
 
 pub struct Engine {
@@ -14,14 +16,28 @@ pub struct Engine {
     buffer: Vec<Event>,
     last: f64,
     frame_rate: usize,
+    callbacks: Vec<CallbackType>,
+}
+
+enum CallbackType {
+    MouseMove {
+        element: HtmlElement,
+        #[allow(dead_code)]
+        callback: Closure<dyn FnMut(MouseEvent)>,
+    },
+    MouseClick {
+        element: HtmlElement,
+        #[allow(dead_code)]
+        callback: Closure<dyn FnMut(MouseEvent)>,
+    },
 }
 
 pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
-impl Drop for Engine{
-    fn drop(&mut self){
+impl Drop for Engine {
+    fn drop(&mut self) {
         self.clear_all_callbacks();
     }
 }
@@ -42,40 +58,86 @@ impl Engine {
             last: performance.now(),
             frame_rate,
             buffer: Vec::new(),
+            callbacks: Vec::new(),
         }
     }
 
-    pub fn add_on_mouse_move<K: AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
-        let elem2 = elem2.as_ref();
+    pub fn set_onmousemove<K: AsRef<HtmlElement>>(&mut self, elem: K) {
+        let elem = elem.as_ref().clone();
 
-        let ee = self.events.clone();
+        let k = (0..).zip(self.callbacks.iter()).find_map(|(i, f)| {
+            if let CallbackType::MouseMove { element, .. } = f {
+                (elem == *element).then(|| i)
+            } else {
+                None
+            }
+        });
 
-        let elem = elem2.clone();
-        let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
-            ee.borrow_mut().push(Event::MouseMove(elem.clone(), e));
-        }) as Box<dyn FnMut(web_sys::MouseEvent)>);
+        if let Some(i) = k {
+            self.callbacks.remove(i);
+        }
 
-        elem2.set_onmousemove(Some(cb.as_ref().unchecked_ref()));
-        //TODO dont leak.
-        cb.forget();
+        let callback = {
+            let ee = self.events.clone();
+            let aa = elem.clone();
+            Closure::wrap(Box::new(move |e: MouseEvent| {
+                ee.borrow_mut().push(Event::MouseMove(aa.clone(), e));
+            }) as Box<dyn FnMut(MouseEvent)>)
+        };
+
+        elem.set_onmousemove(Some(callback.as_ref().unchecked_ref()));
+
+        self.callbacks.push(CallbackType::MouseMove {
+            element: elem.clone(),
+            callback,
+        });
     }
-    pub fn add_on_click<K: AsRef<web_sys::HtmlElement>>(&mut self, elem2: K) {
-        let elem2 = elem2.as_ref();
 
-        let ee = self.events.clone();
+    pub fn set_onclick<K: AsRef<HtmlElement>>(&mut self, elem: K) {
+        let elem = elem.as_ref().clone();
 
-        let elem = elem2.clone();
-        let cb = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
-            ee.borrow_mut().push(Event::MouseDown(elem.clone(), e));
-        }) as Box<dyn FnMut(web_sys::MouseEvent)>);
+        let k = (0..).zip(self.callbacks.iter()).find_map(|(i, f)| {
+            if let CallbackType::MouseClick { element, .. } = f {
+                (elem == *element).then(|| i)
+            } else {
+                None
+            }
+        });
 
-        elem2.set_onclick(Some(cb.as_ref().unchecked_ref()));
-        //TODO dont leak.
-        cb.forget();
+        if let Some(i) = k {
+            self.callbacks.remove(i);
+        }
+
+        let callback = {
+            let ee = self.events.clone();
+            let aa = elem.clone();
+            Closure::wrap(Box::new(move |e: MouseEvent| {
+                ee.borrow_mut().push(Event::MouseDown(aa.clone(), e));
+            }) as Box<dyn FnMut(MouseEvent)>)
+        };
+
+        elem.set_onclick(Some(callback.as_ref().unchecked_ref()));
+
+        self.callbacks.push(CallbackType::MouseClick {
+            element: elem.clone(),
+            callback,
+        });
     }
 
-    pub fn clear_all_callbacks(&mut self){
-        //TODO
+    pub fn clear_all_callbacks(&mut self) {
+        for elem in self.callbacks.iter_mut() {
+            match elem {
+                CallbackType::MouseMove { element, .. } => {
+                    element.set_onmousemove(None);
+                }
+                CallbackType::MouseClick { element, .. } => {
+                    element.set_onclick(None);
+                }
+            }
+        }
+
+        //Actually destroy the callback closures.
+        self.callbacks.clear();
     }
 
     pub async fn next<'a>(&'a mut self) -> Delta<'a> {
@@ -98,19 +160,16 @@ impl Engine {
         let ee = &mut self.events.borrow_mut();
         self.buffer.append(ee);
 
-        Delta{
-            events:self.buffer.iter().cloned()
+        Delta {
+            events: self.buffer.iter().cloned(),
         }
-        
-
     }
 }
 
 #[non_exhaustive]
-pub struct Delta<'a>{
-    pub events:std::iter::Cloned<std::slice::Iter<'a, Event>>
+pub struct Delta<'a> {
+    pub events: std::iter::Cloned<std::slice::Iter<'a, Event>>,
 }
-
 
 async fn delay(a: usize) {
     let a: i32 = a.try_into().expect("can't delay with that large a value!");
