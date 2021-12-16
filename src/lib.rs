@@ -62,7 +62,7 @@ impl Engine {
         }
     }
 
-    pub fn set_onmousemove<K: AsRef<HtmlElement>>(&mut self, elem: K) {
+    pub fn unset_onmousemove<K: AsRef<HtmlElement>>(&mut self, elem: K) {
         let elem = elem.as_ref().clone();
 
         let k = (0..).zip(self.callbacks.iter()).find_map(|(i, f)| {
@@ -74,8 +74,38 @@ impl Engine {
         });
 
         if let Some(i) = k {
+            elem.set_onmousemove(None);
             self.callbacks.remove(i);
         }
+    }
+
+    pub fn unset_onclick<K: AsRef<HtmlElement>>(&mut self, elem: K) {
+        let elem = elem.as_ref().clone();
+
+        let k = (0..).zip(self.callbacks.iter()).find_map(|(i, f)| {
+            if let CallbackType::MouseClick { element, .. } = f {
+                (elem == *element).then(|| i)
+            } else {
+                None
+            }
+        });
+
+        if let Some(i) = k {
+            elem.set_onclick(None);
+            self.callbacks.remove(i);
+        }
+    }
+
+    pub fn set_onmousemove<K: AsRef<HtmlElement>>(&mut self, elem: K) {
+        let elem = elem.as_ref().clone();
+
+        let k = (0..).zip(self.callbacks.iter()).find_map(|(i, f)| {
+            if let CallbackType::MouseMove { element, .. } = f {
+                (elem == *element).then(|| i)
+            } else {
+                None
+            }
+        });
 
         let callback = {
             let ee = self.events.clone();
@@ -86,6 +116,11 @@ impl Engine {
         };
 
         elem.set_onmousemove(Some(callback.as_ref().unchecked_ref()));
+
+        //drop the callback only after it is deregistered.
+        if let Some(i) = k {
+            self.callbacks.remove(i);
+        }
 
         self.callbacks.push(CallbackType::MouseMove {
             element: elem.clone(),
@@ -104,10 +139,6 @@ impl Engine {
             }
         });
 
-        if let Some(i) = k {
-            self.callbacks.remove(i);
-        }
-
         let callback = {
             let ee = self.events.clone();
             let aa = elem.clone();
@@ -117,6 +148,11 @@ impl Engine {
         };
 
         elem.set_onclick(Some(callback.as_ref().unchecked_ref()));
+
+        //drop the callback only after it is deregistered.
+        if let Some(i) = k {
+            self.callbacks.remove(i);
+        }
 
         self.callbacks.push(CallbackType::MouseClick {
             element: elem.clone(),
