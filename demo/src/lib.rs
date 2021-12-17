@@ -2,15 +2,13 @@ use futures::FutureExt;
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
 use wengine::utils;
-use wengine::{GameE, GameEvent};
-
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
     log!("hello there");
 
     let canvas = utils::get_canvas_by_id("mycanvas");
-    let ctx = utils::get_context(&canvas,"2d");
+    let ctx = utils::get_context(&canvas, "2d");
     let button = utils::get_element_by_id("mybutton");
 
     let mut frame_engine = wengine::frame_engine(60);
@@ -30,14 +28,14 @@ pub async fn start() -> Result<(), JsValue> {
                 () = frame_engine.next().fuse() =>{
                     break;
                 },
-                GameE{element,event} = event_engine.next().fuse() =>{
+                wengine::EventElem{element,event} = event_engine.next().fuse() =>{
                     match event{
-                        GameEvent::MouseClick(_mouse)=>{
+                        wengine::Event::MouseClick(_mouse)=>{
                             if element == button {
                                 current_color = color_iter.next().unwrap_throw();
                             }
                         },
-                        GameEvent::MouseMove(mouse)=>{
+                        wengine::Event::MouseMove(mouse)=>{
                             if element == *canvas.as_ref() {
                                 mouse_pos = convert_coord(element, mouse);
                             }

@@ -5,45 +5,50 @@ use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-
-
-pub mod utils{
+pub mod utils {
     use super::*;
-    pub fn get_canvas_by_id(id:&str)->web_sys::HtmlCanvasElement{
+    pub fn get_canvas_by_id(id: &str) -> web_sys::HtmlCanvasElement {
         gloo::utils::document()
-        .get_element_by_id(id)
-        .unwrap_throw()
-        .dyn_into().unwrap_throw()
-
+            .get_element_by_id(id)
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
     }
-    pub fn get_context(canvas:&web_sys::HtmlCanvasElement,ctx:&str)->web_sys::CanvasRenderingContext2d{
-        canvas.get_context(ctx).unwrap_throw().unwrap_throw().dyn_into().unwrap_throw()
+    pub fn get_context(
+        canvas: &web_sys::HtmlCanvasElement,
+        ctx: &str,
+    ) -> web_sys::CanvasRenderingContext2d {
+        canvas
+            .get_context(ctx)
+            .unwrap_throw()
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
     }
 
-    pub fn get_element_by_id(id:&str)->web_sys::HtmlElement{
+    pub fn get_element_by_id(id: &str) -> web_sys::HtmlElement {
         gloo::utils::document()
-        .get_element_by_id(id)
-        .unwrap_throw()
-        .dyn_into().unwrap_throw()
-
+            .get_element_by_id(id)
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
     }
 }
-pub struct Engine {
-    last: f64,
-    frame_rate: usize,
-}
-
-
 
 pub fn event_engine() -> EventEngine {
     EventEngine::new()
 }
-pub fn frame_engine(frame_rate: usize) -> Engine {
-    Engine::new(frame_rate)
+pub fn frame_engine(frame_rate: usize) -> FrameEngine {
+    FrameEngine::new(frame_rate)
 }
 
-impl Engine {
-    pub fn new(frame_rate: usize) -> Engine {
+pub struct FrameEngine {
+    last: f64,
+    frame_rate: usize,
+}
+
+impl FrameEngine {
+    pub fn new(frame_rate: usize) -> FrameEngine {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         let window = web_sys::window().expect("should have a window in this context");
@@ -51,7 +56,7 @@ impl Engine {
             .performance()
             .expect("performance should be available");
 
-        Engine {
+        FrameEngine {
             last: performance.now(),
             frame_rate,
         }
@@ -74,21 +79,20 @@ impl Engine {
 }
 
 #[derive(Debug)]
-pub struct GameE {
+pub struct EventElem {
     pub element: web_sys::HtmlElement,
-    pub event: GameEvent,
+    pub event: Event,
 }
 
 #[derive(Debug)]
-pub enum GameEvent {
+pub enum Event {
     MouseClick(web_sys::MouseEvent),
     MouseMove(web_sys::MouseEvent),
 }
 
-
 pub struct EventEngine {
-    sender: futures::channel::mpsc::Sender<GameE>,
-    receiver: futures::channel::mpsc::Receiver<GameE>,
+    sender: futures::channel::mpsc::Sender<EventElem>,
+    receiver: futures::channel::mpsc::Receiver<EventElem>,
 }
 
 impl EventEngine {
@@ -97,12 +101,11 @@ impl EventEngine {
         EventEngine { sender, receiver }
     }
 
-    pub async fn next(&mut self) -> GameE {
+    pub async fn next(&mut self) -> EventElem {
         use futures::future::FutureExt;
         use futures::stream::StreamExt;
         self.receiver.next().map(|x| x.unwrap_throw()).await
     }
-
 
     #[must_use]
     pub fn register_click<K: AsRef<web_sys::HtmlElement>>(
@@ -117,16 +120,15 @@ impl EventEngine {
                 .dyn_ref::<web_sys::MouseEvent>()
                 .unwrap_throw()
                 .clone();
-            let g = GameE {
+            let g = EventElem {
                 element: elem2.clone(),
-                event: GameEvent::MouseClick(event),
+                event: Event::MouseClick(event),
             };
             if let Err(_) = sender.try_send(g) {
                 log!("failed to queue event!")
             }
         })
     }
-
 
     #[must_use]
     pub fn register_mousemove<K: AsRef<web_sys::HtmlElement>>(
@@ -141,9 +143,9 @@ impl EventEngine {
                 .dyn_ref::<web_sys::MouseEvent>()
                 .unwrap_throw()
                 .clone();
-            let g = GameE {
+            let g = EventElem {
                 element: elem2.clone().dyn_into().unwrap_throw(),
-                event: GameEvent::MouseMove(event),
+                event: Event::MouseMove(event),
             };
             if let Err(_) = sender.try_send(g) {
                 log!("failed to queue event!");
