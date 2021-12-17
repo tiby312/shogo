@@ -1,5 +1,8 @@
+use futures::future::FutureExt;
+use futures::stream::StreamExt;
 use gloo_console::log;
 use wasm_bindgen::{prelude::*, JsCast};
+use wengine::{GameE, GameEvent};
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
@@ -31,11 +34,8 @@ pub async fn start() -> Result<(), JsValue> {
     let mut color_iter = ["black", "red", "green"].into_iter().cycle();
     let mut current_color = color_iter.next().unwrap_throw();
 
-    use futures::future::FutureExt;
-    use futures::stream::StreamExt;
     loop {
         loop {
-            use wengine::{GameE, GameEvent};
             futures::select!(
                 GameE{element,event} = receiver.next().map(|x|x.unwrap()) =>{
                     match event{
