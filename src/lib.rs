@@ -16,8 +16,8 @@ pub mod utils{
         .dyn_into().unwrap_throw()
 
     }
-    pub fn get_context_2d(canvas:&web_sys::HtmlCanvasElement)->web_sys::CanvasRenderingContext2d{
-        canvas.get_context("2d").unwrap_throw().unwrap_throw().dyn_into().unwrap_throw()
+    pub fn get_context(canvas:&web_sys::HtmlCanvasElement,ctx:&str)->web_sys::CanvasRenderingContext2d{
+        canvas.get_context(ctx).unwrap_throw().unwrap_throw().dyn_into().unwrap_throw()
     }
 
     pub fn get_element_by_id(id:&str)->web_sys::HtmlElement{
@@ -35,8 +35,8 @@ pub struct Engine {
 
 
 
-pub fn event_engine() -> GameEvents {
-    GameEvents::new()
+pub fn event_engine() -> EventEngine {
+    EventEngine::new()
 }
 pub fn frame_engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
@@ -86,15 +86,15 @@ pub enum GameEvent {
 }
 
 
-pub struct GameEvents {
+pub struct EventEngine {
     sender: futures::channel::mpsc::Sender<GameE>,
     receiver: futures::channel::mpsc::Receiver<GameE>,
 }
 
-impl GameEvents {
-    pub fn new() -> GameEvents {
+impl EventEngine {
+    pub fn new() -> EventEngine {
         let (sender, receiver) = futures::channel::mpsc::channel(20);
-        GameEvents { sender, receiver }
+        EventEngine { sender, receiver }
     }
 
     pub async fn next(&mut self) -> GameE {

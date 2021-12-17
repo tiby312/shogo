@@ -9,12 +9,11 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.43"
-wasm-bindgen-futures="*"
-js-sys = "0.3.20"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures="0.4"
+web-sys = "0.3"
+futures="0.3"
 wengine = {path="../"}
-web-sys = "0.3.20"
-futures="*"
 
 [dependencies.gloo]
 version = "*"

@@ -1,10 +1,3 @@
-# wasm-pong-rs
-WebAssembly Pong in Rust
+# wengine
 
-## Compiling
-
-Use [wasm-pack](https://github.com/rustwasm/wasm-pack): `wasm-pack build --target=web`
-
-## Running
-
-Open `index.html`.
+A library to make it easier to write rust web programs that need also need to interact with the DOM. 
