@@ -76,6 +76,23 @@ impl FrameEngine {
 
         self.last = tt;
     }
+
+
+    pub async fn handle_and_next(&mut self,event_engine:&mut EventEngine,mut func:impl FnMut(EventElem)){
+        use futures::FutureExt;
+
+        loop {
+            futures::select_biased!(
+                () = self.next().fuse() =>{
+                    break;
+                },
+                ee = event_engine.next().fuse() =>{
+                    func(ee)
+                }
+
+            )
+        }
+    }
 }
 
 #[derive(Debug)]

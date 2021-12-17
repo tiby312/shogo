@@ -1,7 +1,7 @@
 use futures::FutureExt;
 use gloo::console::log;
-use wasm_bindgen::prelude::*;
 use shogo::utils;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
@@ -45,6 +45,7 @@ pub async fn start() -> Result<(), JsValue> {
 
             )
         }
+        
 
         ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
