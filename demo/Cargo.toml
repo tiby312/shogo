@@ -15,3 +15,5 @@ wasm-bindgen-futures="*"
 wengine = {path="../"}
 gloo-console = "0.2.1"
 web-sys = "0.3.20"
+gloo="*"
+futures="*"

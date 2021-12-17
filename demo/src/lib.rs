@@ -5,8 +5,7 @@ use wasm_bindgen::{prelude::*, JsCast};
 pub async fn start() -> Result<(), JsValue> {
     log!("hello there");
 
-    let window = web_sys::window().unwrap_throw();
-    let document = window.document().unwrap_throw();
+    let document = gloo::utils::document();
     let canvas: web_sys::HtmlCanvasElement = document
         .get_element_by_id("mycanvas")
         .unwrap_throw()
@@ -22,29 +21,40 @@ pub async fn start() -> Result<(), JsValue> {
 
     let mut engine = wengine::engine(60);
 
-    engine.set_onmousemove(&canvas);
+    let (sender, mut receiver) = futures::channel::mpsc::unbounded();
 
-    engine.set_onclick(&button);
+    let _click = wengine::register_click(sender.clone(), &button);
+    let _mouse = wengine::register_mousemove(sender.clone(), &canvas);
 
     let mut mouse_pos = [0.0; 2];
 
     let mut color_iter = ["black", "red", "green"].into_iter().cycle();
     let mut current_color = color_iter.next().unwrap_throw();
 
+    use futures::future::FutureExt;
+    use futures::stream::StreamExt;
     loop {
-        for event in engine.next().await.events {
-            match event {
-                wengine::Event::MouseDown(elem, _) => {
-                    if elem == button {
-                        current_color = color_iter.next().unwrap_throw();
+        loop {
+            use wengine::{GameE, GameEvent};
+            futures::select!(
+                GameE{element,event} = receiver.next().map(|x|x.unwrap()) =>{
+                    match event{
+                        GameEvent::MouseClick(_mouse)=>{
+                            if element == button {
+                                current_color = color_iter.next().unwrap_throw();
+                            }
+                        },
+                        GameEvent::MouseMove(mouse)=>{
+                            if element == *canvas.as_ref() {
+                                mouse_pos = convert_coord(element, mouse);
+                            }
+                        }
                     }
+                },
+                () = engine.next().fuse() =>{
+                    break;
                 }
-                wengine::Event::MouseMove(elem, mouse_event) => {
-                    if elem == *canvas.as_ref() {
-                        mouse_pos = convert_coord(elem, mouse_event);
-                    }
-                }
-            }
+            )
         }
 
         ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
