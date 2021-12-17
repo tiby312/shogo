@@ -108,9 +108,9 @@ impl EventEngine {
     }
 
     #[must_use]
-    pub fn register_click<K: AsRef<web_sys::HtmlElement>>(
+    pub fn register_click(
         &mut self,
-        elem: K,
+        elem: impl AsRef<web_sys::HtmlElement>,
     ) -> gloo::events::EventListener {
         let mut sender = self.sender.clone();
         let elem = elem.as_ref().clone();
@@ -131,9 +131,9 @@ impl EventEngine {
     }
 
     #[must_use]
-    pub fn register_mousemove<K: AsRef<web_sys::HtmlElement>>(
+    pub fn register_mousemove(
         &mut self,
-        elem: K,
+        elem: impl AsRef<web_sys::HtmlElement>,
     ) -> gloo::events::EventListener {
         let mut sender = self.sender.clone();
         let elem = elem.as_ref().clone();
