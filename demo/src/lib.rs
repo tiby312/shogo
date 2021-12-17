@@ -1,7 +1,7 @@
 use futures::FutureExt;
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
-use wengine::utils;
+use shogo::utils;
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
@@ -11,8 +11,8 @@ pub async fn start() -> Result<(), JsValue> {
     let ctx = utils::get_context(&canvas, "2d");
     let button = utils::get_element_by_id("mybutton");
 
-    let mut frame_engine = wengine::frame_engine(60);
-    let mut event_engine = wengine::event_engine();
+    let mut frame_engine = shogo::frame_engine(60);
+    let mut event_engine = shogo::event_engine();
 
     let _click = event_engine.register_click(&button);
     let _mouse = event_engine.register_mousemove(&canvas);
@@ -28,14 +28,14 @@ pub async fn start() -> Result<(), JsValue> {
                 () = frame_engine.next().fuse() =>{
                     break;
                 },
-                wengine::EventElem{element,event} = event_engine.next().fuse() =>{
+                shogo::EventElem{element,event} = event_engine.next().fuse() =>{
                     match event{
-                        wengine::Event::MouseClick(_mouse)=>{
+                        shogo::Event::MouseClick(_mouse)=>{
                             if element == button {
                                 current_color = color_iter.next().unwrap_throw();
                             }
                         },
-                        wengine::Event::MouseMove(mouse)=>{
+                        shogo::Event::MouseMove(mouse)=>{
                             if element == *canvas.as_ref() {
                                 mouse_pos = convert_coord(element, mouse);
                             }
