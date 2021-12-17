@@ -1,33 +1,22 @@
-use futures::future::FutureExt;
-use futures::stream::StreamExt;
-use gloo_console::log;
-use wasm_bindgen::{prelude::*, JsCast};
+use futures::FutureExt;
+use gloo::console::log;
+use wasm_bindgen::prelude::*;
+use wengine::utils;
 use wengine::{GameE, GameEvent};
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
     log!("hello there");
 
-    let document = gloo::utils::document();
-    let canvas: web_sys::HtmlCanvasElement = document
-        .get_element_by_id("mycanvas")
-        .unwrap_throw()
-        .dyn_into()?;
+    let canvas = utils::get_canvas_by_id("mycanvas");
+    let ctx = utils::get_context_2d(&canvas);
+    let button = utils::get_element_by_id("mybutton");
 
-    let ctx: web_sys::CanvasRenderingContext2d =
-        canvas.get_context("2d")?.unwrap_throw().dyn_into()?;
+    let mut frame_engine = wengine::frame_engine(60);
+    let mut event_engine = wengine::event_engine();
 
-    let button: web_sys::HtmlElement = document
-        .get_element_by_id("mybutton")
-        .unwrap_throw()
-        .dyn_into()?;
-
-    let mut engine = wengine::engine(60);
-
-    let (sender, mut receiver) = futures::channel::mpsc::unbounded();
-
-    let _click = wengine::register_click(sender.clone(), &button);
-    let _mouse = wengine::register_mousemove(sender.clone(), &canvas);
+    let _click = event_engine.register_click(&button);
+    let _mouse = event_engine.register_mousemove(&canvas);
 
     let mut mouse_pos = [0.0; 2];
 
@@ -36,8 +25,11 @@ pub async fn start() -> Result<(), JsValue> {
 
     loop {
         loop {
-            futures::select!(
-                GameE{element,event} = receiver.next().map(|x|x.unwrap()) =>{
+            futures::select_biased!(
+                () = frame_engine.next().fuse() =>{
+                    break;
+                },
+                GameE{element,event} = event_engine.next().fuse() =>{
                     match event{
                         GameEvent::MouseClick(_mouse)=>{
                             if element == button {
@@ -50,10 +42,8 @@ pub async fn start() -> Result<(), JsValue> {
                             }
                         }
                     }
-                },
-                () = engine.next().fuse() =>{
-                    break;
                 }
+
             )
         }
 

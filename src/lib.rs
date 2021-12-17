@@ -1,15 +1,44 @@
 use gloo;
+use gloo::console::log;
 use gloo::events::EventListener;
 use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+
+
+pub mod utils{
+    use super::*;
+    pub fn get_canvas_by_id(id:&str)->web_sys::HtmlCanvasElement{
+        gloo::utils::document()
+        .get_element_by_id(id)
+        .unwrap_throw()
+        .dyn_into().unwrap_throw()
+
+    }
+    pub fn get_context_2d(canvas:&web_sys::HtmlCanvasElement)->web_sys::CanvasRenderingContext2d{
+        canvas.get_context("2d").unwrap_throw().unwrap_throw().dyn_into().unwrap_throw()
+    }
+
+    pub fn get_element_by_id(id:&str)->web_sys::HtmlElement{
+        gloo::utils::document()
+        .get_element_by_id(id)
+        .unwrap_throw()
+        .dyn_into().unwrap_throw()
+
+    }
+}
 pub struct Engine {
     last: f64,
     frame_rate: usize,
 }
 
-pub fn engine(frame_rate: usize) -> Engine {
+
+
+pub fn event_engine() -> GameEvents {
+    GameEvents::new()
+}
+pub fn frame_engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
@@ -44,51 +73,81 @@ impl Engine {
     }
 }
 
+#[derive(Debug)]
 pub struct GameE {
     pub element: web_sys::HtmlElement,
     pub event: GameEvent,
 }
+
+#[derive(Debug)]
 pub enum GameEvent {
     MouseClick(web_sys::MouseEvent),
     MouseMove(web_sys::MouseEvent),
 }
 
-pub fn register_click<K: AsRef<web_sys::HtmlElement>>(
-    sender: futures::channel::mpsc::UnboundedSender<GameE>,
-    elem: K,
-) -> gloo::events::EventListener {
-    let elem = elem.as_ref().clone();
-    let ssender = sender.clone();
-    let elem2 = elem.clone();
-    EventListener::new(&elem, "click", move |event| {
-        let event = event
-            .dyn_ref::<web_sys::MouseEvent>()
-            .unwrap_throw()
-            .clone();
-        let g = GameE {
-            element: elem2.clone(),
-            event: GameEvent::MouseClick(event),
-        };
-        ssender.unbounded_send(g).unwrap_throw();
-    })
+
+pub struct GameEvents {
+    sender: futures::channel::mpsc::Sender<GameE>,
+    receiver: futures::channel::mpsc::Receiver<GameE>,
 }
 
-pub fn register_mousemove<K: AsRef<web_sys::HtmlElement>>(
-    sender: futures::channel::mpsc::UnboundedSender<GameE>,
-    elem: K,
-) -> gloo::events::EventListener {
-    let elem = elem.as_ref().clone();
-    let ssender = sender.clone();
-    let elem2 = elem.clone();
-    EventListener::new(&elem, "mousemove", move |event| {
-        let event = event
-            .dyn_ref::<web_sys::MouseEvent>()
-            .unwrap_throw()
-            .clone();
-        let g = GameE {
-            element: elem2.clone().dyn_into().unwrap_throw(),
-            event: GameEvent::MouseMove(event),
-        };
-        ssender.unbounded_send(g).unwrap_throw();
-    })
+impl GameEvents {
+    pub fn new() -> GameEvents {
+        let (sender, receiver) = futures::channel::mpsc::channel(20);
+        GameEvents { sender, receiver }
+    }
+
+    pub async fn next(&mut self) -> GameE {
+        use futures::future::FutureExt;
+        use futures::stream::StreamExt;
+        self.receiver.next().map(|x| x.unwrap_throw()).await
+    }
+
+
+    #[must_use]
+    pub fn register_click<K: AsRef<web_sys::HtmlElement>>(
+        &mut self,
+        elem: K,
+    ) -> gloo::events::EventListener {
+        let mut sender = self.sender.clone();
+        let elem = elem.as_ref().clone();
+        let elem2 = elem.clone();
+        EventListener::new(&elem, "click", move |event| {
+            let event = event
+                .dyn_ref::<web_sys::MouseEvent>()
+                .unwrap_throw()
+                .clone();
+            let g = GameE {
+                element: elem2.clone(),
+                event: GameEvent::MouseClick(event),
+            };
+            if let Err(_) = sender.try_send(g) {
+                log!("failed to queue event!")
+            }
+        })
+    }
+
+
+    #[must_use]
+    pub fn register_mousemove<K: AsRef<web_sys::HtmlElement>>(
+        &mut self,
+        elem: K,
+    ) -> gloo::events::EventListener {
+        let mut sender = self.sender.clone();
+        let elem = elem.as_ref().clone();
+        let elem2 = elem.clone();
+        EventListener::new(&elem, "mousemove", move |event| {
+            let event = event
+                .dyn_ref::<web_sys::MouseEvent>()
+                .unwrap_throw()
+                .clone();
+            let g = GameE {
+                element: elem2.clone().dyn_into().unwrap_throw(),
+                event: GameEvent::MouseMove(event),
+            };
+            if let Err(_) = sender.try_send(g) {
+                log!("failed to queue event!");
+            }
+        })
+    }
 }
