@@ -22,7 +22,7 @@ pub async fn start() {
 
     'outer: loop {
         
-        for res in engine.get_last_delta().events {
+        for res in engine.next().await.events {
             match res.event {
                 shogo::Event::MouseClick(_mouse) => {
                     if res.element == button {
@@ -39,16 +39,12 @@ pub async fn start() {
             }
         }
 
-        let _handle = shogo::utils::render::request_animation_frame(|_| {
-            ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+        ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
-            ctx.set_fill_style(&current_color.into());
+        ctx.set_fill_style(&current_color.into());
 
-            ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
-        });
-
-        engine.next().await;
-
+        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+    
     }
 
     ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());

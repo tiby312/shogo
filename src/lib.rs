@@ -34,11 +34,10 @@ pub mod utils {
             .unwrap_throw()
     }
 
-    pub mod render {
-        //! Crate that provides wrapper for
-        //! [requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
 
-        #![deny(missing_docs, missing_debug_implementations)]
+    pub mod render {
+        //! Similar to [`gloo::render::request_animation_frame`] except lifetimed.
+        //! 
 
         use std::cell::RefCell;
         use std::fmt;
