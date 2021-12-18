@@ -22,8 +22,6 @@ pub async fn start() {
 
     'outer: loop {
         let delta = {
-            let canvas = canvas.clone();
-            let ctx = ctx.clone();
             let _handle = shogo::utils::render::request_animation_frame(|_| {
                 ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
