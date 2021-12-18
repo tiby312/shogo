@@ -64,3 +64,23 @@ fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f64; 
     [x - tl, y - tr]
 }
 ```
+
+
+```html
+<html>
+<head>
+  <script type=module>
+    import { default as init } from './pkg/demo.js';
+    delete WebAssembly.instantiateStreaming;
+    init('pkg/demo_bg.wasm');
+  </script>
+  
+</head>
+<body>
+  <canvas id="mycanvas" style="border-style: dotted" width="800" height="600"></canvas>
+  <button id="mybutton">change color</button>
+  <button id="shutdownbutton">shutdown</button>
+</body>
+</html>
+
+```
