@@ -21,6 +21,18 @@ pub async fn start() {
     let mut current_color = color_iter.next().unwrap_throw();
 
     'outer: loop {
+        let _handle = {
+            let canvas = canvas.clone();
+            let ctx = ctx.clone();
+            gloo::render::request_animation_frame(move |_| {
+                ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+
+                ctx.set_fill_style(&current_color.into());
+
+                ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+            })
+        };
+
         for res in engine.next().await.events {
             match res.event {
                 shogo::Event::MouseClick(_mouse) => {
@@ -37,12 +49,6 @@ pub async fn start() {
                 }
             }
         }
-
-        ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
-
-        ctx.set_fill_style(&current_color.into());
-
-        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
     }
 
     ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
