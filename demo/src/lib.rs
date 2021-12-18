@@ -12,12 +12,11 @@ pub async fn start() {
 
     let mut engine = shogo::engine(60);
 
-    let __ = engine.add_click(&button);
-    let __ = engine.add_mousemove(&canvas);
-    let __ = engine.add_click(&shutdown_button);
+    let _handle = engine.add_mousemove(&canvas);
+    let _handle = engine.add_click(&button);
+    let _handle = engine.add_click(&shutdown_button);
 
     let mut mouse_pos = [0.0; 2];
-
     let mut color_iter = ["black", "red", "green"].into_iter().cycle();
     let mut current_color = color_iter.next().unwrap_throw();
 

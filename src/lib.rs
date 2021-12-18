@@ -1,8 +1,10 @@
-use gloo;
 use gloo::events::EventListener;
 use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use std::cell::RefCell;
+use std::rc::Rc;
+
 
 pub mod utils {
     use super::*;
@@ -38,8 +40,6 @@ pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
-use std::cell::RefCell;
-use std::rc::Rc;
 
 struct Timer {
     last: f64,
@@ -97,7 +97,7 @@ impl Engine {
         }
     }
 
-    pub async fn next<'a>(&'a mut self) -> DeltaRes<'a> {
+    pub async fn next(&mut self) -> DeltaRes<'_> {
         self.timer.next().await;
         {
             self.buffer.clear();
@@ -111,7 +111,6 @@ impl Engine {
         }
     }
 
-    #[must_use]
     pub fn add_click(
         &mut self,
         elem: impl AsRef<web_sys::HtmlElement>,
@@ -133,7 +132,6 @@ impl Engine {
         })
     }
 
-    #[must_use]
     pub fn add_mousemove(
         &mut self,
         elem: impl AsRef<web_sys::HtmlElement>,
