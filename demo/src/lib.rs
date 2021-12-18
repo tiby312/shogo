@@ -21,19 +21,8 @@ pub async fn start() {
     let mut current_color = color_iter.next().unwrap_throw();
 
     'outer: loop {
-        let delta = {
-            let _handle = shogo::utils::render::request_animation_frame(|_| {
-                ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
-
-                ctx.set_fill_style(&current_color.into());
-
-                ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
-            });
-
-            engine.next().await
-        };
-
-        for res in delta.events {
+        
+        for res in engine.get_last_delta().events {
             match res.event {
                 shogo::Event::MouseClick(_mouse) => {
                     if res.element == button {
@@ -49,6 +38,17 @@ pub async fn start() {
                 }
             }
         }
+
+        let _handle = shogo::utils::render::request_animation_frame(|_| {
+            ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+
+            ctx.set_fill_style(&current_color.into());
+
+            ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
+        });
+
+        engine.next().await;
+
     }
 
     ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());

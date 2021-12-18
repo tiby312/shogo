@@ -168,6 +168,12 @@ impl Engine {
         }
     }
 
+    pub fn get_last_delta(&mut self)->DeltaRes<'_>{
+        DeltaRes {
+            events: self.buffer.iter().cloned(),
+        }
+    }
+
     pub async fn next(&mut self) -> DeltaRes<'_> {
         self.timer.next().await;
         {
