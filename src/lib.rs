@@ -1,5 +1,4 @@
 use gloo;
-use gloo::console::log;
 use gloo::events::EventListener;
 use gloo::timers::future::TimeoutFuture;
 use wasm_bindgen::prelude::*;
@@ -35,34 +34,32 @@ pub mod utils {
     }
 }
 
-pub fn event_engine() -> EventEngine {
-    EventEngine::new()
-}
-pub fn frame_engine(frame_rate: usize) -> FrameEngine {
-    FrameEngine::new(frame_rate)
+pub fn engine(frame_rate: usize) -> Engine {
+    Engine::new(frame_rate)
 }
 
-pub struct FrameEngine {
+use std::cell::RefCell;
+use std::rc::Rc;
+
+struct Timer {
     last: f64,
     frame_rate: usize,
 }
-
-impl FrameEngine {
-    pub fn new(frame_rate: usize) -> FrameEngine {
+impl Timer {
+    fn new(frame_rate: usize) -> Timer {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
-        let window = web_sys::window().expect("should have a window in this context");
-        let performance = window
-            .performance()
-            .expect("performance should be available");
+        assert!(frame_rate > 0);
+        let window = gloo::utils::window();
+        let performance = window.performance().unwrap_throw();
 
-        FrameEngine {
+        Timer {
             last: performance.now(),
             frame_rate,
         }
     }
 
-    pub async fn next(&mut self) {
+    async fn next(&mut self) {
         let window = gloo::utils::window();
         let performance = window.performance().unwrap_throw();
 
@@ -76,60 +73,50 @@ impl FrameEngine {
 
         self.last = tt;
     }
+}
 
+pub struct Engine {
+    timer: Timer,
+    events: Rc<RefCell<Vec<EventElem>>>,
+    buffer: Vec<EventElem>,
+}
 
-    pub async fn handle_and_next(&mut self,event_engine:&mut EventEngine,mut func:impl FnMut(EventElem)){
-        use futures::FutureExt;
+#[non_exhaustive]
+pub struct DeltaRes<'a> {
+    pub events: std::iter::Cloned<std::slice::Iter<'a, EventElem>>,
+}
 
-        loop {
-            futures::select_biased!(
-                () = self.next().fuse() =>{
-                    break;
-                },
-                ee = event_engine.next().fuse() =>{
-                    func(ee)
-                }
+impl Engine {
+    pub fn new(frame_rate: usize) -> Engine {
+        let events = Rc::new(RefCell::new(Vec::new()));
 
-            )
+        Engine {
+            timer: Timer::new(frame_rate),
+            events,
+            buffer: Vec::new(),
         }
     }
-}
 
-#[derive(Debug)]
-pub struct EventElem {
-    pub element: web_sys::HtmlElement,
-    pub event: Event,
-}
+    pub async fn next<'a>(&'a mut self) -> DeltaRes<'a> {
+        self.timer.next().await;
+        {
+            self.buffer.clear();
+            let ee = &mut self.events.borrow_mut();
+            self.buffer.append(ee);
+            assert!(ee.is_empty());
+        }
 
-#[derive(Debug)]
-pub enum Event {
-    MouseClick(web_sys::MouseEvent),
-    MouseMove(web_sys::MouseEvent),
-}
-
-pub struct EventEngine {
-    sender: futures::channel::mpsc::Sender<EventElem>,
-    receiver: futures::channel::mpsc::Receiver<EventElem>,
-}
-
-impl EventEngine {
-    pub fn new() -> EventEngine {
-        let (sender, receiver) = futures::channel::mpsc::channel(20);
-        EventEngine { sender, receiver }
-    }
-
-    pub async fn next(&mut self) -> EventElem {
-        use futures::future::FutureExt;
-        use futures::stream::StreamExt;
-        self.receiver.next().map(|x| x.unwrap_throw()).await
+        DeltaRes {
+            events: self.buffer.iter().cloned(),
+        }
     }
 
     #[must_use]
-    pub fn register_click(
+    pub fn add_click(
         &mut self,
         elem: impl AsRef<web_sys::HtmlElement>,
     ) -> gloo::events::EventListener {
-        let mut sender = self.sender.clone();
+        let sender = self.events.clone();
         let elem = elem.as_ref().clone();
         let elem2 = elem.clone();
         EventListener::new(&elem, "click", move |event| {
@@ -141,18 +128,17 @@ impl EventEngine {
                 element: elem2.clone(),
                 event: Event::MouseClick(event),
             };
-            if let Err(_) = sender.try_send(g) {
-                log!("failed to queue event!")
-            }
+
+            sender.borrow_mut().push(g);
         })
     }
 
     #[must_use]
-    pub fn register_mousemove(
+    pub fn add_mousemove(
         &mut self,
         elem: impl AsRef<web_sys::HtmlElement>,
     ) -> gloo::events::EventListener {
-        let mut sender = self.sender.clone();
+        let sender = self.events.clone();
         let elem = elem.as_ref().clone();
         let elem2 = elem.clone();
         EventListener::new(&elem, "mousemove", move |event| {
@@ -164,9 +150,19 @@ impl EventEngine {
                 element: elem2.clone().dyn_into().unwrap_throw(),
                 event: Event::MouseMove(event),
             };
-            if let Err(_) = sender.try_send(g) {
-                log!("failed to queue event!");
-            }
+            sender.borrow_mut().push(g);
         })
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct EventElem {
+    pub element: web_sys::HtmlElement,
+    pub event: Event,
+}
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    MouseClick(web_sys::MouseEvent),
+    MouseMove(web_sys::MouseEvent),
 }
