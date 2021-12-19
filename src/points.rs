@@ -36,6 +36,7 @@ void main() {
         discard;
     }
 
+    /*
     vec2 rot=vec2(cos(extra),sin(extra));
 
     vec2 perpDir = vec2(rot.y, -rot.x);
@@ -48,6 +49,8 @@ void main() {
     }else{
         out_color = bg;
     }
+    */
+    out_color = bg;
     
     
 }
@@ -108,6 +111,27 @@ pub fn create_draw_system(context:&WebGl2RenderingContext)->Result<impl FnMut(Ar
     
         Ok(())
     })
+}
+
+
+pub fn line(buffer:&mut Vec<Vertex>,radius:f32,start:[f32;2],end:[f32;2]){
+    let offsetx=end[0]-start[0];
+    let offsety=end[1]-start[1];
+
+    let dis_sqr=offsetx*offsetx+offsety*offsety;
+    let dis=dis_sqr.sqrt();
+
+    let normx=offsetx/dis;
+    let normy=offsety/dis;
+
+    let num=(dis/(radius)).floor() as usize;
+
+    for i in 0..num{
+        let x=start[0]+(i as f32)*normx*radius;
+        let y=start[1]+(i as f32)*normy*radius;
+        buffer.push(Vertex([x,y,0.0]));
+    }
+
 }
 
 

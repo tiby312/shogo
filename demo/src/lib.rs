@@ -16,7 +16,7 @@ pub async fn start() {
     let _handle = engine.add_click(&button);
     let _handle = engine.add_click(&shutdown_button);
 
-    let mut mouse_pos = [0.0; 2];
+    let mut mouse_pos = [0.0f32; 2];
     let mut color_iter = [
         [1.0, 0.0, 0.0, 1.0],
         [0.0, 1.0, 0.0, 1.0],
@@ -48,11 +48,17 @@ pub async fn start() {
         }
 
         verts.clear();
+        /*
         verts.push(shogo::points::Vertex([
-            mouse_pos[0] as f32,
-            mouse_pos[1] as f32,
-            0.0,
+            mouse_pos[0],
+            mouse_pos[1],
+            (mouse_pos[0] as f32)/10.0,
         ]));
+        */
+        let radius=10.0;
+
+        shogo::points::line(&mut verts,radius,[0.0,0.0],mouse_pos);
+
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
@@ -64,7 +70,7 @@ pub async fn start() {
             as_square: false,
             color: &current_color,
             offset: &[0.0, 0.0],
-            point_size: 30.0,
+            point_size: radius,
         })
         .unwrap_throw();
     }
@@ -72,10 +78,10 @@ pub async fn start() {
     log!("all done!");
 }
 
-fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f64; 2] {
-    let [x, y] = [e.client_x() as f64, e.client_y() as f64];
+fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
     let bb = canvas.get_bounding_client_rect();
-    let tl = bb.x();
-    let tr = bb.y();
+    let tl = bb.x() as f32;
+    let tr = bb.y() as f32;
     [x - tl, y - tr]
 }
