@@ -5,6 +5,7 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 pub mod points;
+pub mod circle_program;
 
 pub mod utils {
     use super::*;

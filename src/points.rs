@@ -1,130 +1,145 @@
+use web_sys::{WebGlProgram, WebGl2RenderingContext, WebGlShader};
 
-//!
-//! Simple system to render lines.
-//! 
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
+use crate::circle_program::*;
 
 
+const SQUARE_FRAG_SHADER_STR:&'static str=r#"#version 300 es
+precision mediump float;
+out vec4 out_color;
+uniform vec4 bg;
 
-pub struct PointSystem{
-    vert_shader:web_sys::WebGlShader,
-    frag_shader:web_sys::WebGlShader,
-    program:web_sys::WebGlProgram,
-    buffer:web_sys::WebGlBuffer,
+
+void main() {
+    //coord is between -0.5 and 0.5
+    vec2 coord = gl_PointCoord - vec2(0.5,0.5);
+    /*
+    float foo=coord.x*coord.x*coord.x*coord.x+coord.y*coord.y*coord.y*coord.y;
+    if(foo > 0.25*0.25){                  //outside of circle radius?
+        discard;
+    } 
+    */           
+    out_color = bg;
 }
+"#;
 
-impl PointSystem{
-    pub fn new(foo:&str) -> Result<PointSystem, JsValue> {
-        let document = web_sys::window().unwrap().document().unwrap();
-        let canvas = document.get_element_by_id(foo).unwrap();
-        let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
+const CIRCLE_FRAG_SHADER_STR:&'static str=r#"#version 300 es
+precision mediump float;
+out vec4 out_color;
+uniform vec4 bg;
+in float extra;
 
-        let context = canvas
-            .get_context("webgl2")?
-            .unwrap()
-            .dyn_into::<WebGl2RenderingContext>()?;
-
-        let vert_shader = compile_shader(
-            &context,
-            WebGl2RenderingContext::VERTEX_SHADER,
-            r##"#version 300 es
-    
-            in vec4 position;
-
-            void main() {
-                gl_PointSize = 0.5;
-                gl_Position = position;
-            }
-            "##,
-        )?;
-
-        let frag_shader = compile_shader(
-            &context,
-            WebGl2RenderingContext::FRAGMENT_SHADER,
-            r##"#version 300 es
-        
-            precision highp float;
-            out vec4 outColor;
-            
-            void main() {
-                outColor = vec4(1, 1, 1, 1);
-            }
-            "##,
-        )?;
-
-
-        let program = link_program(&context, &vert_shader, &frag_shader)?;
-        context.use_program(Some(&program));
-
-
-
-        let position_attribute_location = context.get_attrib_location(&program, "position");
-        let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
-
-
-        Ok(PointSystem{
-            vert_shader,
-            frag_shader,
-            program,
-            buffer
-        })
-
-
-        /*
-        let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
-
-        let position_attribute_location = context.get_attrib_location(&program, "position");
-        let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
-
-        // Note that `Float32Array::view` is somewhat dangerous (hence the
-        // `unsafe`!). This is creating a raw view into our module's
-        // `WebAssembly.Memory` buffer, but if we allocate more pages for ourself
-        // (aka do a memory allocation in Rust) it'll cause the buffer to change,
-        // causing the `Float32Array` to be invalid.
-        //
-        // As a result, after `Float32Array::view` we have to be very careful not to
-        // do any memory allocations before it's dropped.
-        unsafe {
-            let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
-
-            context.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ARRAY_BUFFER,
-                &positions_array_buf_view,
-                WebGl2RenderingContext::STATIC_DRAW,
-            );
-        }
-
-        let vao = context
-            .create_vertex_array()
-            .ok_or("Could not create vertex array object")?;
-        context.bind_vertex_array(Some(&vao));
-
-        context.vertex_attrib_pointer_with_i32(0, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
-        context.enable_vertex_attrib_array(position_attribute_location as u32);
-
-        context.bind_vertex_array(Some(&vao));
-
-        let vert_count = (vertices.len() / 3) as i32;
-        draw(&context, vert_count);
-
-        Ok(())
-        */
+void main() {
+    //coord is between -0.5 and 0.5
+    vec2 coord = gl_PointCoord - vec2(0.5,0.5);
+    float dissqr=dot(coord,coord);
+    if(dissqr > 0.25){                  //outside of circle radius?
+        discard;
     }
+
+    vec2 rot=vec2(cos(extra),sin(extra));
+
+    vec2 perpDir = vec2(rot.y, -rot.x);
+    vec2 dirToPt1 = coord;
+    float dist= abs(dot(normalize(perpDir), dirToPt1));
+    
+    
+    if (dist<0.1 &&  dot(rot,coord)>0.0){
+        out_color = vec4(0.0,0.0,0.0,1.0);
+    }else{
+        out_color = bg;
+    }
+    
+    
+}
+"#;
+
+const VERT_SHADER_STR:&'static str=r#"#version 300 es
+in vec3 position;
+out float extra;
+uniform vec2 offset;
+uniform mat3 mmatrix;
+uniform float point_size;
+void main() {
+    gl_PointSize = point_size;
+    vec3 pp=vec3(position.xy+offset,1.0);
+    extra=position.z;
+    gl_Position = vec4(mmatrix*pp, 1.0); //TODO optimize
+}
+"#;
+
+
+#[repr(transparent)]
+pub struct Vertex(pub [f32;3]);
+
+
+
+pub struct Args<'a>{
+    pub context:&'a WebGl2RenderingContext,
+    pub vertices:&'a [Vertex],
+    pub game_dim:[f32;2],
+    pub as_square:bool,
+    pub color:&'a [f32;4],
+    pub offset:&'a [f32;2],
+    pub point_size:f32
 }
 
-fn draw(context: &WebGl2RenderingContext, vert_count: i32) {
-    context.clear_color(0.0, 0.0, 0.0, 1.0);
-    context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+pub type DrawSys=Box<dyn FnMut(Args)->Result<(),String>>;
 
-    context.draw_arrays(WebGl2RenderingContext::POINTS, 0, vert_count);
+pub fn create_draw_system(context:&WebGl2RenderingContext)->Result<impl FnMut(Args)->Result<(),String>,String>{
+    
+    let buffer = context.create_buffer().ok_or("failed to create buffer")?;
+
+    let circle_program=CircleProgram::new(&context,VERT_SHADER_STR,CIRCLE_FRAG_SHADER_STR)?;
+    let square_program=CircleProgram::new(&context,VERT_SHADER_STR,SQUARE_FRAG_SHADER_STR)?;
+    Ok(move |Args{context,vertices,game_dim,as_square,color,offset,point_size}:Args|{
+
+        let scalex = 2.0 / game_dim[0];
+        let scaley = 2.0 / game_dim[1];
+        let tx = -1.0;
+        let ty = 1.0;
+        let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
+        
+        if as_square{
+            square_program.draw(context,&buffer,*offset,&matrix,point_size,color,vertices);
+        }else{
+            circle_program.draw(context,&buffer,*offset,&matrix,point_size,color,vertices);
+        };
+    
+        Ok(())
+    })
 }
 
 
-fn compile_shader(
+
+/*
+fn make_triangle_program(context:&WebGl2RenderingContext)->Result<WebGlProgram,String>{
+    let vert_shader = compile_shader(
+        &context,
+        WebGl2RenderingContext::VERTEX_SHADER,
+        r#"
+        attribute vec4 position;
+        void main() {
+            gl_Position = position;
+        }
+    "#,
+    )?;
+    let frag_shader = compile_shader(
+        &context,
+        WebGl2RenderingContext::FRAGMENT_SHADER,
+        r#"
+        void main() {
+            gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+        }
+    "#,
+    )?;
+    let triangle_program = link_program(&context, &vert_shader, &frag_shader)?;
+    Ok(triangle_program)
+}
+*/
+
+
+
+pub fn compile_shader(
     context: &WebGl2RenderingContext,
     shader_type: u32,
     source: &str,
@@ -148,7 +163,7 @@ fn compile_shader(
     }
 }
 
-fn link_program(
+pub fn link_program(
     context: &WebGl2RenderingContext,
     vert_shader: &WebGlShader,
     frag_shader: &WebGlShader,
@@ -173,3 +188,7 @@ fn link_program(
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
     }
 }
+
+
+
+
