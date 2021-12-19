@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+pub mod points;
 
 pub mod utils {
     use super::*;
