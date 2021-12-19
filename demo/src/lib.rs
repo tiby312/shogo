@@ -6,7 +6,7 @@ pub async fn start() {
     log!("demo start!");
 
     let canvas = shogo::utils::get_canvas_by_id("mycanvas");
-    let ctx = shogo::utils::get_context(&canvas, "2d");
+    let ctx = shogo::utils::get_context_webgl2(&canvas);
     let button = shogo::utils::get_element_by_id("mybutton");
     let shutdown_button = shogo::utils::get_element_by_id("shutdownbutton");
 
@@ -17,11 +17,19 @@ pub async fn start() {
     let _handle = engine.add_click(&shutdown_button);
 
     let mut mouse_pos = [0.0; 2];
-    let mut color_iter = ["black", "red", "green"].into_iter().cycle();
+    let mut color_iter = [
+        [1.0, 0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0, 1.0],
+    ]
+    .into_iter()
+    .cycle();
     let mut current_color = color_iter.next().unwrap_throw();
 
+    let mut gl_prog = shogo::points::create_draw_system(&ctx).unwrap_throw();
+
+    let mut verts = Vec::new();
     'outer: loop {
-        
         for res in engine.next().await.events {
             match res.event {
                 shogo::Event::MouseClick(_mouse) => {
@@ -39,15 +47,27 @@ pub async fn start() {
             }
         }
 
-        ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+        verts.clear();
+        verts.push(shogo::points::Vertex([
+            mouse_pos[0] as f32,
+            mouse_pos[1] as f32,
+            0.0,
+        ]));
 
-        ctx.set_fill_style(&current_color.into());
+        ctx.clear_color(0.13, 0.13, 0.13, 1.0);
+        ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        ctx.fill_rect(0.0, 0.0, mouse_pos[0], mouse_pos[1]);
-    
+        gl_prog(shogo::points::Args {
+            context: &ctx,
+            vertices: &verts,
+            game_dim: [canvas.width() as f32, canvas.height() as f32],
+            as_square: false,
+            color: &current_color,
+            offset: &[0.0, 0.0],
+            point_size: 30.0,
+        })
+        .unwrap_throw();
     }
-
-    ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
 
     log!("all done!");
 }

@@ -16,12 +16,20 @@ pub mod utils {
             .dyn_into()
             .unwrap_throw()
     }
-    pub fn get_context(
-        canvas: &web_sys::HtmlCanvasElement,
-        ctx: &str,
+    pub fn get_context_2d(
+        canvas: &web_sys::HtmlCanvasElement
     ) -> web_sys::CanvasRenderingContext2d {
         canvas
-            .get_context(ctx)
+            .get_context("2d")
+            .unwrap_throw()
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
+    }
+
+    pub fn get_context_webgl2(canvas:&web_sys::HtmlCanvasElement)->web_sys::WebGl2RenderingContext{
+        canvas
+            .get_context("webgl2")
             .unwrap_throw()
             .unwrap_throw()
             .dyn_into()

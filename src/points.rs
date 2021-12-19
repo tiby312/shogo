@@ -69,6 +69,7 @@ void main() {
 
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Vertex(pub [f32;3]);
 
 
