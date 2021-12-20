@@ -78,8 +78,8 @@ pub struct Vertex(pub [f32;3]);
 
 
 pub struct Args<'a>{
-    pub context:&'a WebGl2RenderingContext,
-    pub vertices:&'a [Vertex],
+    pub ctx:&'a WebGl2RenderingContext,
+    pub verts:&'a [Vertex],
     pub game_dim:[f32;2],
     pub as_square:bool,
     pub color:&'a [f32;4],
@@ -87,15 +87,24 @@ pub struct Args<'a>{
     pub point_size:f32
 }
 
-pub type DrawSys=Box<dyn FnMut(Args)->Result<(),String>>;
 
-pub fn create_draw_system(context:&WebGl2RenderingContext)->Result<impl FnMut(Args)->Result<(),String>,String>{
+pub struct Foop<F>{
+    func:F
+}
+
+impl<F:FnMut(Args)->Result<(),String>> Foop<F>{
+    pub fn draw(&mut self,args:Args)->Result<(),String>{
+        (self.func)(args)
+    }
+}
+
+pub fn create_draw_system(ctx:&WebGl2RenderingContext)->Result<Foop<impl FnMut(Args)->Result<(),String>>,String>{
     
-    let buffer = context.create_buffer().ok_or("failed to create buffer")?;
+    let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
 
-    let circle_program=CircleProgram::new(&context,VERT_SHADER_STR,CIRCLE_FRAG_SHADER_STR)?;
-    let square_program=CircleProgram::new(&context,VERT_SHADER_STR,SQUARE_FRAG_SHADER_STR)?;
-    Ok(move |Args{context,vertices,game_dim,as_square,color,offset,point_size}:Args|{
+    let circle_program=CircleProgram::new(&ctx,VERT_SHADER_STR,CIRCLE_FRAG_SHADER_STR)?;
+    let square_program=CircleProgram::new(&ctx,VERT_SHADER_STR,SQUARE_FRAG_SHADER_STR)?;
+    Ok(Foop{func:move |Args{ctx,verts,game_dim,as_square,color,offset,point_size}:Args|{
 
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
@@ -104,13 +113,13 @@ pub fn create_draw_system(context:&WebGl2RenderingContext)->Result<impl FnMut(Ar
         let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
         
         if as_square{
-            square_program.draw(context,&buffer,*offset,&matrix,point_size,color,vertices);
+            square_program.draw(ctx,&buffer,*offset,&matrix,point_size,color,verts);
         }else{
-            circle_program.draw(context,&buffer,*offset,&matrix,point_size,color,vertices);
+            circle_program.draw(ctx,&buffer,*offset,&matrix,point_size,color,verts);
         };
     
         Ok(())
-    })
+    }})
 }
 
 
@@ -135,32 +144,6 @@ pub fn line(buffer:&mut Vec<Vertex>,radius:f32,start:[f32;2],end:[f32;2]){
 }
 
 
-
-/*
-fn make_triangle_program(context:&WebGl2RenderingContext)->Result<WebGlProgram,String>{
-    let vert_shader = compile_shader(
-        &context,
-        WebGl2RenderingContext::VERTEX_SHADER,
-        r#"
-        attribute vec4 position;
-        void main() {
-            gl_Position = position;
-        }
-    "#,
-    )?;
-    let frag_shader = compile_shader(
-        &context,
-        WebGl2RenderingContext::FRAGMENT_SHADER,
-        r#"
-        void main() {
-            gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-        }
-    "#,
-    )?;
-    let triangle_program = link_program(&context, &vert_shader, &frag_shader)?;
-    Ok(triangle_program)
-}
-*/
 
 
 

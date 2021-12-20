@@ -48,13 +48,8 @@ pub async fn start() {
         }
 
         verts.clear();
-        /*
-        verts.push(shogo::points::Vertex([
-            mouse_pos[0],
-            mouse_pos[1],
-            (mouse_pos[0] as f32)/10.0,
-        ]));
-        */
+        
+
         let radius=10.0;
 
         shogo::points::line(&mut verts,radius,[0.0,0.0],mouse_pos);
@@ -63,10 +58,12 @@ pub async fn start() {
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        gl_prog(shogo::points::Args {
-            context: &ctx,
-            vertices: &verts,
-            game_dim: [canvas.width() as f32, canvas.height() as f32],
+        let game_dim=[canvas.width() as f32, canvas.height() as f32];
+
+        gl_prog.draw(shogo::points::Args {
+            ctx:&ctx,
+            verts: &verts,
+            game_dim ,
             as_square: false,
             color: &current_color,
             offset: &[0.0, 0.0],
