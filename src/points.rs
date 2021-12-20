@@ -106,6 +106,10 @@ pub fn create_draw_system(ctx:&WebGl2RenderingContext)->Result<Foop<impl FnMut(A
     let square_program=CircleProgram::new(&ctx,VERT_SHADER_STR,SQUARE_FRAG_SHADER_STR)?;
     Ok(Foop{func:move |Args{ctx,verts,game_dim,as_square,color,offset,point_size}:Args|{
 
+        if verts.is_empty(){
+            return Ok(());
+        }
+        
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
         let tx = -1.0;

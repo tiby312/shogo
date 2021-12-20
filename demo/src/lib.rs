@@ -48,28 +48,27 @@ pub async fn start() {
         }
 
         verts.clear();
-        
 
-        let radius=10.0;
+        let radius = 10.0;
 
-        shogo::points::line(&mut verts,radius,[0.0,0.0],mouse_pos);
-
+        shogo::points::line(&mut verts, radius, [0.0, 0.0], mouse_pos);
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        let game_dim=[canvas.width() as f32, canvas.height() as f32];
+        let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
-        gl_prog.draw(shogo::points::Args {
-            ctx:&ctx,
-            verts: &verts,
-            game_dim ,
-            as_square: false,
-            color: &current_color,
-            offset: &[0.0, 0.0],
-            point_size: radius,
-        })
-        .unwrap_throw();
+        gl_prog
+            .draw(shogo::points::Args {
+                ctx: &ctx,
+                verts: &verts,
+                game_dim,
+                as_square: false,
+                color: &current_color,
+                offset: &[0.0, 0.0],
+                point_size: radius,
+            })
+            .unwrap_throw();
     }
 
     log!("all done!");
