@@ -27,7 +27,7 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut gl_prog = shogo::points::create_draw_system(&ctx).unwrap_throw();
+    let mut gl_prog = shogo::dots::create_draw_system(&ctx).unwrap_throw();
 
     let mut verts = Vec::new();
     'outer: loop {
@@ -48,20 +48,20 @@ pub async fn start() {
             }
         }
 
-
         let radius = 30.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
-        shogo::points::line(&mut verts, radius, mouse_pos,[0.0, 0.0]);
-        shogo::points::line(&mut verts, radius,mouse_pos, game_dim);
-        shogo::points::line(&mut verts, radius, mouse_pos,[0.0,game_dim[1]]);
-        shogo::points::line(&mut verts, radius, mouse_pos,[game_dim[0],0.0]);
+        shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, 0.0]);
+        shogo::dots::line(&mut verts, radius, mouse_pos, game_dim);
+        shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, game_dim[1]]);
+        shogo::dots::line(&mut verts, radius, mouse_pos, [game_dim[0], 0.0]);
 
-        
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
-        gl_prog.draw_circles(&ctx,&verts,game_dim,&current_color,&[0.0,0.0],radius).unwrap_throw();
+        gl_prog
+            .draw_circles(&ctx, &verts, game_dim, &current_color, &[0.0, 0.0], radius)
+            .unwrap_throw();
     }
 
     log!("all done!");
