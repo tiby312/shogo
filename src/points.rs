@@ -93,6 +93,28 @@ pub struct Foop<F>{
 }
 
 impl<F:FnMut(Args)->Result<(),String>> Foop<F>{
+    pub fn draw_circles(&mut self,ctx:impl AsRef<WebGl2RenderingContext>,verts:&[Vertex],game_dim:[f32;2],color:&[f32;4],offset:&[f32;2],point_size:f32)->Result<(),String>{
+        self.draw(Args{
+            ctx:ctx.as_ref(),
+            verts,
+            game_dim,
+            as_square:false,
+            color,
+            offset,
+            point_size
+        })
+    }
+    pub fn draw_squares(&mut self,ctx:&WebGl2RenderingContext,verts:&[Vertex],game_dim:[f32;2],color:&[f32;4],offset:&[f32;2],point_size:f32)->Result<(),String>{
+        self.draw(Args{
+            ctx,
+            verts,
+            game_dim,
+            as_square:true,
+            color,
+            offset,
+            point_size
+        })
+    }
     pub fn draw(&mut self,args:Args)->Result<(),String>{
         (self.func)(args)
     }
@@ -109,7 +131,7 @@ pub fn create_draw_system(ctx:&WebGl2RenderingContext)->Result<Foop<impl FnMut(A
         if verts.is_empty(){
             return Ok(());
         }
-        
+
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
         let tx = -1.0;
