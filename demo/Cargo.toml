@@ -14,6 +14,7 @@ wasm-bindgen-futures="0.4"
 web-sys = "0.3"
 futures="0.3"
 shogo = {path="../"}
+rayon ="*"
 
 [dependencies.gloo]
 version = "*"

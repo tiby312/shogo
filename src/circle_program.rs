@@ -8,7 +8,6 @@ use web_sys::WebGlShader;
 #[derive(Debug)]
 pub struct Vertex(pub [f32;3]);
 
-
 impl CircleProgram{
 
     pub fn draw(&self,context:&WebGl2RenderingContext,buffer:&WebGlBuffer,
@@ -20,32 +19,21 @@ impl CircleProgram{
         context.uniform4fv_with_f32_array(Some(&self.bg),color);
         context.uniform_matrix3fv_with_f32_array(Some(&self.mmatrix),false,mmatrix);
 
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
         context.vertex_attrib_pointer_with_i32(self.position as u32, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
         context.enable_vertex_attrib_array(0);
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+        
 
-        // Note that `Float32Array::view` is somewhat dangerous (hence the
-        // `unsafe`!). This is creating a raw view into our module's
-        // `WebAssembly.Memory` buffer, but if we allocate more pages for ourself
-        // (aka do a memory allocation in Rust) it'll cause the buffer to change,
-        // causing the `Float32Array` to be invalid.
-        //
-        // As a result, after `Float32Array::view` we have to be very careful not to
-        // do any memory allocations before it's dropped.
-        unsafe {
-            let k:&[f32]=core::slice::from_raw_parts(vertices.as_ptr() as *const _,vertices.len()*3);
-
-            let vert_array = js_sys::Float32Array::view(  k );
-
-            context.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ARRAY_BUFFER,
-                &vert_array,
-                WebGl2RenderingContext::STATIC_DRAW,
+        unsafe{
+            let n_bytes = vertices.len() * std::mem::size_of::<Vertex>();
+            let points_buf:&[u8] = std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes);
+            
+            context.buffer_data_with_u8_array(WebGl2RenderingContext::ARRAY_BUFFER,
+                points_buf,
+                WebGl2RenderingContext::DYNAMIC_DRAW,
             );
         }
-
 
         context.draw_arrays(
             WebGl2RenderingContext::POINTS,

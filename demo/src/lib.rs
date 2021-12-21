@@ -5,6 +5,8 @@ use wasm_bindgen::prelude::*;
 pub async fn start() {
     log!("demo start!");
 
+
+
     let canvas = shogo::utils::get_canvas_by_id("mycanvas");
     let ctx = shogo::utils::get_context_webgl2(&canvas);
     let button = shogo::utils::get_element_by_id("mybutton");

@@ -72,6 +72,49 @@ void main() {
 "#;
 
 
+pub struct DynamicBuffer(web_sys::WebGlBuffer);
+
+impl DynamicBuffer{
+    pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>{
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+        Ok(DynamicBuffer(buffer))
+    }
+    pub fn update(&mut self,context:&WebGl2RenderingContext,vertices:&[Vertex]){
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0));
+
+        // Note that `Float32Array::view` is somewhat dangerous (hence the
+        // `unsafe`!). This is creating a raw view into our module's
+        // `WebAssembly.Memory` buffer, but if we allocate more pages for ourself
+        // (aka do a memory allocation in Rust) it'll cause the buffer to change,
+        // causing the `Float32Array` to be invalid.
+        //
+        // As a result, after `Float32Array::view` we have to be very careful not to
+        // do any memory allocations before it's dropped.
+        /*
+        unsafe {
+            let k:&[f32]=core::slice::from_raw_parts(vertices.as_ptr() as *const _,vertices.len()*3);
+
+            let vert_array = js_sys::Float32Array::view(  k );
+
+            context.buffer_data_with_array_buffer_view(
+                WebGl2RenderingContext::ARRAY_BUFFER,
+                &vert_array,
+                WebGl2RenderingContext::DYNAMIC_DRAW,
+            );
+        }
+        */
+
+        let n_bytes = vertices.len() * std::mem::size_of::<Vertex>();
+        let points_buf:&[u8] = unsafe{std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes)};
+
+        context.buffer_data_with_u8_array(WebGl2RenderingContext::ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
+        );
+
+    }
+}
+
 
 
 pub struct Args<'a>{
@@ -116,6 +159,9 @@ impl<F:FnMut(Args)->Result<(),String>> Foop<F>{
         (self.func)(args)
     }
 }
+
+
+
 
 pub fn create_draw_system(ctx:&WebGl2RenderingContext)->Result<Foop<impl FnMut(Args)->Result<(),String>>,String>{
     
