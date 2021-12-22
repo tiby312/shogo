@@ -32,7 +32,7 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut gl_prog = dots::shader_system(&ctx);
+    let mut draw_sys = dots::shader_system(&ctx);
 
     let walls = {
         let mut walls = dots::buffer_dynamic(&ctx);
@@ -76,7 +76,7 @@ pub async fn start() {
 
         buffer.update(&ctx, &verts);
 
-        gl_prog.draw_circles(
+        draw_sys.draw_circles(
             &ctx,
             &walls,
             game_dim,
@@ -84,7 +84,7 @@ pub async fn start() {
             &[0.0, 0.0],
             radius,
         );
-        gl_prog.draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius);
+        draw_sys.draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius);
     }
 
     log!("all done!");
