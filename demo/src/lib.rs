@@ -27,7 +27,7 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut gl_prog = shogo::dots::create_draw_system(&ctx).unwrap_throw();
+    let mut gl_prog = shogo::dots::ShaderSystem::new(&ctx).unwrap_throw();
 
     let walls = {
         let mut walls = shogo::dots::DynamicBuffer::new(&ctx).unwrap_throw();
@@ -71,24 +71,19 @@ pub async fn start() {
 
         buffer.update(&ctx, &verts);
 
-        gl_prog
-            .draw_circles(
-                &ctx,
-                &walls,
-                game_dim,
-                &[1.0, 1.0, 1.0, 1.0],
-                &[0.0, 0.0],
-                radius,
-            )
-            .unwrap_throw();
-        gl_prog
-            .draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius)
-            .unwrap_throw();
+        gl_prog.draw_circles(
+            &ctx,
+            &walls,
+            game_dim,
+            &[1.0, 1.0, 1.0, 1.0],
+            &[0.0, 0.0],
+            radius,
+        );
+        gl_prog.draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius);
     }
 
     log!("all done!");
 }
-
 
 fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
     let [x, y] = [e.client_x() as f32, e.client_y() as f32];

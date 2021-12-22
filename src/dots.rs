@@ -115,20 +115,53 @@ pub struct Args<'a> {
     pub point_size: f32,
 }
 
-pub struct Foop<F> {
-    func: F,
+pub struct ShaderSystem{
+    circle_program:CircleProgram,
+    square_program:CircleProgram,
 }
 
-impl<F: FnMut(Args) -> Result<(), String>> Foop<F> {
+impl ShaderSystem{
+    pub fn new(ctx: &WebGl2RenderingContext)->Result<ShaderSystem,String>{
+        let circle_program = CircleProgram::new(&ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
+        let square_program = CircleProgram::new(&ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
+    
+        Ok(ShaderSystem{
+            circle_program,
+            square_program
+        })
+    }
+    fn draw(&mut self,args:Args){
+        let Args {
+            ctx,
+            verts,
+            game_dim,
+            as_square,
+            color,
+            offset,
+            point_size,
+        }=args;
+
+        let scalex = 2.0 / game_dim[0];
+        let scaley = 2.0 / game_dim[1];
+        let tx = -1.0;
+        let ty = 1.0;
+        let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
+
+        if as_square {
+            self.square_program.draw(ctx, verts, *offset, &matrix, point_size, color);
+        } else {
+            self.circle_program.draw(ctx, verts, *offset, &matrix, point_size, color);
+        };
+    }
     pub fn draw_circles(
         &mut self,
         ctx: impl AsRef<WebGl2RenderingContext>,
-        verts: &Buffer,
+        verts:&Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
         offset: &[f32; 2],
         point_size: f32,
-    ) -> Result<(), String> {
+    ) {
         self.draw(Args {
             ctx: ctx.as_ref(),
             verts,
@@ -147,7 +180,7 @@ impl<F: FnMut(Args) -> Result<(), String>> Foop<F> {
         color: &[f32; 4],
         offset: &[f32; 2],
         point_size: f32,
-    ) -> Result<(), String> {
+    ) {
         self.draw(Args {
             ctx,
             verts,
@@ -158,42 +191,10 @@ impl<F: FnMut(Args) -> Result<(), String>> Foop<F> {
             point_size,
         })
     }
-    pub fn draw(&mut self, args: Args) -> Result<(), String> {
-        (self.func)(args)
-    }
+
 }
 
-pub fn create_draw_system(
-    ctx: &WebGl2RenderingContext,
-) -> Result<Foop<impl FnMut(Args) -> Result<(), String>>, String> {
-    let circle_program = CircleProgram::new(&ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
-    let square_program = CircleProgram::new(&ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
-    Ok(Foop {
-        func: move |Args {
-                        ctx,
-                        verts,
-                        game_dim,
-                        as_square,
-                        color,
-                        offset,
-                        point_size,
-                    }: Args| {
-            let scalex = 2.0 / game_dim[0];
-            let scaley = 2.0 / game_dim[1];
-            let tx = -1.0;
-            let ty = 1.0;
-            let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
 
-            if as_square {
-                square_program.draw(ctx, verts, *offset, &matrix, point_size, color);
-            } else {
-                circle_program.draw(ctx, verts, *offset, &matrix, point_size, color);
-            };
-
-            Ok(())
-        },
-    })
-}
 
 pub fn line(buffer: &mut Vec<Vertex>, radius: f32, start: [f32; 2], end: [f32; 2]) {
     let offsetx = end[0] - start[0];

@@ -8,6 +8,7 @@ pub struct Buffer {
     pub num_verticies: usize,
 }
 
+
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct Vertex(pub [f32; 3]);
