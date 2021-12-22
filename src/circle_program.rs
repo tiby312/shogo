@@ -3,23 +3,42 @@ use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 pub struct Buffer {
-    pub buffer: web_sys::WebGlBuffer,
-    pub num_verticies: usize,
+    pub(crate)  buffer: web_sys::WebGlBuffer,
+    pub(crate)  num_verticies: usize,
+    pub(crate) ctx: WebGl2RenderingContext,
+}
+impl Buffer{
+    pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>{
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+        Ok(Buffer {
+            buffer,
+            num_verticies: 0,
+            ctx:ctx.clone()
+        })
+    }
+}
+impl Drop for Buffer{
+    fn drop(&mut self){
+        self.ctx.delete_buffer(Some(&self.buffer));
+    }
 }
 
 impl CircleProgram {
     pub fn draw(
         &self,
-        context: &WebGl2RenderingContext,
         buffer: &Buffer,
         offset: [f32; 2],
         mmatrix: &[f32; 9],
         point_size: f32,
         color: &[f32; 4],
     ) {
+
         if buffer.num_verticies == 0 {
             return;
         }
+
+        let context=&buffer.ctx;
+
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
 
@@ -52,6 +71,10 @@ impl CircleProgram {
         let frag_shader = compile_shader(&context, WebGl2RenderingContext::FRAGMENT_SHADER, fs)?;
         let program = link_program(&context, &vert_shader, &frag_shader)?;
 
+        context.delete_shader(Some(&vert_shader));
+        context.delete_shader(Some(&frag_shader));
+        
+
         let mmatrix = context
             .get_uniform_location(&program, "mmatrix")
             .ok_or("uniform err".to_string())?;
@@ -82,7 +105,7 @@ impl CircleProgram {
 }
 
 pub struct CircleProgram {
-    program: WebGlProgram,
+    pub(crate) program: WebGlProgram,
     offset: WebGlUniformLocation,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,

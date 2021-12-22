@@ -2,6 +2,8 @@ use web_sys::WebGl2RenderingContext;
 
 use crate::circle_program::*;
 
+pub use crate::circle_program::Buffer;
+
 const SQUARE_FRAG_SHADER_STR: &'static str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
@@ -80,22 +82,24 @@ impl std::ops::Deref for DynamicBuffer {
 
 impl DynamicBuffer {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-        Ok(DynamicBuffer(Buffer {
-            buffer,
-            num_verticies: 0,
-        }))
+        Ok(
+            DynamicBuffer(
+                Buffer::new(ctx)?
+            )
+        )
     }
-    pub fn update(&mut self, context: &WebGl2RenderingContext, vertices: &[[f32; 2]]) {
+    pub fn update(&mut self, vertices: &[[f32; 2]]) {
+        let ctx=&self.0.ctx;
+
         self.0.num_verticies = vertices.len();
 
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
+        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
         let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
-        context.buffer_data_with_u8_array(
+        ctx.buffer_data_with_u8_array(
             WebGl2RenderingContext::ARRAY_BUFFER,
             points_buf,
             WebGl2RenderingContext::DYNAMIC_DRAW,
@@ -103,8 +107,7 @@ impl DynamicBuffer {
     }
 }
 
-pub struct Args<'a> {
-    pub ctx: &'a WebGl2RenderingContext,
+struct Args<'a> {
     pub verts: &'a Buffer,
     pub game_dim: [f32; 2],
     pub as_square: bool,
@@ -126,6 +129,14 @@ pub fn shader_system(ctx: &WebGl2RenderingContext) -> ShaderSystem {
 pub struct ShaderSystem {
     circle_program: CircleProgram,
     square_program: CircleProgram,
+    ctx:WebGl2RenderingContext
+}
+
+impl Drop for ShaderSystem{
+    fn drop(&mut self){
+        self.ctx.delete_program(Some(&self.circle_program.program));
+        self.ctx.delete_program(Some(&self.square_program.program));
+    }
 }
 
 impl ShaderSystem {
@@ -136,11 +147,11 @@ impl ShaderSystem {
         Ok(ShaderSystem {
             circle_program,
             square_program,
+            ctx:ctx.clone()
         })
     }
     fn draw(&mut self, args: Args) {
         let Args {
-            ctx,
             verts,
             game_dim,
             as_square,
@@ -148,6 +159,8 @@ impl ShaderSystem {
             offset,
             point_size,
         } = args;
+
+        assert_eq!(verts.ctx,self.ctx);
 
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
@@ -157,15 +170,14 @@ impl ShaderSystem {
 
         if as_square {
             self.square_program
-                .draw(ctx, verts, *offset, &matrix, point_size, color);
+                .draw(verts, *offset, &matrix, point_size, color);
         } else {
             self.circle_program
-                .draw(ctx, verts, *offset, &matrix, point_size, color);
+                .draw(verts, *offset, &matrix, point_size, color);
         };
     }
     pub fn draw_circles(
         &mut self,
-        ctx: &WebGl2RenderingContext,
         verts: &Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
@@ -173,7 +185,6 @@ impl ShaderSystem {
         point_size: f32,
     ) {
         self.draw(Args {
-            ctx,
             verts,
             game_dim,
             as_square: false,
@@ -184,7 +195,6 @@ impl ShaderSystem {
     }
     pub fn draw_squares(
         &mut self,
-        ctx: &WebGl2RenderingContext,
         verts: &Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
@@ -192,7 +202,6 @@ impl ShaderSystem {
         point_size: f32,
     ) {
         self.draw(Args {
-            ctx,
             verts,
             game_dim,
             as_square: true,

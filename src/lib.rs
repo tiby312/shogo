@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-pub mod circle_program;
+mod circle_program;
 pub mod dots;
 
 pub mod utils {

@@ -37,7 +37,7 @@ pub async fn start() {
     let walls = {
         let mut walls = dots::buffer_dynamic(&ctx);
         let foo = vec![[50.0, 30.0]];
-        walls.update(&ctx, &foo);
+        walls.update(&foo);
         walls
     };
 
@@ -70,21 +70,13 @@ pub async fn start() {
         shogo::dots::line(&mut verts, radius, mouse_pos, game_dim);
         shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, game_dim[1]]);
         shogo::dots::line(&mut verts, radius, mouse_pos, [game_dim[0], 0.0]);
+        buffer.update(&verts);
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        buffer.update(&ctx, &verts);
-
-        draw_sys.draw_circles(
-            &ctx,
-            &walls,
-            game_dim,
-            &[1.0, 1.0, 1.0, 1.0],
-            &[0.0, 0.0],
-            radius,
-        );
-        draw_sys.draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius);
+        draw_sys.draw_circles(&walls, game_dim, &[1.0, 1.0, 1.0, 1.0], &[0.0, 0.0], radius);
+        draw_sys.draw_circles(&buffer, game_dim, &current_color, &[0.0, 0.0], radius);
     }
 
     log!("all done!");
