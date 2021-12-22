@@ -5,8 +5,6 @@ use wasm_bindgen::prelude::*;
 pub async fn start() {
     log!("demo start!");
 
-
-
     let canvas = shogo::utils::get_canvas_by_id("mycanvas");
     let ctx = shogo::utils::get_context_webgl2(&canvas);
     let button = shogo::utils::get_element_by_id("mybutton");
@@ -30,6 +28,15 @@ pub async fn start() {
     let mut current_color = color_iter.next().unwrap_throw();
 
     let mut gl_prog = shogo::dots::create_draw_system(&ctx).unwrap_throw();
+
+    let walls = {
+        let mut walls = shogo::dots::DynamicBuffer::new(&ctx).unwrap_throw();
+        let foo = vec![shogo::dots::Vertex([50.0, 30.0, 0.0])];
+        walls.update(&ctx, &foo);
+        walls
+    };
+
+    let mut buffer = shogo::dots::DynamicBuffer::new(&ctx).unwrap_throw();
 
     let mut verts = Vec::new();
     'outer: loop {
@@ -61,8 +68,22 @@ pub async fn start() {
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
+
+        buffer.update(&ctx, &verts);
+
         gl_prog
-            .draw_circles(&ctx, &verts, game_dim, &current_color, &[0.0, 0.0], radius)
+            .draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius)
+            .unwrap_throw();
+
+        gl_prog
+            .draw_circles(
+                &ctx,
+                &walls,
+                game_dim,
+                &[1.0, 1.0, 1.0, 1.0],
+                &[0.0, 0.0],
+                radius,
+            )
             .unwrap_throw();
     }
 

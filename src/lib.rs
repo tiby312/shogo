@@ -4,8 +4,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-pub mod dots;
 pub mod circle_program;
+pub mod dots;
 
 pub mod utils {
     use super::*;
@@ -17,7 +17,7 @@ pub mod utils {
             .unwrap_throw()
     }
     pub fn get_context_2d(
-        canvas: &web_sys::HtmlCanvasElement
+        canvas: &web_sys::HtmlCanvasElement,
     ) -> web_sys::CanvasRenderingContext2d {
         canvas
             .get_context("2d")
@@ -27,7 +27,9 @@ pub mod utils {
             .unwrap_throw()
     }
 
-    pub fn get_context_webgl2(canvas:&web_sys::HtmlCanvasElement)->web_sys::WebGl2RenderingContext{
+    pub fn get_context_webgl2(
+        canvas: &web_sys::HtmlCanvasElement,
+    ) -> web_sys::WebGl2RenderingContext {
         canvas
             .get_context("webgl2")
             .unwrap_throw()
@@ -44,10 +46,9 @@ pub mod utils {
             .unwrap_throw()
     }
 
-
     pub mod render {
         //! Similar to [`gloo::render::request_animation_frame`] except lifetimed.
-        //! 
+        //!
 
         use std::cell::RefCell;
         use std::fmt;
@@ -117,8 +118,6 @@ pub mod utils {
     }
 }
 
-
-
 pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
@@ -179,7 +178,7 @@ impl Engine {
         }
     }
 
-    pub fn get_last_delta(&mut self)->DeltaRes<'_>{
+    pub fn get_last_delta(&mut self) -> DeltaRes<'_> {
         DeltaRes {
             events: self.buffer.iter().cloned(),
         }
