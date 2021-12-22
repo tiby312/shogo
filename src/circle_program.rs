@@ -1,4 +1,3 @@
-use web_sys::WebGlBuffer;
 use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};

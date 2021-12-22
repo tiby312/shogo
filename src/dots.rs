@@ -1,4 +1,4 @@
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
+use web_sys::WebGl2RenderingContext;
 
 use crate::circle_program::*;
 
@@ -114,12 +114,14 @@ pub struct Args<'a> {
     pub point_size: f32,
 }
 
-pub fn buffer_dynamic(ctx: &WebGl2RenderingContext) -> Result<DynamicBuffer, String> {
-    DynamicBuffer::new(ctx)
+use wasm_bindgen::prelude::*;
+
+pub fn buffer_dynamic(ctx: &WebGl2RenderingContext) -> DynamicBuffer {
+    DynamicBuffer::new(ctx).unwrap_throw()
 }
 
-pub fn shader_system(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
-    ShaderSystem::new(ctx)
+pub fn shader_system(ctx: &WebGl2RenderingContext) -> ShaderSystem {
+    ShaderSystem::new(ctx).unwrap_throw()
 }
 
 pub struct ShaderSystem {

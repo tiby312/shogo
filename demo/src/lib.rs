@@ -27,16 +27,16 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut gl_prog = shogo::dots::shader_system(&ctx).unwrap_throw();
+    let mut gl_prog = shogo::dots::shader_system(&ctx);
 
     let walls = {
-        let mut walls = shogo::dots::buffer_dynamic(&ctx).unwrap_throw();
+        let mut walls = shogo::dots::buffer_dynamic(&ctx);
         let foo = vec![shogo::dots::Vertex([50.0, 30.0, 0.0])];
         walls.update(&ctx, &foo);
         walls
     };
 
-    let mut buffer = shogo::dots::buffer_dynamic(&ctx).unwrap_throw();
+    let mut buffer = shogo::dots::buffer_dynamic(&ctx);
 
     let mut verts = Vec::new();
     'outer: loop {
