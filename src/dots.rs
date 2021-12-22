@@ -114,6 +114,14 @@ pub struct Args<'a> {
     pub point_size: f32,
 }
 
+pub fn buffer_dynamic(ctx: &WebGl2RenderingContext) -> Result<DynamicBuffer, String> {
+    DynamicBuffer::new(ctx)
+}
+
+pub fn shader_system(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
+    ShaderSystem::new(ctx)
+}
+
 pub struct ShaderSystem {
     circle_program: CircleProgram,
     square_program: CircleProgram,
