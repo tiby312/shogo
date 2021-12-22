@@ -2,8 +2,6 @@ use web_sys::WebGl2RenderingContext;
 
 use crate::circle_program::*;
 
-pub use crate::circle_program::Vertex;
-
 const SQUARE_FRAG_SHADER_STR: &'static str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
@@ -88,12 +86,12 @@ impl DynamicBuffer {
             num_verticies: 0,
         }))
     }
-    pub fn update(&mut self, context: &WebGl2RenderingContext, vertices: &[Vertex]) {
+    pub fn update(&mut self, context: &WebGl2RenderingContext, vertices: &[[f32; 2]]) {
         self.0.num_verticies = vertices.len();
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<Vertex>();
+        let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
@@ -201,7 +199,7 @@ impl ShaderSystem {
     }
 }
 
-pub fn line(buffer: &mut Vec<Vertex>, radius: f32, start: [f32; 2], end: [f32; 2]) {
+pub fn line(buffer: &mut Vec<[f32; 2]>, radius: f32, start: [f32; 2], end: [f32; 2]) {
     let offsetx = end[0] - start[0];
     let offsety = end[1] - start[1];
 
@@ -216,6 +214,6 @@ pub fn line(buffer: &mut Vec<Vertex>, radius: f32, start: [f32; 2], end: [f32; 2
     for i in 0..num {
         let x = start[0] + (i as f32) * normx * radius;
         let y = start[1] + (i as f32) * normy * radius;
-        buffer.push(Vertex([x, y, 0.0]));
+        buffer.push([x, y]);
     }
 }

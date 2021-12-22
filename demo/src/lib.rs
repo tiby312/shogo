@@ -1,14 +1,16 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
 
+use shogo::{dots, utils};
+
 #[wasm_bindgen(start)]
 pub async fn start() {
     log!("demo start!");
 
-    let canvas = shogo::utils::get_canvas_by_id("mycanvas");
-    let ctx = shogo::utils::get_context_webgl2(&canvas);
-    let button = shogo::utils::get_element_by_id("mybutton");
-    let shutdown_button = shogo::utils::get_element_by_id("shutdownbutton");
+    let canvas = utils::get_canvas_by_id("mycanvas");
+    let ctx = utils::get_context_webgl2(&canvas);
+    let button = utils::get_element_by_id("mybutton");
+    let shutdown_button = utils::get_element_by_id("shutdownbutton");
 
     let mut engine = shogo::engine(60);
 
@@ -27,16 +29,16 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut gl_prog = shogo::dots::shader_system(&ctx);
+    let mut gl_prog = dots::shader_system(&ctx);
 
     let walls = {
-        let mut walls = shogo::dots::buffer_dynamic(&ctx);
-        let foo = vec![shogo::dots::Vertex([50.0, 30.0, 0.0])];
+        let mut walls = dots::buffer_dynamic(&ctx);
+        let foo = vec![[50.0, 30.0]];
         walls.update(&ctx, &foo);
         walls
     };
 
-    let mut buffer = shogo::dots::buffer_dynamic(&ctx);
+    let mut buffer = dots::buffer_dynamic(&ctx);
 
     let mut verts = Vec::new();
     'outer: loop {

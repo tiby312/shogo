@@ -7,10 +7,6 @@ pub struct Buffer {
     pub num_verticies: usize,
 }
 
-#[repr(transparent)]
-#[derive(Debug)]
-pub struct Vertex(pub [f32; 3]);
-
 impl CircleProgram {
     pub fn draw(
         &self,
@@ -36,7 +32,7 @@ impl CircleProgram {
 
         context.vertex_attrib_pointer_with_i32(
             self.position as u32,
-            3,
+            2,
             WebGl2RenderingContext::FLOAT,
             false,
             0,
