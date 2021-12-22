@@ -114,24 +114,24 @@ pub struct Args<'a> {
     pub point_size: f32,
 }
 
-pub struct ShaderSystem{
-    circle_program:CircleProgram,
-    square_program:CircleProgram,
-    ctx:WebGl2RenderingContext
+pub struct ShaderSystem {
+    circle_program: CircleProgram,
+    square_program: CircleProgram,
+    ctx: WebGl2RenderingContext,
 }
 
-impl ShaderSystem{
-    pub fn new(ctx: &WebGl2RenderingContext)->Result<ShaderSystem,String>{
+impl ShaderSystem {
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
         let circle_program = CircleProgram::new(&ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
         let square_program = CircleProgram::new(&ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
-    
-        Ok(ShaderSystem{
+
+        Ok(ShaderSystem {
             circle_program,
             square_program,
-            ctx:ctx.clone()
+            ctx: ctx.clone(),
         })
     }
-    fn draw(&mut self,args:Args){
+    fn draw(&mut self, args: Args) {
         let Args {
             verts,
             game_dim,
@@ -139,7 +139,7 @@ impl ShaderSystem{
             color,
             offset,
             point_size,
-        }=args;
+        } = args;
 
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
@@ -148,14 +148,16 @@ impl ShaderSystem{
         let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
 
         if as_square {
-            self.square_program.draw(&self.ctx, verts, *offset, &matrix, point_size, color);
+            self.square_program
+                .draw(&self.ctx, verts, *offset, &matrix, point_size, color);
         } else {
-            self.circle_program.draw(&self.ctx, verts, *offset, &matrix, point_size, color);
+            self.circle_program
+                .draw(&self.ctx, verts, *offset, &matrix, point_size, color);
         };
     }
     pub fn draw_circles(
         &mut self,
-        verts:&Buffer,
+        verts: &Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
         offset: &[f32; 2],
@@ -187,10 +189,7 @@ impl ShaderSystem{
             point_size,
         })
     }
-
 }
-
-
 
 pub fn line(buffer: &mut Vec<Vertex>, radius: f32, start: [f32; 2], end: [f32; 2]) {
     let offsetx = end[0] - start[0];
