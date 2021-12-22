@@ -7,10 +7,13 @@ use shogo::{dots, utils};
 pub async fn start() {
     log!("demo start!");
 
-    let canvas = utils::get_canvas_by_id("mycanvas");
+    let (canvas, button, shutdown_button) = (
+        utils::get_canvas_by_id("mycanvas"),
+        utils::get_element_by_id("mybutton"),
+        utils::get_element_by_id("shutdownbutton"),
+    );
+
     let ctx = utils::get_context_webgl2(&canvas);
-    let button = utils::get_element_by_id("mybutton");
-    let shutdown_button = utils::get_element_by_id("shutdownbutton");
 
     let mut engine = shogo::engine(60);
 
