@@ -71,15 +71,8 @@ pub async fn start() {
 
         buffer.update(&ctx, &verts);
 
-        gl_prog.draw_circles(
-            &ctx,
-            &walls,
-            game_dim,
-            &[1.0, 1.0, 1.0, 1.0],
-            &[0.0, 0.0],
-            radius,
-        );
-        gl_prog.draw_circles(&ctx, &buffer, game_dim, &current_color, &[0.0, 0.0], radius);
+        gl_prog.draw_circles(&walls, game_dim, &[1.0, 1.0, 1.0, 1.0], &[0.0, 0.0], radius);
+        gl_prog.draw_circles(&buffer, game_dim, &current_color, &[0.0, 0.0], radius);
     }
 
     log!("all done!");

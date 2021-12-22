@@ -106,7 +106,6 @@ impl DynamicBuffer {
 }
 
 pub struct Args<'a> {
-    pub ctx: &'a WebGl2RenderingContext,
     pub verts: &'a Buffer,
     pub game_dim: [f32; 2],
     pub as_square: bool,
@@ -118,6 +117,7 @@ pub struct Args<'a> {
 pub struct ShaderSystem{
     circle_program:CircleProgram,
     square_program:CircleProgram,
+    ctx:WebGl2RenderingContext
 }
 
 impl ShaderSystem{
@@ -127,12 +127,12 @@ impl ShaderSystem{
     
         Ok(ShaderSystem{
             circle_program,
-            square_program
+            square_program,
+            ctx:ctx.clone()
         })
     }
     fn draw(&mut self,args:Args){
         let Args {
-            ctx,
             verts,
             game_dim,
             as_square,
@@ -148,14 +148,13 @@ impl ShaderSystem{
         let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
 
         if as_square {
-            self.square_program.draw(ctx, verts, *offset, &matrix, point_size, color);
+            self.square_program.draw(&self.ctx, verts, *offset, &matrix, point_size, color);
         } else {
-            self.circle_program.draw(ctx, verts, *offset, &matrix, point_size, color);
+            self.circle_program.draw(&self.ctx, verts, *offset, &matrix, point_size, color);
         };
     }
     pub fn draw_circles(
         &mut self,
-        ctx: impl AsRef<WebGl2RenderingContext>,
         verts:&Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
@@ -163,7 +162,6 @@ impl ShaderSystem{
         point_size: f32,
     ) {
         self.draw(Args {
-            ctx: ctx.as_ref(),
             verts,
             game_dim,
             as_square: false,
@@ -174,7 +172,6 @@ impl ShaderSystem{
     }
     pub fn draw_squares(
         &mut self,
-        ctx: &WebGl2RenderingContext,
         verts: &Buffer,
         game_dim: [f32; 2],
         color: &[f32; 4],
@@ -182,7 +179,6 @@ impl ShaderSystem{
         point_size: f32,
     ) {
         self.draw(Args {
-            ctx,
             verts,
             game_dim,
             as_square: true,
