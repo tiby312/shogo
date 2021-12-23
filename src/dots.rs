@@ -82,14 +82,10 @@ impl std::ops::Deref for DynamicBuffer {
 
 impl DynamicBuffer {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        Ok(
-            DynamicBuffer(
-                Buffer::new(ctx)?
-            )
-        )
+        Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
     pub fn update(&mut self, vertices: &[[f32; 2]]) {
-        let ctx=&self.0.ctx;
+        let ctx = &self.0.ctx;
 
         self.0.num_verticies = vertices.len();
 
@@ -129,11 +125,11 @@ pub fn shader_system(ctx: &WebGl2RenderingContext) -> ShaderSystem {
 pub struct ShaderSystem {
     circle_program: CircleProgram,
     square_program: CircleProgram,
-    ctx:WebGl2RenderingContext
+    ctx: WebGl2RenderingContext,
 }
 
-impl Drop for ShaderSystem{
-    fn drop(&mut self){
+impl Drop for ShaderSystem {
+    fn drop(&mut self) {
         self.ctx.delete_program(Some(&self.circle_program.program));
         self.ctx.delete_program(Some(&self.square_program.program));
     }
@@ -147,7 +143,7 @@ impl ShaderSystem {
         Ok(ShaderSystem {
             circle_program,
             square_program,
-            ctx:ctx.clone()
+            ctx: ctx.clone(),
         })
     }
     fn draw(&mut self, args: Args) {
@@ -160,7 +156,7 @@ impl ShaderSystem {
             point_size,
         } = args;
 
-        assert_eq!(verts.ctx,self.ctx);
+        assert_eq!(verts.ctx, self.ctx);
 
         let scalex = 2.0 / game_dim[0];
         let scaley = 2.0 / game_dim[1];
@@ -212,7 +208,10 @@ impl ShaderSystem {
     }
 }
 
-pub fn line(buffer: &mut Vec<[f32; 2]>, radius: f32, start: [f32; 2], end: [f32; 2]) {
+pub fn line<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, end: K) {
+    let start = start.into();
+    let end = end.into();
+
     let offsetx = end[0] - start[0];
     let offsety = end[1] - start[1];
 
@@ -229,4 +228,16 @@ pub fn line(buffer: &mut Vec<[f32; 2]>, radius: f32, start: [f32; 2], end: [f32;
         let y = start[1] + (i as f32) * normy * radius;
         buffer.push([x, y]);
     }
+}
+
+pub fn rectangle<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, dim: K) {
+    use axgeom::*;
+
+    let start = Vec2::from(start.into());
+    let dim = Vec2::from(dim.into());
+
+    line(buffer, radius, start, start + vec2(dim.x, 0.0));
+    line(buffer, radius, start, start + vec2(0.0, dim.y));
+    line(buffer, radius, start + vec2(0.0, dim.y), start + dim);
+    line(buffer, radius, start + vec2(dim.x, 0.0), start + dim);
 }
