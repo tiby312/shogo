@@ -13,7 +13,6 @@ pub async fn start() {
         utils::get_element_by_id("shutdownbutton"),
     );
 
-
     let ctx = utils::get_context_webgl2(&canvas);
 
     let mut engine = shogo::engine(60);
@@ -35,12 +34,10 @@ pub async fn start() {
 
     let mut draw_sys = dots::shader_system(&ctx);
 
-    let walls=dots::buffer_static(&ctx,shogo::dots::rectangle(
-        &mut Vec::new(),
-        30.0,
-        [40.0, 40.0],
-        [800.0-80.0, 600.0-80.0],
-    ));
+    let walls = dots::buffer_static(
+        &ctx,
+        shogo::dots::rectangle(vec!(), 30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]),
+    );
 
     let mut buffer = dots::buffer_dynamic(&ctx);
 
