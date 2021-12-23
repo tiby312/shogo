@@ -13,7 +13,6 @@ pub async fn start() {
         utils::get_element_by_id("shutdownbutton"),
     );
 
-    let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
     let ctx = utils::get_context_webgl2(&canvas);
 
@@ -39,12 +38,11 @@ pub async fn start() {
     let walls = {
         let mut walls = dots::buffer_dynamic(&ctx);
         let mut foo = Vec::new();
-        let r = 50.0;
         shogo::dots::rectangle(
             &mut foo,
             30.0,
-            [r, r],
-            [game_dim[0] - r * 2.0, game_dim[1] - r * 2.0],
+            [40.0, 40.0],
+            [800.0-80.0, 600.0-80.0],
         );
         walls.update(&foo);
         walls
@@ -72,6 +70,7 @@ pub async fn start() {
         }
 
         let radius = 30.0;
+        let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
         shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, 0.0]);
