@@ -248,49 +248,46 @@ impl ShaderSystem {
     }
 }
 
-pub fn line<K: Into<[f32; 2]>>(
-    buffer: &mut Vec<[f32; 2]>,
-    radius: f32,
-    start: K,
-    end: K,
-) -> &mut Vec<[f32; 2]> {
-    let start = start.into();
-    let end = end.into();
+pub trait Shapes {
+    fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self;
 
-    let offsetx = end[0] - start[0];
-    let offsety = end[1] - start[1];
-
-    let dis_sqr = offsetx * offsetx + offsety * offsety;
-    let dis = dis_sqr.sqrt();
-
-    let normx = offsetx / dis;
-    let normy = offsety / dis;
-
-    let num = (dis / (radius)).floor() as usize;
-
-    for i in 0..num {
-        let x = start[0] + (i as f32) * normx * radius;
-        let y = start[1] + (i as f32) * normy * radius;
-        buffer.push([x, y]);
-    }
-    buffer
+    fn rectangle<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self;
 }
+impl Shapes for Vec<[f32; 2]> {
+    fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self {
+        let buffer = self;
+        let start = start.into();
+        let end = end.into();
 
-pub fn rectangle<J: AsMut<Vec<[f32; 2]>>, K: Into<[f32; 2]>>(
-    mut buffer2: J,
-    radius: f32,
-    start: K,
-    dim: K,
-) -> J {
-    use axgeom::*;
-    let buffer = buffer2.as_mut();
+        let offsetx = end[0] - start[0];
+        let offsety = end[1] - start[1];
 
-    let start = Vec2::from(start.into());
-    let dim = Vec2::from(dim.into());
+        let dis_sqr = offsetx * offsetx + offsety * offsety;
+        let dis = dis_sqr.sqrt();
 
-    line(buffer, radius, start, start + vec2(dim.x, 0.0));
-    line(buffer, radius, start, start + vec2(0.0, dim.y));
-    line(buffer, radius, start + vec2(0.0, dim.y), start + dim);
-    line(buffer, radius, start + vec2(dim.x, 0.0), start + dim);
-    buffer2
+        let normx = offsetx / dis;
+        let normy = offsety / dis;
+
+        let num = (dis / (radius)).floor() as usize;
+
+        for i in 0..num {
+            let x = start[0] + (i as f32) * normx * radius;
+            let y = start[1] + (i as f32) * normy * radius;
+            buffer.push([x, y]);
+        }
+        buffer
+    }
+
+    fn rectangle<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self {
+        let buffer = self;
+        use axgeom::*;
+        let start = Vec2::from(start.into());
+        let dim = Vec2::from(dim.into());
+
+        buffer.line(radius, start, start + vec2(dim.x, 0.0));
+        buffer.line(radius, start, start + vec2(0.0, dim.y));
+        buffer.line(radius, start + vec2(0.0, dim.y), start + dim);
+        buffer.line(radius, start + vec2(dim.x, 0.0), start + dim);
+        buffer
+    }
 }

@@ -1,7 +1,7 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
 
-use shogo::{dots, utils};
+use shogo::{dots, dots::Shapes, utils};
 
 #[wasm_bindgen(start)]
 pub async fn start() {
@@ -36,7 +36,7 @@ pub async fn start() {
 
     let walls = dots::buffer_static(
         &ctx,
-        shogo::dots::rectangle(vec!(), 30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]),
+        vec![].rectangle(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]),
     );
 
     let mut buffer = dots::buffer_dynamic(&ctx);
@@ -64,10 +64,10 @@ pub async fn start() {
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
-        shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, 0.0]);
-        shogo::dots::line(&mut verts, radius, mouse_pos, game_dim);
-        shogo::dots::line(&mut verts, radius, mouse_pos, [0.0, game_dim[1]]);
-        shogo::dots::line(&mut verts, radius, mouse_pos, [game_dim[0], 0.0]);
+        verts.line(radius, mouse_pos, [0.0, 0.0]);
+        verts.line(radius, mouse_pos, game_dim);
+        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
+        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
         buffer.update(&verts);
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
