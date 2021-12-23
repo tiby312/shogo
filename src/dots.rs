@@ -71,6 +71,39 @@ void main() {
 }
 "#;
 
+
+pub struct StaticBuffer(Buffer);
+
+impl std::ops::Deref for StaticBuffer {
+    type Target = Buffer;
+    fn deref(&self) -> &Buffer {
+        &self.0
+    }
+}
+
+impl StaticBuffer {
+    pub fn new(ctx: &WebGl2RenderingContext,vertices:&[[f32;2]]) -> Result<Self, String> {
+        let mut buffer=StaticBuffer(Buffer::new(ctx)?);
+
+        buffer.0.num_verticies = vertices.len();
+
+        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
+
+        let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
+        let points_buf: &[u8] =
+            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+
+        ctx.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::STATIC_DRAW,
+        );
+
+        Ok(buffer)
+    }
+}
+
+
 pub struct DynamicBuffer(Buffer);
 
 impl std::ops::Deref for DynamicBuffer {
@@ -116,6 +149,10 @@ use wasm_bindgen::prelude::*;
 
 pub fn buffer_dynamic(ctx: &WebGl2RenderingContext) -> DynamicBuffer {
     DynamicBuffer::new(ctx).unwrap_throw()
+}
+
+pub fn buffer_static(ctx: &WebGl2RenderingContext,verts:&[[f32;2]]) -> StaticBuffer {
+    StaticBuffer::new(ctx,verts).unwrap_throw()
 }
 
 pub fn shader_system(ctx: &WebGl2RenderingContext) -> ShaderSystem {
@@ -208,7 +245,7 @@ impl ShaderSystem {
     }
 }
 
-pub fn line<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, end: K) {
+pub fn line<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, end: K)->&mut Vec<[f32;2]> {
     let start = start.into();
     let end = end.into();
 
@@ -228,9 +265,10 @@ pub fn line<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K
         let y = start[1] + (i as f32) * normy * radius;
         buffer.push([x, y]);
     }
+    buffer
 }
 
-pub fn rectangle<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, dim: K) {
+pub fn rectangle<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, start: K, dim: K)->&mut Vec<[f32;2]> {
     use axgeom::*;
 
     let start = Vec2::from(start.into());
@@ -240,4 +278,5 @@ pub fn rectangle<K: Into<[f32; 2]>>(buffer: &mut Vec<[f32; 2]>, radius: f32, sta
     line(buffer, radius, start, start + vec2(0.0, dim.y));
     line(buffer, radius, start + vec2(0.0, dim.y), start + dim);
     line(buffer, radius, start + vec2(dim.x, 0.0), start + dim);
+    buffer
 }

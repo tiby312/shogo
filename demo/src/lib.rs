@@ -35,18 +35,12 @@ pub async fn start() {
 
     let mut draw_sys = dots::shader_system(&ctx);
 
-    let walls = {
-        let mut walls = dots::buffer_dynamic(&ctx);
-        let mut foo = Vec::new();
-        shogo::dots::rectangle(
-            &mut foo,
-            30.0,
-            [40.0, 40.0],
-            [800.0-80.0, 600.0-80.0],
-        );
-        walls.update(&foo);
-        walls
-    };
+    let walls=dots::buffer_static(&ctx,shogo::dots::rectangle(
+        &mut Vec::new(),
+        30.0,
+        [40.0, 40.0],
+        [800.0-80.0, 600.0-80.0],
+    ));
 
     let mut buffer = dots::buffer_dynamic(&ctx);
 
