@@ -150,16 +150,25 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
-pub fn buffer_dynamic(ctx: &WebGl2RenderingContext) -> DynamicBuffer {
-    DynamicBuffer::new(ctx).unwrap_throw()
+pub struct Pallet {
+    ctx: WebGl2RenderingContext,
+}
+impl Pallet {
+    pub fn buffer_dynamic(&self) -> DynamicBuffer {
+        DynamicBuffer::new(&self.ctx).unwrap_throw()
+    }
+
+    pub fn buffer_static(&self, verts: impl AsRef<[[f32; 2]]>) -> StaticBuffer {
+        StaticBuffer::new(&self.ctx, verts).unwrap_throw()
+    }
+
+    pub fn shader_system(&self) -> ShaderSystem {
+        ShaderSystem::new(&self.ctx).unwrap_throw()
+    }
 }
 
-pub fn buffer_static(ctx: &WebGl2RenderingContext, verts: impl AsRef<[[f32; 2]]>) -> StaticBuffer {
-    StaticBuffer::new(ctx, verts).unwrap_throw()
-}
-
-pub fn shader_system(ctx: &WebGl2RenderingContext) -> ShaderSystem {
-    ShaderSystem::new(ctx).unwrap_throw()
+pub fn pallet(ctx: &WebGl2RenderingContext) -> Pallet {
+    Pallet { ctx: ctx.clone() }
 }
 
 pub struct ShaderSystem {

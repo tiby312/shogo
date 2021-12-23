@@ -1,7 +1,7 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
 
-use shogo::{dots, dots::Shapes, utils};
+use shogo::{dots::Shapes, utils};
 
 #[wasm_bindgen(start)]
 pub async fn start() {
@@ -32,14 +32,11 @@ pub async fn start() {
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let mut draw_sys = dots::shader_system(&ctx);
-
-    let walls = dots::buffer_static(
-        &ctx,
-        vec![].rectangle(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]),
-    );
-
-    let mut buffer = dots::buffer_dynamic(&ctx);
+    let pallet = shogo::dots::pallet(&ctx);
+    let mut draw_sys = pallet.shader_system();
+    let walls =
+        pallet.buffer_static(vec![].rectangle(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]));
+    let mut buffer = pallet.buffer_dynamic();
 
     let mut verts = Vec::new();
     'outer: loop {
