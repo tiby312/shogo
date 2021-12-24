@@ -263,24 +263,21 @@ pub trait Shapes {
 impl Shapes for Vec<[f32; 2]> {
     fn line(&mut self, radius: f32, start: impl Into<[f32;2]>, end: impl Into<[f32;2]>) -> &mut Self {
         let buffer = self;
-        let start = start.into();
-        let end = end.into();
+        use axgeom::*;
+        let start = Vec2::from(start.into());
+        let end = Vec2::from(end.into());
 
-        let offsetx = end[0] - start[0];
-        let offsety = end[1] - start[1];
-
-        let dis_sqr = offsetx * offsetx + offsety * offsety;
+        let offset=end-start;
+        let dis_sqr=offset.magnitude2();
         let dis = dis_sqr.sqrt();
 
-        let normx = offsetx / dis;
-        let normy = offsety / dis;
+        let norm=offset/dis;
 
         let num = (dis / (radius)).floor() as usize;
 
         for i in 0..num {
-            let x = start[0] + (i as f32) * normx * radius;
-            let y = start[1] + (i as f32) * normy * radius;
-            buffer.push([x, y]);
+            let pos=start+norm*(i as f32)*radius;
+            buffer.push(pos.into());
         }
         buffer
     }
