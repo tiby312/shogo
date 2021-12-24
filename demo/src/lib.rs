@@ -31,9 +31,8 @@ pub async fn start() {
         [0.0, 0.0, 1.0, 0.5],
     ]
     .into_iter()
-    .cycle();
-
-    let mut current_color = color_iter.next().unwrap_throw();
+    .cycle()
+    .peekable();
 
     let mut draw_sys = ctx.shader_system();
     let mut buffer = ctx.buffer_dynamic();
@@ -45,7 +44,7 @@ pub async fn start() {
             match res.event {
                 shogo::Event::MouseClick(_mouse) => {
                     if res.element == button {
-                        current_color = color_iter.next().unwrap_throw();
+                        let _ = color_iter.next().unwrap_throw();
                     } else if res.element == shutdown_button {
                         break 'outer;
                     }
@@ -73,7 +72,13 @@ pub async fn start() {
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        draw_sys.draw_circles(&buffer, game_dim, &current_color, &[0.0, 0.0], radius);
+        draw_sys.draw_circles(
+            &buffer,
+            game_dim,
+            color_iter.peek().unwrap_throw(),
+            &[0.0, 0.0],
+            radius,
+        );
         draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], &[0.0, 0.0], radius);
     }
 
