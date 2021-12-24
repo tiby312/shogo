@@ -142,7 +142,7 @@ struct Args<'a> {
     pub game_dim: [f32; 2],
     pub as_square: bool,
     pub color: &'a [f32; 4],
-    pub offset: &'a [f32; 2],
+    pub offset:  [f32; 2],
     pub point_size: f32,
 }
 
@@ -214,54 +214,54 @@ impl ShaderSystem {
 
         if as_square {
             self.square_program
-                .draw(verts, *offset, &matrix, point_size, color);
+                .draw(verts, offset, &matrix, point_size, color);
         } else {
             self.circle_program
-                .draw(verts, *offset, &matrix, point_size, color);
+                .draw(verts, offset, &matrix, point_size, color);
         };
     }
     pub fn draw_circles(
         &mut self,
         verts: &Buffer,
-        game_dim: [f32; 2],
+        game_dim: impl Into<[f32; 2]>,
         color: &[f32; 4],
-        offset: &[f32; 2],
+        offset: impl Into<[f32; 2]>,
         point_size: f32,
     ) {
         self.draw(Args {
             verts,
-            game_dim,
+            game_dim:game_dim.into(),
             as_square: false,
             color,
-            offset,
+            offset:offset.into(),
             point_size,
         })
     }
     pub fn draw_squares(
         &mut self,
         verts: &Buffer,
-        game_dim: [f32; 2],
+        game_dim: impl Into<[f32; 2]>,
         color: &[f32; 4],
-        offset: &[f32; 2],
+        offset: impl Into<[f32; 2]>,
         point_size: f32,
     ) {
         self.draw(Args {
             verts,
-            game_dim,
+            game_dim:game_dim.into(),
             as_square: true,
             color,
-            offset,
+            offset:offset.into(),
             point_size,
         })
     }
 }
 
 pub trait Shapes {
-    fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self;
-    fn rect<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self;
+    fn line(&mut self, radius: f32, start: impl Into<[f32;2]>, end: impl Into<[f32;2]>) -> &mut Self;
+    fn rect(&mut self, radius: f32, start: impl Into<[f32;2]>, dim: impl Into<[f32;2]>) -> &mut Self;
 }
 impl Shapes for Vec<[f32; 2]> {
-    fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self {
+    fn line(&mut self, radius: f32, start: impl Into<[f32;2]>, end: impl Into<[f32;2]>) -> &mut Self {
         let buffer = self;
         let start = start.into();
         let end = end.into();
@@ -285,7 +285,7 @@ impl Shapes for Vec<[f32; 2]> {
         buffer
     }
 
-    fn rect<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self {
+    fn rect(&mut self, radius: f32, start: impl Into<[f32;2]>, dim: impl Into<[f32;2]>) -> &mut Self {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());

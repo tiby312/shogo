@@ -77,10 +77,16 @@ pub async fn start() {
             &buffer,
             game_dim,
             color_iter.peek().unwrap_throw(),
-            &[0.0, 0.0],
+            [0.0, 0.0],
             radius,
         );
-        draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], &[0.0, 0.0], radius);
+        draw_sys.draw_squares(
+            &walls,
+            game_dim,
+            &[1.0, 1.0, 1.0, 0.2],
+            [0.0, 0.0],
+            radius,
+        );
     }
 
     log!("all done!");
