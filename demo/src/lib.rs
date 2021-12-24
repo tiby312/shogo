@@ -50,6 +50,8 @@ pub async fn start() {
                         let _ = color_iter.next().unwrap_throw();
                     } else if res.element == shutdown_button {
                         break 'outer;
+                    } else {
+                        unreachable!();
                     }
                 }
                 shogo::Event::MouseMove(mouse) => {
@@ -80,13 +82,7 @@ pub async fn start() {
             [0.0, 0.0],
             radius,
         );
-        draw_sys.draw_squares(
-            &walls,
-            game_dim,
-            &[1.0, 1.0, 1.0, 0.2],
-            [0.0, 0.0],
-            radius,
-        );
+        draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], [0.0, 0.0], radius);
     }
 
     log!("all done!");
