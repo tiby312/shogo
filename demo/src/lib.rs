@@ -1,7 +1,10 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
 
-use shogo::{dots::Shapes, utils};
+use shogo::{
+    dots::{CtxExt, Shapes},
+    utils,
+};
 
 #[wasm_bindgen(start)]
 pub async fn start() {
@@ -23,22 +26,20 @@ pub async fn start() {
 
     let mut mouse_pos = [0.0f32; 2];
     let mut color_iter = [
-        [1.0, 0.0, 0.0, 1.0],
-        [0.0, 1.0, 0.0, 1.0],
-        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 0.0, 0.0, 0.5],
+        [0.0, 1.0, 0.0, 0.5],
+        [0.0, 0.0, 1.0, 0.5],
     ]
     .into_iter()
     .cycle();
 
     let mut current_color = color_iter.next().unwrap_throw();
 
-    let pallet = shogo::dots::pallet(&ctx);
-    let mut draw_sys = pallet.shader_system();
-    let walls =
-        pallet.buffer_static(vec![].rectangle(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]));
-    let mut buffer = pallet.buffer_dynamic();
+    let mut draw_sys = ctx.shader_system();
+    let mut buffer = ctx.buffer_dynamic();
+    let walls = ctx.buffer_static(vec![].rect(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]));
 
-    let mut verts = Vec::new();
+    let mut verts = vec![];
     'outer: loop {
         for res in engine.next().await.events {
             match res.event {
@@ -61,17 +62,19 @@ pub async fn start() {
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
-        verts.line(radius, mouse_pos, [0.0, 0.0]);
-        verts.line(radius, mouse_pos, game_dim);
-        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
+        verts
+            .line(radius, mouse_pos, [0.0, 0.0])
+            .line(radius, mouse_pos, game_dim)
+            .line(radius, mouse_pos, [0.0, game_dim[1]])
+            .line(radius, mouse_pos, [game_dim[0], 0.0]);
+
         buffer.update(&verts);
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        draw_sys.draw_circles(&walls, game_dim, &[1.0, 1.0, 1.0, 1.0], &[0.0, 0.0], radius);
         draw_sys.draw_circles(&buffer, game_dim, &current_color, &[0.0, 0.0], radius);
+        draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], &[0.0, 0.0], radius);
     }
 
     log!("all done!");

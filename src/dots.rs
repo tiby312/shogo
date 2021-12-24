@@ -150,26 +150,27 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
-pub struct Pallet {
-    ctx: WebGl2RenderingContext,
-}
-impl Pallet {
-    pub fn buffer_dynamic(&self) -> DynamicBuffer {
-        DynamicBuffer::new(&self.ctx).unwrap_throw()
-    }
 
-    pub fn buffer_static(&self, verts: impl AsRef<[[f32; 2]]>) -> StaticBuffer {
-        StaticBuffer::new(&self.ctx, verts).unwrap_throw()
+pub trait CtxExt{
+    fn buffer_dynamic(&self)->DynamicBuffer;
+    fn buffer_static(&self,a:impl AsRef<[[f32; 2]]>)->StaticBuffer;
+    fn shader_system(&self)->ShaderSystem;
+}
+impl CtxExt for WebGl2RenderingContext{
+    fn buffer_dynamic(&self)->DynamicBuffer{
+        DynamicBuffer::new(self).unwrap_throw()
     }
-
-    pub fn shader_system(&self) -> ShaderSystem {
-        ShaderSystem::new(&self.ctx).unwrap_throw()
+    fn buffer_static(&self,a:impl AsRef<[[f32; 2]]>)->StaticBuffer{
+        StaticBuffer::new(self,a).unwrap_throw()
+    }
+    fn shader_system(&self)->ShaderSystem{
+        ShaderSystem::new(self).unwrap_throw()
     }
 }
 
-pub fn pallet(ctx: &WebGl2RenderingContext) -> Pallet {
-    Pallet { ctx: ctx.clone() }
-}
+
+
+
 
 pub struct ShaderSystem {
     circle_program: CircleProgram,
@@ -259,8 +260,7 @@ impl ShaderSystem {
 
 pub trait Shapes {
     fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self;
-
-    fn rectangle<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self;
+    fn rect<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self;
 }
 impl Shapes for Vec<[f32; 2]> {
     fn line<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, end: K) -> &mut Self {
@@ -287,7 +287,7 @@ impl Shapes for Vec<[f32; 2]> {
         buffer
     }
 
-    fn rectangle<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self {
+    fn rect<K: Into<[f32; 2]>>(&mut self, radius: f32, start: K, dim: K) -> &mut Self {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());

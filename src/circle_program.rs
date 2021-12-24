@@ -38,14 +38,22 @@ impl CircleProgram {
 
         let context = &buffer.ctx;
 
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
 
         context.use_program(Some(&self.program));
+
+        
+        context.disable(WebGl2RenderingContext::DEPTH_TEST);
+        context.enable(WebGl2RenderingContext::BLEND);
+        context.blend_func(WebGl2RenderingContext::SRC_ALPHA, WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA);
+
 
         context.uniform2f(Some(&self.offset), offset[0], offset[1]);
         context.uniform1f(Some(&self.point_size), point_size);
         context.uniform4fv_with_f32_array(Some(&self.bg), color);
+
         context.uniform_matrix3fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
 
         context.vertex_attrib_pointer_with_i32(
             self.position as u32,
@@ -89,6 +97,9 @@ impl CircleProgram {
             return Err("attribute err".to_string());
         }
         let position = position as u32;
+
+
+
 
         Ok(CircleProgram {
             program,
