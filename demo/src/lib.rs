@@ -11,9 +11,9 @@ pub async fn start() {
     log!("demo start!");
 
     let (canvas, button, shutdown_button) = (
-        utils::get_canvas_by_id("mycanvas"),
-        utils::get_element_by_id("mybutton"),
-        utils::get_element_by_id("shutdownbutton"),
+        utils::get_by_id_canvas("mycanvas"),
+        utils::get_by_id_elem("mybutton"),
+        utils::get_by_id_elem("shutdownbutton"),
     );
 
     let ctx = utils::get_context_webgl2(&canvas);

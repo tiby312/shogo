@@ -9,7 +9,7 @@ pub mod dots;
 
 pub mod utils {
     use super::*;
-    pub fn get_canvas_by_id(id: &str) -> web_sys::HtmlCanvasElement {
+    pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
         gloo::utils::document()
             .get_element_by_id(id)
             .unwrap_throw()
@@ -38,7 +38,7 @@ pub mod utils {
             .unwrap_throw()
     }
 
-    pub fn get_element_by_id(id: &str) -> web_sys::HtmlElement {
+    pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
         gloo::utils::document()
             .get_element_by_id(id)
             .unwrap_throw()
