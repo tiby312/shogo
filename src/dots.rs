@@ -83,11 +83,9 @@ impl std::ops::Deref for StaticBuffer {
 impl StaticBuffer {
     pub fn new(
         ctx: &WebGl2RenderingContext,
-        vertices: impl AsRef<[[f32; 2]]>,
+        vertices: &[[f32; 2]],
     ) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
-
-        let vertices = vertices.as_ref();
 
         buffer.0.num_verticies = vertices.len();
 
@@ -153,14 +151,14 @@ use wasm_bindgen::prelude::*;
 
 pub trait CtxExt{
     fn buffer_dynamic(&self)->DynamicBuffer;
-    fn buffer_static(&self,a:impl AsRef<[[f32; 2]]>)->StaticBuffer;
+    fn buffer_static(&self,a:&[[f32; 2]])->StaticBuffer;
     fn shader_system(&self)->ShaderSystem;
 }
 impl CtxExt for WebGl2RenderingContext{
     fn buffer_dynamic(&self)->DynamicBuffer{
         DynamicBuffer::new(self).unwrap_throw()
     }
-    fn buffer_static(&self,a:impl AsRef<[[f32; 2]]>)->StaticBuffer{
+    fn buffer_static(&self,a:&[[f32; 2]])->StaticBuffer{
         StaticBuffer::new(self,a).unwrap_throw()
     }
     fn shader_system(&self)->ShaderSystem{

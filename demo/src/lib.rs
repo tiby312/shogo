@@ -25,18 +25,21 @@ pub async fn start() {
     let _handle = engine.add_click(&shutdown_button);
 
     let mut mouse_pos = [0.0f32; 2];
-    let mut color_iter = [
-        [1.0, 0.0, 0.0, 0.5],
-        [0.0, 1.0, 0.0, 0.5],
-        [0.0, 0.0, 1.0, 0.5],
-    ]
-    .into_iter()
-    .cycle()
-    .peekable();
 
-    let mut draw_sys = ctx.shader_system();
-    let mut buffer = ctx.buffer_dynamic();
-    let walls = ctx.buffer_static(vec![].rect(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0]));
+    let mut color_iter = {
+        let colors = [
+            [1.0, 0.0, 0.0, 0.5],
+            [0.0, 1.0, 0.0, 0.5],
+            [0.0, 0.0, 1.0, 0.5],
+        ];
+        colors.into_iter().cycle().peekable()
+    };
+
+    let (mut draw_sys, mut buffer, walls) = (
+        ctx.shader_system(),
+        ctx.buffer_dynamic(),
+        ctx.buffer_static(vec![].rect(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0])),
+    );
 
     let mut verts = vec![];
     'outer: loop {
@@ -61,12 +64,10 @@ pub async fn start() {
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
-        verts
-            .line(radius, mouse_pos, [0.0, 0.0])
-            .line(radius, mouse_pos, game_dim)
-            .line(radius, mouse_pos, [0.0, game_dim[1]])
-            .line(radius, mouse_pos, [game_dim[0], 0.0]);
-
+        verts.line(radius, mouse_pos, [0.0, 0.0]);
+        verts.line(radius, mouse_pos, game_dim);
+        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
+        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
         buffer.update(&verts);
 
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);

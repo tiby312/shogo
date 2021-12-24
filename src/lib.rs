@@ -200,10 +200,10 @@ impl Engine {
 
     pub fn add_click(
         &mut self,
-        elem: impl AsRef<web_sys::HtmlElement>,
+        elem: &web_sys::HtmlElement,
     ) -> gloo::events::EventListener {
         let sender = self.events.clone();
-        let elem = elem.as_ref().clone();
+        let elem = elem.clone();
         let elem2 = elem.clone();
         EventListener::new(&elem, "click", move |event| {
             let event = event
@@ -221,10 +221,10 @@ impl Engine {
 
     pub fn add_mousemove(
         &mut self,
-        elem: impl AsRef<web_sys::HtmlElement>,
+        elem: &web_sys::HtmlElement,
     ) -> gloo::events::EventListener {
         let sender = self.events.clone();
-        let elem = elem.as_ref().clone();
+        let elem = elem.clone();
         let elem2 = elem.clone();
         EventListener::new(&elem, "mousemove", move |event| {
             let event = event
