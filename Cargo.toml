@@ -24,6 +24,7 @@ features=[
 [dependencies.web-sys]
 version = "0.3"
 features = [
+  'DedicatedWorkerGlobalScope',
   'Worker',
   'WorkerOptions',
   'WorkerType',

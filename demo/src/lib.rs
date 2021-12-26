@@ -13,7 +13,12 @@ pub async fn init_module(){
 
 #[wasm_bindgen]
 pub async fn worker_entry(){
-    log!("i'm in a worker!");
+    log!("i'm in a worker2!");
+    log!("global=",js_sys::global());
+    use wasm_bindgen::JsCast;
+    let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
+    scope.post_message(&JsValue::from_str("hello")).unwrap_throw();
+
 }
 #[wasm_bindgen]
 pub async fn main_entry() {
@@ -26,6 +31,10 @@ pub async fn main_entry() {
     options.type_(web_sys::WorkerType::Module);
     let worker_handle = Rc::new(RefCell::new(Worker::new_with_options("./worker.js",&options).unwrap()));
     
+
+    let _handle=gloo::events::EventListener::new(&worker_handle.borrow(), "message", move |_event| {
+        log!("worker sent a message!",_event);
+    });
 
 
     
