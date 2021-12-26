@@ -24,6 +24,9 @@ features=[
 [dependencies.web-sys]
 version = "0.3"
 features = [
+  'Worker',
+  'WorkerOptions',
+  'WorkerType',
   'DomRect',
   'CanvasRenderingContext2d',
   'MouseEvent',
@@ -33,7 +36,7 @@ features = [
   'Element',
   'HtmlCanvasElement',
   'KeyboardEvent',
-  'Window',
+  
   'WebGlBuffer',
   'WebGlVertexArrayObject',
   'WebGl2RenderingContext',

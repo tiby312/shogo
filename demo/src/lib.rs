@@ -7,8 +7,28 @@ use shogo::{
 };
 
 #[wasm_bindgen(start)]
-pub async fn start() {
+pub async fn init_module(){
+    log!("initing a module");
+}
+
+#[wasm_bindgen]
+pub async fn worker_entry(){
+    log!("i'm in a worker!");
+}
+#[wasm_bindgen]
+pub async fn main_entry() {
     log!("demo start!");
+    
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use web_sys::Worker;
+    let mut options=web_sys::WorkerOptions::new();
+    options.type_(web_sys::WorkerType::Module);
+    let worker_handle = Rc::new(RefCell::new(Worker::new_with_options("./worker.js",&options).unwrap()));
+    
+
+
+    
 
     let (canvas, button, shutdown_button) = (
         utils::get_by_id_canvas("mycanvas"),
@@ -86,6 +106,7 @@ pub async fn start() {
     }
 
     log!("all done!");
+    
 }
 
 fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
