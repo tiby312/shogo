@@ -11,15 +11,71 @@ pub async fn init_module(){
     log!("initing a module");
 }
 
-#[wasm_bindgen]
-pub async fn worker_entry(){
-    log!("i'm in a worker2!");
-    log!("global=",js_sys::global());
-    use wasm_bindgen::JsCast;
+
+/*
+///Call from worker.
+pub fn register_click(foo:F,elem:&HtmlElement)
+{
+    
     let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
-    scope.post_message(&JsValue::from_str("hello")).unwrap_throw();
+    
+    let foo=Closure::once_into_js(foo);
+
+    let k:&js_sys::Object=foo.dyn_ref().unwrap_throw();
+
+    log!(k.to_string());
+    
+    let arr=js_sys::Array::new_with_length(1);
+    arr.set(0,foo);
+
+    let blob=web_sys::Blob::new_with_buffer_source_sequence(&arr).unwrap_throw();
+
+    let s:js_sys::JsString=blob.to_string();
+    log!("logged closure");
+    scope.post_message(&s).unwrap_throw();
+
 
 }
+*/
+
+use wasm_bindgen::JsCast;
+    
+
+#[wasm_bindgen]
+pub async fn worker_entry(){
+    //log!("i'm in a worker2!");
+    //log!("global=",js_sys::global());
+    let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
+    
+    let arr=js_sys::Array::new_with_length(2);
+    arr.set(0,JsValue::from_str("hello"));
+    arr.set(1,JsValue::from(5u32));
+    scope.post_message(&arr).unwrap_throw();
+
+    let _handle=shogo::events::EventListener::new(&scope, "message", move |event| {
+        let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+        let data=event.data();
+        let arr=data.dyn_ref::<js_sys::Array>().unwrap_throw();
+        let s:js_sys::JsString=arr.get(0).dyn_into().unwrap_throw();
+        let s:String=s.into();
+
+        log!(s);
+        
+        use wasm_bindgen::JsCast;
+
+    });
+
+
+
+    let mut timer=shogo::Timer::new(30);
+    loop{
+        timer.next().await;
+
+    }
+
+}
+
+
 #[wasm_bindgen]
 pub async fn main_entry() {
     log!("demo start!");
@@ -32,8 +88,33 @@ pub async fn main_entry() {
     let worker_handle = Rc::new(RefCell::new(Worker::new_with_options("./worker.js",&options).unwrap()));
     
 
-    let _handle=gloo::events::EventListener::new(&worker_handle.borrow(), "message", move |_event| {
-        log!("worker sent a message!",_event);
+    let _handle=gloo::events::EventListener::new(&worker_handle.borrow(), "message", move |event| {
+        let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+        
+        let data=event.data();
+        let arr=data.dyn_ref::<js_sys::Array>().unwrap_throw();
+
+        let s:js_sys::JsString=arr.get(0).dyn_into().unwrap_throw();
+        let s:String=s.into();
+
+        log!(s);
+
+        //log!("main got messaage!!!");
+        
+        use wasm_bindgen::JsCast;
+
+
+
+        /*
+        //if even.is_instance_of::<js_sys::Function>(){
+            log!("main entry:got function!");
+            
+            let k:js_sys::Function=event.data().dyn_into().unwrap_throw();
+            k.call0(&wasm_bindgen::JsValue::null());
+            log!("main entry:finished calling function");
+            
+        //}
+        */
     });
 
 

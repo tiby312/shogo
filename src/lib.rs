@@ -122,12 +122,12 @@ pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
-struct Timer {
+pub struct Timer {
     last: f64,
     frame_rate: usize,
 }
 impl Timer {
-    fn new(frame_rate: usize) -> Timer {
+    pub fn new(frame_rate: usize) -> Timer {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         assert!(frame_rate > 0);
@@ -140,7 +140,7 @@ impl Timer {
         }
     }
 
-    async fn next(&mut self) {
+    pub async fn next(&mut self) {
         let window = gloo::utils::window();
         let performance = window.performance().unwrap_throw();
 
