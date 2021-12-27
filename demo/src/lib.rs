@@ -52,14 +52,16 @@ pub async fn worker_entry(){
     arr.set(1,JsValue::from(5u32));
     scope.post_message(&arr).unwrap_throw();
 
-    let _handle=shogo::events::EventListener::new(&scope, "message", move |event| {
+    let messages=std::rc::Rc::new(std::cell::RefCell::new(vec!()));
+    let m=messages.clone();
+    let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
         let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
         let data=event.data();
         let arr=data.dyn_ref::<js_sys::Array>().unwrap_throw();
         let s:js_sys::JsString=arr.get(0).dyn_into().unwrap_throw();
         let s:String=s.into();
 
-        log!(s);
+        messages.borrow_mut().push(s);
         
         use wasm_bindgen::JsCast;
 
@@ -70,6 +72,9 @@ pub async fn worker_entry(){
     let mut timer=shogo::Timer::new(30);
     loop{
         timer.next().await;
+
+        let a:Vec<_>=m.borrow_mut().clone();
+        
 
     }
 
