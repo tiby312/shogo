@@ -43,18 +43,26 @@ use wasm_bindgen::JsCast;
 
 #[wasm_bindgen]
 pub async fn worker_entry(){
+
+    
     //log!("i'm in a worker2!");
     //log!("global=",js_sys::global());
     let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
-    
+
+    /*
     let arr=js_sys::Array::new_with_length(2);
     arr.set(0,JsValue::from_str("hello"));
     arr.set(1,JsValue::from(5u32));
     scope.post_message(&arr).unwrap_throw();
+    */
+    //let messages=std::rc::Rc::new(std::cell::RefCell::new(vec!()));
+    //let m=messages.clone();
+    
+    use gloo::timers::future::TimeoutFuture;
 
-    let messages=std::rc::Rc::new(std::cell::RefCell::new(vec!()));
-    let m=messages.clone();
+    
     let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
+        /*
         let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
         let data=event.data();
         let arr=data.dyn_ref::<js_sys::Array>().unwrap_throw();
@@ -64,16 +72,17 @@ pub async fn worker_entry(){
         messages.borrow_mut().push(s);
         
         use wasm_bindgen::JsCast;
-
+        */
+        log!(event);
     });
 
 
 
-    let mut timer=shogo::Timer::new(30);
     loop{
-        timer.next().await;
+        TimeoutFuture::new(500).await;
 
-        let a:Vec<_>=m.borrow_mut().clone();
+
+        //let a:Vec<_>=m.borrow_mut().clone();
         
 
     }
@@ -92,8 +101,10 @@ pub async fn main_entry() {
     options.type_(web_sys::WorkerType::Module);
     let worker_handle = Rc::new(RefCell::new(Worker::new_with_options("./worker.js",&options).unwrap()));
     
-
+    /*
     let _handle=gloo::events::EventListener::new(&worker_handle.borrow(), "message", move |event| {
+        log!(event);
+        /*
         let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
         
         let data=event.data();
@@ -107,7 +118,7 @@ pub async fn main_entry() {
         //log!("main got messaage!!!");
         
         use wasm_bindgen::JsCast;
-
+        */
 
 
         /*
@@ -121,7 +132,7 @@ pub async fn main_entry() {
         //}
         */
     });
-
+    */
 
     
 
@@ -138,6 +149,15 @@ pub async fn main_entry() {
     let _handle = engine.add_mousemove(&canvas);
     let _handle = engine.add_click(&button);
     let _handle = engine.add_click(&shutdown_button);
+
+    let w=worker_handle.clone();
+    let _handle=gloo::events::EventListener::new(&canvas, "mousemove", move |event| {
+        log!(event);
+        //w.borrow_mut().post_message(event).unwrap_throw();
+
+    });
+
+
 
     let mut mouse_pos = [0.0f32; 2];
 
