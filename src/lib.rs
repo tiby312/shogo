@@ -122,6 +122,17 @@ pub fn engine(frame_rate: usize) -> Engine {
     Engine::new(frame_rate)
 }
 
+
+
+
+#[wasm_bindgen]
+extern "C" {
+    #[no_mangle]
+    #[used]
+    static performance:web_sys::Performance;
+}
+
+
 pub struct Timer {
     last: f64,
     frame_rate: usize,
@@ -131,8 +142,8 @@ impl Timer {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         assert!(frame_rate > 0);
-        let window = gloo::utils::window();
-        let performance = window.performance().unwrap_throw();
+        //let window = gloo::utils::window();
+        //let performance = window.performance().unwrap_throw();
 
         Timer {
             last: performance.now(),
@@ -141,8 +152,8 @@ impl Timer {
     }
 
     pub async fn next(&mut self) {
-        let window = gloo::utils::window();
-        let performance = window.performance().unwrap_throw();
+        //let window = gloo::utils::window();
+        //let performance = window.performance().unwrap_throw();
 
         let tt = performance.now();
         let diff = performance.now() - self.last;

@@ -41,6 +41,8 @@ pub fn register_click(foo:F,elem:&HtmlElement)
 use wasm_bindgen::JsCast;
     
 
+
+
 #[wasm_bindgen]
 pub async fn worker_entry(){
 
@@ -77,13 +79,11 @@ pub async fn worker_entry(){
     });
 
 
-
+    let mut timer=shogo::Timer::new(30);
     loop{
-        TimeoutFuture::new(500).await;
+        timer.next().await;
+        log!("next");
 
-
-        //let a:Vec<_>=m.borrow_mut().clone();
-        
 
     }
 
