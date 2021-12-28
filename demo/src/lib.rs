@@ -79,10 +79,29 @@ mod main{
             let mut options=web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(web_sys::Worker::new_with_options("./worker.js",&options).unwrap()));
+            
 
+            
+            use futures::SinkExt;
+            use futures::StreamExt;
+
+            {
+                let (fs,mut fr)=futures::channel::oneshot::channel();
+                let mut fs=Some(fs);
+
+                let _handle=gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+                    log!("main:worker is ready!");
+                    if let Some(f)=fs.take(){
+                        f.send(()).unwrap_throw();
+                    }
+                });
+
+                let _ =fr.await.unwrap_throw();
+            }
+            log!("main:continuing");
 
             //TODO fix
-            TimeoutFuture::new(100).await;
+            //TimeoutFuture::new(100).await;
 
             let arr=js_sys::Array::new_with_length(1);
             arr.set(0,canvas.clone().into());
@@ -143,16 +162,19 @@ mod worker{
         pub async fn new(time:usize)->WorkerHandler{
             let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
         
+
             let queue:Rc<RefCell<Vec<MEvent>>>=std::rc::Rc::new(std::cell::RefCell::new(vec![]));
 
             let ca:Rc<RefCell<Option<web_sys::OffscreenCanvas>>>=std::rc::Rc::new(std::cell::RefCell::new(None));
 
-            let (fs,mut fr)=futures::channel::mpsc::channel(1);
+            let (fs,mut fr)=futures::channel::oneshot::channel();
+            let mut fs=Some(fs);
 
-            let fs=Rc::new(RefCell::new(fs));
             let caa=ca.clone();
             let q=queue.clone();
-            let mut first_canvas=false;
+            
+            
+            
             let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 log!(event);
@@ -168,11 +190,10 @@ mod worker{
                     q.borrow_mut().push(e);
                 }else if data.is_instance_of::<web_sys::OffscreenCanvas>(){
                     
-                    if !first_canvas{
-                        use futures::SinkExt;
-                        fs.borrow_mut().send(());
-                        first_canvas=true;
+                    if let Some(fs)=fs.take(){
+                        fs.send(()).unwrap_throw();
                     }
+
                     log!("got offscreen canvas!");
                     let data=data.dyn_into().unwrap_throw();
                     *caa.borrow_mut()=Some(data);
@@ -180,9 +201,14 @@ mod worker{
                     log!("got something unexpected!");
                 }
             });
+            
+
+            log!("workering:posting ready message!");
+            scope.post_message(&JsValue::from_str("ready")).unwrap_throw();
+
 
             use futures::StreamExt;
-            fr.next().await;
+            fr.await.unwrap_throw();
 
 
             WorkerHandler{
@@ -208,6 +234,8 @@ mod worker{
 
 #[wasm_bindgen]
 pub async fn worker_entry(){
+    let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
+
 
     let mut w=worker::WorkerHandler::new(30).await;
 
