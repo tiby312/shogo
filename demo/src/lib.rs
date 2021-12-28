@@ -44,11 +44,11 @@ use wasm_bindgen::JsCast;
 
 
 #[derive(Debug, Clone)]
-pub enum Event {
+pub enum MEvent {
     MouseMove{elem:arrayvec::ArrayString<30>,client_x:f64,client_y:f64},
 }
 
-impl Event{
+impl MEvent{
     fn into_js(self)->js_sys::Uint8Array{
         let l=std::mem::size_of::<Self>();
         let arr:&[u8]=unsafe{std::slice::from_raw_parts(&self as *const _ as *const _,l)};
@@ -56,8 +56,8 @@ impl Event{
         buffer.copy_from(arr);
         buffer
     }
-    fn from_js(ar:&js_sys::Uint8Array)->Event{
-        let mut j:Event=unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+    fn from_js(ar:&js_sys::Uint8Array)->MEvent{
+        let mut j:MEvent=unsafe { std::mem::MaybeUninit::uninit().assume_init() };
         let l=std::mem::size_of::<Self>();
         let arr:&mut [u8]=unsafe{std::slice::from_raw_parts_mut (&mut j as *mut _ as *mut _,l)};
         ar.copy_to(arr);
@@ -66,74 +66,100 @@ impl Event{
 }
 
 
-fn register_mousemove_handler(worker:&std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,elem:&web_sys::HtmlCanvasElement)->gloo::events::EventListener{
-    let w=worker.clone();
+mod main{
+    use super::*;
+    pub struct WorkerInterface{
+        pub worker:std::rc::Rc<std::cell::RefCell<web_sys::Worker>>
+    }
 
-    let e=elem.clone();
-    gloo::events::EventListener::new(&elem, "mousemove", move |event| {
-        let event = event
-        .dyn_ref::<web_sys::MouseEvent>()
-        .unwrap_throw()
-        .clone();
+    impl WorkerInterface{
+        pub fn new()->Self{
+            let mut options=web_sys::WorkerOptions::new();
+            options.type_(web_sys::WorkerType::Module);
+            let worker = Rc::new(RefCell::new(web_sys::Worker::new_with_options("./worker.js",&options).unwrap()));
+            WorkerInterface{
+                worker
+            }
+        }
 
-        
-        let e=Event::MouseMove{
-            elem:arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
-            client_x:event.client_x() as f64,
-            client_y:event.client_y() as f64,
-        };
+        pub fn pass_offscreen_canvas(&mut self,canvas:web_sys::OffscreenCanvas){
+            unimplemented!();
+        }
 
-        let k=&e.into_js().buffer();
+        pub fn register_mousemove_handler(&mut self,elem:&web_sys::HtmlCanvasElement)->gloo::events::EventListener{
+            let w=self.worker.clone();
 
-        let arr=js_sys::Array::new_with_length(1);
-        arr.set(0,k.into());
-        w.borrow().post_message_with_transfer(k,&arr).unwrap_throw();
-    })
+            let e=elem.clone();
+            gloo::events::EventListener::new(&elem, "mousemove", move |event| {
+                let event = event
+                .dyn_ref::<web_sys::MouseEvent>()
+                .unwrap_throw()
+                .clone();
+
+                
+                let e=MEvent::MouseMove{
+                    elem:arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
+                    client_x:event.client_x() as f64,
+                    client_y:event.client_y() as f64,
+                };
+
+                let k=&e.into_js().buffer();
+
+                let arr=js_sys::Array::new_with_length(1);
+                arr.set(0,k.into());
+                w.borrow().post_message_with_transfer(k,&arr).unwrap_throw();
+            })
+        }
+    }
 }
+
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-struct WorkerHandler{
-    _handle:gloo::events::EventListener,
-    queue:Rc<RefCell<Vec<Event>>>,
-    buffer:Vec<Event>,
-    timer:shogo::Timer
-}
-
-impl WorkerHandler{
-    fn new(time:usize)->WorkerHandler{
-        let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
-    
-        let queue:Rc<RefCell<Vec<Event>>>=std::rc::Rc::new(std::cell::RefCell::new(vec![]));
-
-        let q=queue.clone();
-        let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
-            let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
-            log!(event);
-            let data=event.data();
-
-            
-            let data=data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
-            let data=js_sys::Uint8Array::new_with_byte_offset(data,0);
-
-            let e=Event::from_js(&data);
-
-            q.borrow_mut().push(e);
-        });
-
-        WorkerHandler{
-            _handle,
-            queue,
-            buffer:vec![],
-            timer:shogo::Timer::new(time)
-        }
+mod worker{
+    use super::*;
+    pub struct WorkerHandler{
+        _handle:gloo::events::EventListener,
+        queue:Rc<RefCell<Vec<MEvent>>>,
+        buffer:Vec<MEvent>,
+        timer:shogo::Timer
     }
-    async fn next(&mut self)->&[Event]{
-        self.timer.next().await;
-        self.buffer.clear();
-        self.buffer.append(&mut self.queue.borrow_mut());
-        &self.buffer
+
+    impl WorkerHandler{
+        pub fn new(time:usize)->WorkerHandler{
+            let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
+        
+            let queue:Rc<RefCell<Vec<MEvent>>>=std::rc::Rc::new(std::cell::RefCell::new(vec![]));
+
+            let q=queue.clone();
+            let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
+                let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+                log!(event);
+                let data=event.data();
+
+                
+                let data=data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
+                let data=js_sys::Uint8Array::new_with_byte_offset(data,0);
+
+                let e=MEvent::from_js(&data);
+
+                q.borrow_mut().push(e);
+            });
+
+            WorkerHandler{
+                _handle,
+                queue,
+                buffer:vec![],
+                timer:shogo::Timer::new(time)
+            }
+        }
+        pub async fn next(&mut self)->&[MEvent]{
+            self.timer.next().await;
+            self.buffer.clear();
+            self.buffer.append(&mut self.queue.borrow_mut());
+            &self.buffer
+        }
     }
 }
 
@@ -144,16 +170,12 @@ impl WorkerHandler{
 #[wasm_bindgen]
 pub async fn worker_entry(){
 
-    let foo=Closure::once_into_js(||log!("hayyy"));
-    let foo:&js_sys::Function=foo.as_ref().unchecked_ref();
-
-
-    let mut w=WorkerHandler::new(30);
+    let mut w=worker::WorkerHandler::new(30);
 
     loop{
         for e in w.next().await{
             match e{
-                Event::MouseMove{elem,client_x,client_y}=>{
+                MEvent::MouseMove{elem,client_x,client_y}=>{
                     gloo::console::console_dbg!(elem,client_x,client_y);
 
                     log!("got mouse move!")
@@ -216,9 +238,7 @@ pub async fn main_entry() {
     use std::cell::RefCell;
     use std::rc::Rc;
     use web_sys::Worker;
-    let mut options=web_sys::WorkerOptions::new();
-    options.type_(web_sys::WorkerType::Module);
-    let worker_handle = Rc::new(RefCell::new(Worker::new_with_options("./worker.js",&options).unwrap()));
+    
     
     /*
     let _handle=gloo::events::EventListener::new(&worker_handle.borrow(), "message", move |event| {
@@ -262,7 +282,10 @@ pub async fn main_entry() {
     );
 
 
-    let _handler=register_mousemove_handler(&worker_handle,&canvas);
+
+    let mut worker=main::WorkerInterface::new();
+
+    let _handler=worker.register_mousemove_handler(&canvas);
 
 
     let ctx = utils::get_context_webgl2(&canvas);
@@ -273,7 +296,6 @@ pub async fn main_entry() {
     let _handle = engine.add_click(&button);
     let _handle = engine.add_click(&shutdown_button);
 
-    let w=worker_handle.clone();
     
 
 
