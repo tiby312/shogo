@@ -125,7 +125,8 @@ mod worker{
         _handle:gloo::events::EventListener,
         queue:Rc<RefCell<Vec<MEvent>>>,
         buffer:Vec<MEvent>,
-        timer:shogo::Timer
+        timer:shogo::Timer,
+        canvas:Rc<RefCell<Option<web_sys::OffscreenCanvas>>>
     }
 
     impl WorkerHandler{
@@ -134,6 +135,9 @@ mod worker{
         
             let queue:Rc<RefCell<Vec<MEvent>>>=std::rc::Rc::new(std::cell::RefCell::new(vec![]));
 
+            let ca:Rc<RefCell<Option<web_sys::OffscreenCanvas>>>=std::rc::Rc::new(std::cell::RefCell::new(None));
+
+            let caa=ca.clone();
             let q=queue.clone();
             let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
@@ -148,6 +152,10 @@ mod worker{
                     let e=MEvent::from_js(&data);
 
                     q.borrow_mut().push(e);
+                }else if data.is_instance_of::<web_sys::OffscreenCanvas>(){
+                    log!("got offscreen canvas!");
+                    let data=data.dyn_into().unwrap_throw();
+                    *caa.borrow_mut()=Some(data);
                 }
             });
 
@@ -155,7 +163,8 @@ mod worker{
                 _handle,
                 queue,
                 buffer:vec![],
-                timer:shogo::Timer::new(time)
+                timer:shogo::Timer::new(time),
+                canvas:ca
             }
         }
         pub async fn next(&mut self)->&[MEvent]{
