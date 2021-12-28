@@ -176,9 +176,14 @@ pub async fn worker_entry(){
         for e in w.next().await{
             match e{
                 MEvent::MouseMove{elem,client_x,client_y}=>{
-                    gloo::console::console_dbg!(elem,client_x,client_y);
-
-                    log!("got mouse move!")
+                    match elem.as_str(){
+                        "mycanvas"=>{
+                            gloo::console::console_dbg!(elem,client_x,client_y);
+                            log!("got mouse move!")
+                        },
+                        _=>{}
+                    }
+                    
                 }
             }
         }
