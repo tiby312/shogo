@@ -49,14 +49,16 @@ pub enum MEvent {
 }
 
 impl MEvent{
-    fn into_js(self)->js_sys::Uint8Array{
+    fn into_js(self)->js_sys::ArrayBuffer{
         let l=std::mem::size_of::<Self>();
         let arr:&[u8]=unsafe{std::slice::from_raw_parts(&self as *const _ as *const _,l)};
         let buffer=js_sys::Uint8Array::new_with_length(l as u32);
         buffer.copy_from(arr);
-        buffer
+        buffer.buffer()
     }
-    fn from_js(ar:&js_sys::Uint8Array)->MEvent{
+    fn from_js(ar:&js_sys::ArrayBuffer)->MEvent{
+        let ar=js_sys::Uint8Array::new_with_byte_offset(ar,0);
+
         let mut j:MEvent=unsafe { std::mem::MaybeUninit::uninit().assume_init() };
         let l=std::mem::size_of::<Self>();
         let arr:&mut [u8]=unsafe{std::slice::from_raw_parts_mut (&mut j as *mut _ as *mut _,l)};
@@ -103,7 +105,7 @@ mod main{
                     client_y:event.client_y() as f64,
                 };
 
-                let k=&e.into_js().buffer();
+                let k=&e.into_js();
 
                 let arr=js_sys::Array::new_with_length(1);
                 arr.set(0,k.into());
@@ -139,12 +141,14 @@ mod worker{
                 let data=event.data();
 
                 
-                let data=data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
-                let data=js_sys::Uint8Array::new_with_byte_offset(data,0);
+                if data.is_instance_of::<js_sys::ArrayBuffer>(){
 
-                let e=MEvent::from_js(&data);
+                    let data=data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
 
-                q.borrow_mut().push(e);
+                    let e=MEvent::from_js(&data);
+
+                    q.borrow_mut().push(e);
+                }
             });
 
             WorkerHandler{
