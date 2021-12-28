@@ -75,18 +75,24 @@ mod main{
     }
 
     impl WorkerInterface{
-        pub fn new()->Self{
+        pub async fn new(canvas:web_sys::OffscreenCanvas)->Self{
             let mut options=web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(web_sys::Worker::new_with_options("./worker.js",&options).unwrap()));
+
+
+            //TODO fix
+            TimeoutFuture::new(100).await;
+
+            let arr=js_sys::Array::new_with_length(1);
+            arr.set(0,canvas.clone().into());
+            worker.borrow().post_message_with_transfer(&canvas,&arr).unwrap_throw();
+
             WorkerInterface{
                 worker
             }
         }
 
-        pub fn pass_offscreen_canvas(&mut self,canvas:web_sys::OffscreenCanvas){
-            unimplemented!();
-        }
 
         pub fn register_mousemove_handler(&mut self,elem:&web_sys::HtmlCanvasElement)->gloo::events::EventListener{
             let w=self.worker.clone();
@@ -130,15 +136,23 @@ mod worker{
     }
 
     impl WorkerHandler{
-        pub fn new(time:usize)->WorkerHandler{
+        pub fn canvas(&self)->web_sys::OffscreenCanvas{
+            self.canvas.borrow().as_ref().unwrap_throw().clone()
+        }
+
+        pub async fn new(time:usize)->WorkerHandler{
             let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
         
             let queue:Rc<RefCell<Vec<MEvent>>>=std::rc::Rc::new(std::cell::RefCell::new(vec![]));
 
             let ca:Rc<RefCell<Option<web_sys::OffscreenCanvas>>>=std::rc::Rc::new(std::cell::RefCell::new(None));
 
+            let (fs,mut fr)=futures::channel::mpsc::channel(1);
+
+            let fs=Rc::new(RefCell::new(fs));
             let caa=ca.clone();
             let q=queue.clone();
+            let mut first_canvas=false;
             let _handle=gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event=event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 log!(event);
@@ -153,11 +167,23 @@ mod worker{
 
                     q.borrow_mut().push(e);
                 }else if data.is_instance_of::<web_sys::OffscreenCanvas>(){
+                    
+                    if !first_canvas{
+                        use futures::SinkExt;
+                        fs.borrow_mut().send(());
+                        first_canvas=true;
+                    }
                     log!("got offscreen canvas!");
                     let data=data.dyn_into().unwrap_throw();
                     *caa.borrow_mut()=Some(data);
+                }else{
+                    log!("got something unexpected!");
                 }
             });
+
+            use futures::StreamExt;
+            fr.next().await;
+
 
             WorkerHandler{
                 _handle,
@@ -183,16 +209,18 @@ mod worker{
 #[wasm_bindgen]
 pub async fn worker_entry(){
 
-    let mut w=worker::WorkerHandler::new(30);
+    let mut w=worker::WorkerHandler::new(30).await;
 
+    let canvas=w.canvas();
+    log!(canvas);
     loop{
         for e in w.next().await{
             match e{
                 MEvent::MouseMove{elem,client_x,client_y}=>{
                     match elem.as_str(){
                         "mycanvas"=>{
-                            gloo::console::console_dbg!(elem,client_x,client_y);
-                            log!("got mouse move!")
+                            //gloo::console::console_dbg!(elem,client_x,client_y);
+                            //log!("got mouse move!")
                         },
                         _=>{}
                     }
@@ -247,6 +275,7 @@ pub async fn worker_entry(){
     */
 
 }
+use gloo::timers::future::TimeoutFuture;
 
 
 #[wasm_bindgen]
@@ -301,11 +330,14 @@ pub async fn main_entry() {
 
 
 
-    let mut worker=main::WorkerInterface::new();
+    let mut worker=main::WorkerInterface::new(canvas.transfer_control_to_offscreen().unwrap_throw()).await;
 
     let _handler=worker.register_mousemove_handler(&canvas);
 
+    
+    TimeoutFuture::new(100000).await;
 
+    /*
     let ctx = utils::get_context_webgl2(&canvas);
 
     let mut engine = shogo::engine(60);
@@ -379,7 +411,7 @@ pub async fn main_entry() {
     }
 
     log!("all done!");
-    
+    */
 }
 
 fn convert_coord(canvas: web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
