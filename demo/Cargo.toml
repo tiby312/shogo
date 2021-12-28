@@ -16,7 +16,7 @@ futures="0.3"
 shogo = {path="../"}
 rayon ="*"
 js-sys = "0.3.20"
-
+arrayvec="*"
 
 [dependencies.gloo]
 version = "*"
