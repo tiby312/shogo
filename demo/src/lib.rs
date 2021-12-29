@@ -37,33 +37,25 @@ pub async fn worker_entry() {
     );
 
     let mut verts = vec![];
-    'outer : loop {
+    'outer: loop {
         for e in w.next().await {
             match e {
-                &shogo::MEvent::MouseMove {
-                    elem,
-                    client_x,
-                    client_y,
-                    ..
-                } => match elem.as_str() {
+                &shogo::MEvent::MouseMove { elem, x, y, .. } => match elem.as_str() {
                     "mycanvas" => {
-                        mouse_pos = [client_x, client_y];
+                        mouse_pos = [x, y];
                     }
                     _ => {}
                 },
-                &shogo::MEvent::MouseClick {
-                    elem,
-                    ..
-                } => match elem.as_str() {
+                &shogo::MEvent::MouseClick { elem, .. } => match elem.as_str() {
                     "mybutton" => {
                         let _ = color_iter.next();
-                    },
-                    "shutdownbutton"=>{
+                    }
+                    "shutdownbutton" => {
                         break 'outer;
                     }
                     _ => {}
                 },
-                _=>{}
+                _ => {}
             }
         }
 

@@ -1,9 +1,9 @@
+use gloo::console::log;
 use gloo::timers::future::TimeoutFuture;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use gloo::console::log;
 
 mod circle_program;
 pub mod dots;
@@ -28,7 +28,6 @@ pub mod utils {
             .unwrap_throw()
     }
 
-
     pub fn get_context_webgl2(
         canvas: &web_sys::HtmlCanvasElement,
     ) -> web_sys::WebGl2RenderingContext {
@@ -39,7 +38,6 @@ pub mod utils {
             .dyn_into()
             .unwrap_throw()
     }
-
 
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
@@ -132,15 +130,12 @@ pub mod utils {
     }
 }
 
-
-
 #[wasm_bindgen]
 extern "C" {
     #[no_mangle]
     #[used]
-    static performance:web_sys::Performance;
+    static performance: web_sys::Performance;
 }
-
 
 pub struct Timer {
     last: f64,
@@ -176,30 +171,21 @@ impl Timer {
     }
 }
 
-
-
-
-
-
-
-
-
-
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum MEvent {
     #[non_exhaustive]
     MouseMove {
         elem: arrayvec::ArrayString<30>,
-        client_x: f32,
-        client_y: f32,
+        x: f32,
+        y: f32,
     },
     #[non_exhaustive]
-    MouseClick{
+    MouseClick {
         elem: arrayvec::ArrayString<30>,
-        client_x: f32,
-        client_y: f32,
-    }
+        x: f32,
+        y: f32,
+    },
 }
 
 impl MEvent {
@@ -266,7 +252,6 @@ pub mod main {
             WorkerInterface { worker }
         }
 
-
         pub fn register_click(
             &mut self,
             elem: &web_sys::HtmlElement,
@@ -280,7 +265,10 @@ pub mod main {
                     .unwrap_throw()
                     .clone();
 
-                fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+                fn convert_coord(
+                    canvas: &web_sys::HtmlElement,
+                    e: web_sys::MouseEvent,
+                ) -> [f32; 2] {
                     let [x, y] = [e.client_x() as f32, e.client_y() as f32];
                     let bb = canvas.get_bounding_client_rect();
                     let tl = bb.x() as f32;
@@ -288,13 +276,12 @@ pub mod main {
                     [x - tl, y - tr]
                 }
 
-                    
                 let [a, b] = convert_coord(&e, event);
 
                 let e = MEvent::MouseClick {
                     elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
-                    client_x: a,
-                    client_y: b,
+                    x: a,
+                    y: b,
                 };
 
                 let k = &e.into_js();
@@ -320,7 +307,10 @@ pub mod main {
                     .unwrap_throw()
                     .clone();
 
-                fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+                fn convert_coord(
+                    canvas: &web_sys::HtmlElement,
+                    e: web_sys::MouseEvent,
+                ) -> [f32; 2] {
                     let [x, y] = [e.client_x() as f32, e.client_y() as f32];
                     let bb = canvas.get_bounding_client_rect();
                     let tl = bb.x() as f32;
@@ -328,13 +318,12 @@ pub mod main {
                     [x - tl, y - tr]
                 }
 
-                    
                 let [a, b] = convert_coord(&e, event);
 
                 let e = MEvent::MouseMove {
                     elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
-                    client_x: a,
-                    client_y: b,
+                    x: a,
+                    y: b,
                 };
 
                 let k = &e.into_js();
@@ -348,7 +337,6 @@ pub mod main {
         }
     }
 }
-
 
 pub mod worker {
     use super::*;
@@ -398,7 +386,6 @@ pub mod worker {
                     let data = data.dyn_into().unwrap_throw();
                     *caa.borrow_mut() = Some(data);
                 } else {
-
                     log!("got something unexpected!");
                 }
             });
@@ -425,4 +412,3 @@ pub mod worker {
         }
     }
 }
-

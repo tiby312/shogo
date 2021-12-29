@@ -81,10 +81,7 @@ impl std::ops::Deref for StaticBuffer {
 }
 
 impl StaticBuffer {
-    pub fn new(
-        ctx: &WebGl2RenderingContext,
-        vertices: &[[f32; 2]],
-    ) -> Result<Self, String> {
+    pub fn new(ctx: &WebGl2RenderingContext, vertices: &[[f32; 2]]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verticies = vertices.len();
@@ -142,33 +139,28 @@ struct Args<'a> {
     pub game_dim: [f32; 2],
     pub as_square: bool,
     pub color: &'a [f32; 4],
-    pub offset:  [f32; 2],
+    pub offset: [f32; 2],
     pub point_size: f32,
 }
 
 use wasm_bindgen::prelude::*;
 
-
-pub trait CtxExt{
-    fn buffer_dynamic(&self)->DynamicBuffer;
-    fn buffer_static(&self,a:&[[f32; 2]])->StaticBuffer;
-    fn shader_system(&self)->ShaderSystem;
+pub trait CtxExt {
+    fn buffer_dynamic(&self) -> DynamicBuffer;
+    fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer;
+    fn shader_system(&self) -> ShaderSystem;
 }
-impl CtxExt for WebGl2RenderingContext{
-    fn buffer_dynamic(&self)->DynamicBuffer{
+impl CtxExt for WebGl2RenderingContext {
+    fn buffer_dynamic(&self) -> DynamicBuffer {
         DynamicBuffer::new(self).unwrap_throw()
     }
-    fn buffer_static(&self,a:&[[f32; 2]])->StaticBuffer{
-        StaticBuffer::new(self,a).unwrap_throw()
+    fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer {
+        StaticBuffer::new(self, a).unwrap_throw()
     }
-    fn shader_system(&self)->ShaderSystem{
+    fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
 }
-
-
-
-
 
 pub struct ShaderSystem {
     circle_program: CircleProgram,
@@ -230,10 +222,10 @@ impl ShaderSystem {
     ) {
         self.draw(Args {
             verts,
-            game_dim:game_dim.into(),
+            game_dim: game_dim.into(),
             as_square: false,
             color,
-            offset:offset.into(),
+            offset: offset.into(),
             point_size,
         })
     }
@@ -247,42 +239,62 @@ impl ShaderSystem {
     ) {
         self.draw(Args {
             verts,
-            game_dim:game_dim.into(),
+            game_dim: game_dim.into(),
             as_square: true,
             color,
-            offset:offset.into(),
+            offset: offset.into(),
             point_size,
         })
     }
 }
 
 pub trait Shapes {
-    fn line(&mut self, radius: f32, start: impl Into<[f32;2]>, end: impl Into<[f32;2]>) -> &mut Self;
-    fn rect(&mut self, radius: f32, start: impl Into<[f32;2]>, dim: impl Into<[f32;2]>) -> &mut Self;
+    fn line(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self;
+    fn rect(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        dim: impl Into<[f32; 2]>,
+    ) -> &mut Self;
 }
 impl Shapes for Vec<[f32; 2]> {
-    fn line(&mut self, radius: f32, start: impl Into<[f32;2]>, end: impl Into<[f32;2]>) -> &mut Self {
+    fn line(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
 
-        let offset=end-start;
-        let dis_sqr=offset.magnitude2();
+        let offset = end - start;
+        let dis_sqr = offset.magnitude2();
         let dis = dis_sqr.sqrt();
 
-        let norm=offset/dis;
+        let norm = offset / dis;
 
         let num = (dis / (radius)).floor() as usize;
 
         for i in 0..num {
-            let pos=start+norm*(i as f32)*radius;
+            let pos = start + norm * (i as f32) * radius;
             buffer.push(pos.into());
         }
         buffer
     }
 
-    fn rect(&mut self, radius: f32, start: impl Into<[f32;2]>, dim: impl Into<[f32;2]>) -> &mut Self {
+    fn rect(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        dim: impl Into<[f32; 2]>,
+    ) -> &mut Self {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
