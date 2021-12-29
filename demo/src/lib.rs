@@ -34,12 +34,9 @@ pub async fn main_entry() {
     let mut worker = shogo::main::WorkerInterface::new(offscreen).await;
 
     let _handler = worker.register_event(&canvas, "mousemove", |elem, event, _| {
-        let [a, b] = convert_coord(&elem, event);
-        MEvent::MouseMove {
-            elem: elem.id(),
-            x: a,
-            y: b,
-        }
+        let [x, y] = convert_coord(&elem, event);
+        let elem = elem.id();
+        MEvent::MouseMove { elem, x, y }
     });
 
     let _handler = worker.register_event(&button, "click", |elem, _, _| MEvent::MouseClick {
