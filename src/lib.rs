@@ -1,9 +1,10 @@
-use gloo::events::EventListener;
 use gloo::timers::future::TimeoutFuture;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use gloo::console::log;
+
 mod circle_program;
 pub mod dots;
 
@@ -27,8 +28,21 @@ pub mod utils {
             .unwrap_throw()
     }
 
+
     pub fn get_context_webgl2(
         canvas: &web_sys::HtmlCanvasElement,
+    ) -> web_sys::WebGl2RenderingContext {
+        canvas
+            .get_context("webgl2")
+            .unwrap_throw()
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
+    }
+
+
+    pub fn get_context_webgl2_offscreen(
+        canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {
         canvas
             .get_context("webgl2")
@@ -118,11 +132,6 @@ pub mod utils {
     }
 }
 
-pub fn engine(frame_rate: usize) -> Engine {
-    Engine::new(frame_rate)
-}
-
-
 
 
 #[wasm_bindgen]
@@ -167,98 +176,206 @@ impl Timer {
     }
 }
 
-pub struct Engine {
-    timer: Timer,
-    events: Rc<RefCell<Vec<EventElem>>>,
-    buffer: Vec<EventElem>,
+
+
+
+
+
+
+
+
+
+#[derive(Debug, Clone)]
+pub enum MEvent {
+    MouseMove {
+        elem: arrayvec::ArrayString<30>,
+        client_x: f32,
+        client_y: f32,
+    },
 }
 
-#[non_exhaustive]
-pub struct DeltaRes<'a> {
-    pub events: std::iter::Cloned<std::slice::Iter<'a, EventElem>>,
+impl MEvent {
+    pub fn into_js(self) -> js_sys::ArrayBuffer {
+        let l = std::mem::size_of::<Self>();
+        let arr: &[u8] = unsafe { std::slice::from_raw_parts(&self as *const _ as *const _, l) };
+        let buffer = js_sys::Uint8Array::new_with_length(l as u32);
+        buffer.copy_from(arr);
+        buffer.buffer()
+    }
+    pub fn from_js(ar: &js_sys::ArrayBuffer) -> MEvent {
+        let ar = js_sys::Uint8Array::new_with_byte_offset(ar, 0);
+
+        let mut j: MEvent = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+        let l = std::mem::size_of::<Self>();
+        let arr: &mut [u8] =
+            unsafe { std::slice::from_raw_parts_mut(&mut j as *mut _ as *mut _, l) };
+        ar.copy_to(arr);
+        j
+    }
 }
 
-impl Engine {
-    pub fn new(frame_rate: usize) -> Engine {
-        let events = Rc::new(RefCell::new(Vec::new()));
-
-        Engine {
-            timer: Timer::new(frame_rate),
-            events,
-            buffer: Vec::new(),
-        }
+pub mod main {
+    use super::*;
+    pub struct WorkerInterface {
+        pub worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
     }
 
-    pub fn get_last_delta(&mut self) -> DeltaRes<'_> {
-        DeltaRes {
-            events: self.buffer.iter().cloned(),
+    impl WorkerInterface {
+        pub async fn new(canvas: web_sys::OffscreenCanvas) -> Self {
+            let mut options = web_sys::WorkerOptions::new();
+            options.type_(web_sys::WorkerType::Module);
+            let worker = Rc::new(RefCell::new(
+                web_sys::Worker::new_with_options("./worker.js", &options).unwrap(),
+            ));
+
+            {
+                let (fs, fr) = futures::channel::oneshot::channel();
+                let mut fs = Some(fs);
+
+                let _handle =
+                    gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+                        let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+                        let data = event.data();
+                        if let Some(s) = data.as_string() {
+                            if s == "ready" {
+                                if let Some(f) = fs.take() {
+                                    f.send(()).unwrap_throw();
+                                }
+                            }
+                        }
+                    });
+
+                let _ = fr.await.unwrap_throw();
+            }
+            log!("main:continuing");
+
+            let arr = js_sys::Array::new_with_length(1);
+            arr.set(0, canvas.clone().into());
+            worker
+                .borrow()
+                .post_message_with_transfer(&canvas, &arr)
+                .unwrap_throw();
+
+            WorkerInterface { worker }
+        }
+
+        pub fn register_mousemove_handler(
+            &mut self,
+            elem: &web_sys::HtmlCanvasElement,
+        ) -> gloo::events::EventListener {
+            let w = self.worker.clone();
+
+            let e = elem.clone();
+            gloo::events::EventListener::new(&elem, "mousemove", move |event| {
+                let event = event
+                    .dyn_ref::<web_sys::MouseEvent>()
+                    .unwrap_throw()
+                    .clone();
+
+                let [a, b] = convert_coord(&e, event);
+
+                let e = MEvent::MouseMove {
+                    elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
+                    client_x: a,
+                    client_y: b,
+                };
+
+                let k = &e.into_js();
+
+                let arr = js_sys::Array::new_with_length(1);
+                arr.set(0, k.into());
+                w.borrow()
+                    .post_message_with_transfer(k, &arr)
+                    .unwrap_throw();
+            })
         }
     }
+}
 
-    pub async fn next(&mut self) -> DeltaRes<'_> {
-        self.timer.next().await;
-        {
+
+pub mod worker {
+    use super::*;
+    pub struct WorkerHandler {
+        _handle: gloo::events::EventListener,
+        queue: Rc<RefCell<Vec<MEvent>>>,
+        buffer: Vec<MEvent>,
+        timer: crate::Timer,
+        canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
+    }
+
+    impl WorkerHandler {
+        pub fn canvas(&self) -> web_sys::OffscreenCanvas {
+            self.canvas.borrow().as_ref().unwrap_throw().clone()
+        }
+
+        pub async fn new(time: usize) -> WorkerHandler {
+            let scope: web_sys::DedicatedWorkerGlobalScope =
+                js_sys::global().dyn_into().unwrap_throw();
+
+            let queue: Rc<RefCell<Vec<MEvent>>> = std::rc::Rc::new(std::cell::RefCell::new(vec![]));
+
+            let ca: Rc<RefCell<Option<web_sys::OffscreenCanvas>>> =
+                std::rc::Rc::new(std::cell::RefCell::new(None));
+
+            let (fs, fr) = futures::channel::oneshot::channel();
+            let mut fs = Some(fs);
+
+            let caa = ca.clone();
+            let q = queue.clone();
+
+            let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
+                let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+                let data = event.data();
+
+                if data.is_instance_of::<js_sys::ArrayBuffer>() {
+                    let data = data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
+
+                    let e = MEvent::from_js(&data);
+
+                    q.borrow_mut().push(e);
+                } else if data.is_instance_of::<web_sys::OffscreenCanvas>() {
+                    if let Some(fs) = fs.take() {
+                        fs.send(()).unwrap_throw();
+                    }
+
+                    log!("got offscreen canvas!");
+                    let data = data.dyn_into().unwrap_throw();
+                    *caa.borrow_mut() = Some(data);
+                } else {
+                    log!("got something unexpected!");
+                }
+            });
+
+            log!("workering:posting ready message!");
+            scope
+                .post_message(&JsValue::from_str("ready"))
+                .unwrap_throw();
+
+            fr.await.unwrap_throw();
+
+            WorkerHandler {
+                _handle,
+                queue,
+                buffer: vec![],
+                timer: crate::Timer::new(time),
+                canvas: ca,
+            }
+        }
+        pub async fn next(&mut self) -> &[MEvent] {
+            self.timer.next().await;
             self.buffer.clear();
-            let ee = &mut self.events.borrow_mut();
-            self.buffer.append(ee);
-            assert!(ee.is_empty());
+            self.buffer.append(&mut self.queue.borrow_mut());
+            &self.buffer
         }
-
-        DeltaRes {
-            events: self.buffer.iter().cloned(),
-        }
-    }
-
-    pub fn add_click(
-        &mut self,
-        elem: &web_sys::HtmlElement,
-    ) -> gloo::events::EventListener {
-        let sender = self.events.clone();
-        let elem = elem.clone();
-        let elem2 = elem.clone();
-        EventListener::new(&elem, "click", move |event| {
-            let event = event
-                .dyn_ref::<web_sys::MouseEvent>()
-                .unwrap_throw()
-                .clone();
-            let g = EventElem {
-                element: elem2.clone(),
-                event: Event::MouseClick(event),
-            };
-
-            sender.borrow_mut().push(g);
-        })
-    }
-
-    pub fn add_mousemove(
-        &mut self,
-        elem: &web_sys::HtmlElement,
-    ) -> gloo::events::EventListener {
-        let sender = self.events.clone();
-        let elem = elem.clone();
-        let elem2 = elem.clone();
-        EventListener::new(&elem, "mousemove", move |event| {
-            let event = event
-                .dyn_ref::<web_sys::MouseEvent>()
-                .unwrap_throw()
-                .clone();
-            let g = EventElem {
-                element: elem2.clone().dyn_into().unwrap_throw(),
-                event: Event::MouseMove(event),
-            };
-            sender.borrow_mut().push(g);
-        })
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct EventElem {
-    pub element: web_sys::HtmlElement,
-    pub event: Event,
-}
 
-#[derive(Debug, Clone)]
-pub enum Event {
-    MouseClick(web_sys::MouseEvent),
-    MouseMove(web_sys::MouseEvent),
+//TODO remove?
+fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
+    let bb = canvas.get_bounding_client_rect();
+    let tl = bb.x() as f32;
+    let tr = bb.y() as f32;
+    [x - tl, y - tr]
 }
