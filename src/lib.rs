@@ -1,10 +1,10 @@
 use gloo::console::log;
 use gloo::timers::future::TimeoutFuture;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use serde::{Serialize,Deserialize };
 
 mod circle_program;
 pub mod dots;
@@ -172,7 +172,6 @@ impl Timer {
     }
 }
 
-
 use std::marker::PhantomData;
 pub mod main {
     use super::*;
@@ -180,10 +179,10 @@ pub mod main {
         pub worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         shutdown_fr: futures::channel::oneshot::Receiver<()>,
         _handle: gloo::events::EventListener,
-        _p:PhantomData<T>
+        _p: PhantomData<T>,
     }
 
-    impl<T:'static+Serialize> WorkerInterface<T> {
+    impl<T: 'static + Serialize> WorkerInterface<T> {
         pub async fn new(canvas: web_sys::OffscreenCanvas) -> Self {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
@@ -227,7 +226,7 @@ pub mod main {
                 worker,
                 shutdown_fr,
                 _handle,
-                _p:PhantomData
+                _p: PhantomData,
             }
         }
 
@@ -235,21 +234,19 @@ pub mod main {
             let _ = self.shutdown_fr.await.unwrap_throw();
         }
 
-        pub fn register_event(&mut self,
-            elem:& web_sys::HtmlElement,
-            event_type:&'static str,
-            mut func:impl FnMut(web_sys::HtmlElement,&'static str,&web_sys::Event)->T+'static)->gloo::events::EventListener{
+        pub fn register_event(
+            &mut self,
+            elem: &web_sys::HtmlElement,
+            event_type: &'static str,
+            mut func: impl FnMut(web_sys::HtmlElement, &'static str, &web_sys::Event) -> T + 'static,
+        ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
             gloo::events::EventListener::new(&elem, event_type, move |event| {
-                
-                let val=func(e.clone(),event_type,event);
+                let val = func(e.clone(), event_type, event);
 
-                
-                
-                let a=JsValue::from_serde(&val).unwrap_throw();
-
+                let a = JsValue::from_serde(&val).unwrap_throw();
 
                 /*
                 let k = &e.into_js();
@@ -261,9 +258,8 @@ pub mod main {
                     .unwrap_throw();
                 */
                 w.borrow().post_message(&a).unwrap_throw();
-            }) 
+            })
         }
-
     }
 }
 
@@ -287,7 +283,7 @@ pub mod worker {
                 .unwrap_throw();
         }
     }
-    impl<T:'static+for<'a> Deserialize<'a>> WorkerHandler<T> {
+    impl<T: 'static + for<'a> Deserialize<'a>> WorkerHandler<T> {
         pub fn canvas(&self) -> web_sys::OffscreenCanvas {
             self.canvas.borrow().as_ref().unwrap_throw().clone()
         }
@@ -311,13 +307,8 @@ pub mod worker {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 let data = event.data();
 
-                if data.is_instance_of::<js_sys::JsString>() {
-                    let data = data.dyn_ref::<js_sys::JsString>().unwrap_throw();
-
-                    let e=data.into_serde().unwrap_throw();
-
-                    q.borrow_mut().push(e);
-                } else if data.is_instance_of::<web_sys::OffscreenCanvas>() {
+                if data.is_instance_of::<web_sys::OffscreenCanvas>() {
+                    log!("worker:received offscreen canvas");
                     if let Some(fs) = fs.take() {
                         fs.send(()).unwrap_throw();
                     }
@@ -325,16 +316,21 @@ pub mod worker {
                     let data = data.dyn_into().unwrap_throw();
                     *caa.borrow_mut() = Some(data);
                 } else {
-                    log!("got something unexpected!");
+                    //let data = data.dyn_ref::<js_sys::JsString>().unwrap_throw();
+                    let e = data.into_serde().unwrap_throw();
+
+                    q.borrow_mut().push(e);
                 }
             });
 
             scope
                 .post_message(&JsValue::from_str("ready"))
                 .unwrap_throw();
+            log!("worker:sent ready");
 
             fr.await.unwrap_throw();
 
+            log!("worker:ready to continue");
             WorkerHandler {
                 _handle,
                 queue,

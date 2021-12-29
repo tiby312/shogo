@@ -1,28 +1,18 @@
+use gloo::console::console_dbg;
 use gloo::console::log;
-use wasm_bindgen::prelude::*;
-use serde::{Serialize, Deserialize};
-use wasm_bindgen::JsCast;
-
+use serde::{Deserialize, Serialize};
 use shogo::{
     dots::{CtxExt, Shapes},
     utils,
 };
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
-
-
-#[derive(Serialize,Deserialize,Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MEvent {
-    MouseMove {
-        elem: String,
-        x: f32,
-        y: f32,
-    },
-    MouseClick {
-        elem: String,
-    },
+    MouseMove { elem: String, x: f32, y: f32 },
+    MouseClick { elem: String },
 }
-
-
 
 #[wasm_bindgen(start)]
 pub async fn init_module() {
@@ -41,27 +31,31 @@ pub async fn main_entry() {
 
     let offscreen = canvas.transfer_control_to_offscreen().unwrap_throw();
 
-    let mut worker = shogo::main::WorkerInterface::<MEvent>::new(offscreen).await;
-    
-    let _handler = worker.register_event(&canvas,"mousemove",|elem,ty,event|{
+    let mut worker = shogo::main::WorkerInterface::new(offscreen).await;
+
+    let _handler = worker.register_event(&canvas, "mousemove", |elem, _, event| {
         let event = event
-                    .dyn_ref::<web_sys::MouseEvent>()
-                    .unwrap_throw()
-                    .clone();
+            .dyn_ref::<web_sys::MouseEvent>()
+            .unwrap_throw()
+            .clone();
 
         let [a, b] = convert_coord(&elem, event);
 
         MEvent::MouseMove {
-            elem: ty.to_string(),
+            elem: elem.id(),
             x: a,
             y: b,
         }
     });
 
-    /*
-    let _handler = worker.register_click(&button);
-    let _handler = worker.register_click(&shutdown_button);
-    */
+    let _handler = worker.register_event(&button, "click", |elem, _, _| MEvent::MouseClick {
+        elem: elem.id(),
+    });
+
+    let _handler = worker.register_event(&shutdown_button, "click", |elem, _, _| {
+        MEvent::MouseClick { elem: elem.id() }
+    });
+
     worker.join().await;
     log!("main thread closing");
 }
@@ -94,14 +88,16 @@ pub async fn worker_entry() {
     let mut verts = vec![];
     'outer: loop {
         for e in w.next().await {
+            console_dbg!(e);
             match e {
-                MEvent::MouseMove { elem, x, y} => match elem.as_str() {
+                MEvent::MouseMove { elem, x, y } => match elem.as_str() {
                     "mycanvas" => {
+                        log!("new mouse pos!!!!");
                         mouse_pos = [*x, *y];
                     }
                     _ => {}
                 },
-                MEvent::MouseClick { elem} => match elem.as_str() {
+                MEvent::MouseClick { elem } => match elem.as_str() {
                     "mybutton" => {
                         let _ = color_iter.next();
                     }
@@ -110,9 +106,9 @@ pub async fn worker_entry() {
                     }
                     _ => {}
                 },
-                _ => {}
             }
         }
+        log!("worker:next frame!");
 
         let radius = 30.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
@@ -139,16 +135,10 @@ pub async fn worker_entry() {
     log!("worker thread closing");
 }
 
-
-
-fn convert_coord(
-    canvas: &web_sys::HtmlElement,
-    e: web_sys::MouseEvent,
-) -> [f32; 2] {
+fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
     let [x, y] = [e.client_x() as f32, e.client_y() as f32];
     let bb = canvas.get_bounding_client_rect();
     let tl = bb.x() as f32;
     let tr = bb.y() as f32;
     [x - tl, y - tr]
 }
-
