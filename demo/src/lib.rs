@@ -1,6 +1,5 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
-use gloo::timers::future::TimeoutFuture;
 
 use shogo::{
     dots::{CtxExt, Shapes},
@@ -29,9 +28,9 @@ pub async fn main_entry() {
     let _handler = worker.register_click(&button);
     let _handler = worker.register_click(&shutdown_button);
 
-    TimeoutFuture::new(100000).await;
+    worker.join().await;
+    log!("main thread closing");
 }
-
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
@@ -103,5 +102,5 @@ pub async fn worker_entry() {
         );
         draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], [0.0, 0.0], radius);
     }
-    log!("worker shutdown");
+    log!("worker thread closing");
 }

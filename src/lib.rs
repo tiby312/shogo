@@ -212,6 +212,8 @@ pub mod main {
     use super::*;
     pub struct WorkerInterface {
         pub worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
+        shutdown_fr: futures::channel::oneshot::Receiver<()>,
+        _handle: gloo::events::EventListener,
     }
 
     impl WorkerInterface {
@@ -222,25 +224,30 @@ pub mod main {
                 web_sys::Worker::new_with_options("./worker.js", &options).unwrap(),
             ));
 
-            {
-                let (fs, fr) = futures::channel::oneshot::channel();
-                let mut fs = Some(fs);
+            let (shutdown_fs, shutdown_fr) = futures::channel::oneshot::channel();
+            let mut shutdown_fs = Some(shutdown_fs);
 
-                let _handle =
-                    gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
-                        let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
-                        let data = event.data();
-                        if let Some(s) = data.as_string() {
-                            if s == "ready" {
-                                if let Some(f) = fs.take() {
-                                    f.send(()).unwrap_throw();
-                                }
+            let (fs, fr) = futures::channel::oneshot::channel();
+            let mut fs = Some(fs);
+
+            let _handle =
+                gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+                    let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+                    let data = event.data();
+                    if let Some(s) = data.as_string() {
+                        if s == "ready" {
+                            if let Some(f) = fs.take() {
+                                f.send(()).unwrap_throw();
+                            }
+                        } else if s == "close" {
+                            if let Some(f) = shutdown_fs.take() {
+                                f.send(()).unwrap_throw();
                             }
                         }
-                    });
+                    }
+                });
 
-                let _ = fr.await.unwrap_throw();
-            }
+            let _ = fr.await.unwrap_throw();
 
             let arr = js_sys::Array::new_with_length(1);
             arr.set(0, canvas.clone().into());
@@ -249,7 +256,15 @@ pub mod main {
                 .post_message_with_transfer(&canvas, &arr)
                 .unwrap_throw();
 
-            WorkerInterface { worker }
+            WorkerInterface {
+                worker,
+                shutdown_fr,
+                _handle,
+            }
+        }
+
+        pub async fn join(self) {
+            let _ = self.shutdown_fr.await.unwrap_throw();
         }
 
         pub fn register_click(
@@ -348,6 +363,16 @@ pub mod worker {
         canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
     }
 
+    impl Drop for WorkerHandler {
+        fn drop(&mut self) {
+            let scope: web_sys::DedicatedWorkerGlobalScope =
+                js_sys::global().dyn_into().unwrap_throw();
+
+            scope
+                .post_message(&JsValue::from_str("close"))
+                .unwrap_throw();
+        }
+    }
     impl WorkerHandler {
         pub fn canvas(&self) -> web_sys::OffscreenCanvas {
             self.canvas.borrow().as_ref().unwrap_throw().clone()
