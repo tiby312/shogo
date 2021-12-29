@@ -21,9 +21,10 @@ pub async fn main_entry() {
         utils::get_by_id_elem("shutdownbutton"),
     );
 
-    let mut worker =
-        shogo::main::WorkerInterface::new(canvas.transfer_control_to_offscreen().unwrap_throw())
-            .await;
+    let offscreen = canvas.transfer_control_to_offscreen().unwrap_throw();
+
+    let mut worker = shogo::main::WorkerInterface::new(offscreen).await;
+    
     let _handler = worker.register_mousemove(&canvas);
     let _handler = worker.register_click(&button);
     let _handler = worker.register_click(&shutdown_button);
