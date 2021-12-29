@@ -10,8 +10,9 @@ use wasm_bindgen::JsCast;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MEvent {
-    MouseMove { elem: String, x: f32, y: f32 },
-    MouseClick { elem: String },
+    CanvasMouseMove { x: f32, y: f32 },
+    ButtonClick,
+    ShutdownClick,
 }
 
 #[wasm_bindgen(start)]
@@ -33,19 +34,14 @@ pub async fn main_entry() {
 
     let mut worker = shogo::main::WorkerInterface::new(offscreen).await;
 
-    let _handler = worker.register_event(&canvas, "mousemove", |elem, event, _| {
-        let [x, y] = convert_coord(&elem, event);
-        let elem = elem.id();
-        MEvent::MouseMove { elem, x, y }
+    let _handler = worker.register_event(&canvas, "mousemove", |e| {
+        let [x, y] = convert_coord(e.elem, e.event);
+        MEvent::CanvasMouseMove { x, y }
     });
 
-    let _handler = worker.register_event(&button, "click", |elem, _, _| MEvent::MouseClick {
-        elem: elem.id(),
-    });
+    let _handler = worker.register_event(&button, "click", |_| MEvent::ButtonClick);
 
-    let _handler = worker.register_event(&shutdown_button, "click", |elem, _, _| {
-        MEvent::MouseClick { elem: elem.id() }
-    });
+    let _handler = worker.register_event(&shutdown_button, "click", |_| MEvent::ShutdownClick);
 
     worker.join().await;
     log!("main thread closing");
@@ -80,21 +76,11 @@ pub async fn worker_entry() {
     'outer: loop {
         for e in w.next().await {
             match e {
-                MEvent::MouseMove { elem, x, y } => match elem.as_str() {
-                    "mycanvas" => {
-                        mouse_pos = [*x, *y];
-                    }
-                    _ => {}
-                },
-                MEvent::MouseClick { elem } => match elem.as_str() {
-                    "mybutton" => {
-                        let _ = color_iter.next();
-                    }
-                    "shutdownbutton" => {
-                        break 'outer;
-                    }
-                    _ => {}
-                },
+                MEvent::CanvasMouseMove { x, y } => mouse_pos = [*x, *y],
+                MEvent::ButtonClick => {
+                    let _ = color_iter.next();
+                }
+                MEvent::ShutdownClick => break 'outer,
             }
         }
 

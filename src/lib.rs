@@ -238,13 +238,20 @@ pub mod main {
             &mut self,
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
-            mut func: impl FnMut(web_sys::HtmlElement, &web_sys::Event,&'static str, ) -> T + 'static,
+            mut func: impl FnMut(EventInformation) -> T + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
             gloo::events::EventListener::new(&elem, event_type, move |event| {
-                let val = func(e.clone(), event,event_type);
+                let e=EventInformation{
+                    elem:&e,
+                    event,
+                    event_type
+                };
+
+                let val = func(e);
+
 
                 let a = JsValue::from_serde(&val).unwrap_throw();
 
@@ -261,6 +268,12 @@ pub mod main {
             })
         }
     }
+}
+
+pub struct EventInformation<'a>{
+    pub elem:&'a web_sys::HtmlElement,
+    pub event:&'a web_sys::Event,
+    pub event_type:&'static str,
 }
 
 pub mod worker {
