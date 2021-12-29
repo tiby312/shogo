@@ -11,32 +11,6 @@ pub async fn init_module() {
     log!("initing a module");
 }
 
-/*
-///Call from worker.
-pub fn register_click(foo:F,elem:&HtmlElement)
-{
-
-    let scope:web_sys::DedicatedWorkerGlobalScope =js_sys::global().dyn_into().unwrap_throw();
-
-    let foo=Closure::once_into_js(foo);
-
-    let k:&js_sys::Object=foo.dyn_ref().unwrap_throw();
-
-    log!(k.to_string());
-
-    let arr=js_sys::Array::new_with_length(1);
-    arr.set(0,foo);
-
-    let blob=web_sys::Blob::new_with_buffer_source_sequence(&arr).unwrap_throw();
-
-    let s:js_sys::JsString=blob.to_string();
-    log!("logged closure");
-    scope.post_message(&s).unwrap_throw();
-
-
-}
-*/
-
 #[wasm_bindgen]
 pub async fn worker_entry() {
     let mut w = shogo::worker::WorkerHandler::new(30).await;
@@ -63,19 +37,33 @@ pub async fn worker_entry() {
     );
 
     let mut verts = vec![];
-    loop {
+    'outer : loop {
         for e in w.next().await {
             match e {
                 &shogo::MEvent::MouseMove {
                     elem,
                     client_x,
                     client_y,
+                    ..
                 } => match elem.as_str() {
                     "mycanvas" => {
                         mouse_pos = [client_x, client_y];
                     }
                     _ => {}
                 },
+                &shogo::MEvent::MouseClick {
+                    elem,
+                    ..
+                } => match elem.as_str() {
+                    "mybutton" => {
+                        let _ = color_iter.next();
+                    },
+                    "shutdownbutton"=>{
+                        break 'outer;
+                    }
+                    _ => {}
+                },
+                _=>{}
             }
         }
 
@@ -117,15 +105,9 @@ pub async fn main_entry() {
     let mut worker =
         shogo::main::WorkerInterface::new(canvas.transfer_control_to_offscreen().unwrap_throw())
             .await;
-    let _handler = worker.register_mousemove_handler(&canvas);
+    let _handler = worker.register_mousemove(&canvas);
+    let _handler = worker.register_click(&button);
+    let _handler = worker.register_click(&shutdown_button);
 
     TimeoutFuture::new(100000).await;
-}
-
-fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
-    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
-    let bb = canvas.get_bounding_client_rect();
-    let tl = bb.x() as f32;
-    let tr = bb.y() as f32;
-    [x - tl, y - tr]
 }

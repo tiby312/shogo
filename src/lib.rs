@@ -186,12 +186,20 @@ impl Timer {
 
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum MEvent {
+    #[non_exhaustive]
     MouseMove {
         elem: arrayvec::ArrayString<30>,
         client_x: f32,
         client_y: f32,
     },
+    #[non_exhaustive]
+    MouseClick{
+        elem: arrayvec::ArrayString<30>,
+        client_x: f32,
+        client_y: f32,
+    }
 }
 
 impl MEvent {
@@ -247,7 +255,6 @@ pub mod main {
 
                 let _ = fr.await.unwrap_throw();
             }
-            log!("main:continuing");
 
             let arr = js_sys::Array::new_with_length(1);
             arr.set(0, canvas.clone().into());
@@ -259,9 +266,50 @@ pub mod main {
             WorkerInterface { worker }
         }
 
-        pub fn register_mousemove_handler(
+
+        pub fn register_click(
             &mut self,
-            elem: &web_sys::HtmlCanvasElement,
+            elem: &web_sys::HtmlElement,
+        ) -> gloo::events::EventListener {
+            let w = self.worker.clone();
+
+            let e = elem.clone();
+            gloo::events::EventListener::new(&elem, "click", move |event| {
+                let event = event
+                    .dyn_ref::<web_sys::MouseEvent>()
+                    .unwrap_throw()
+                    .clone();
+
+                fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+                    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
+                    let bb = canvas.get_bounding_client_rect();
+                    let tl = bb.x() as f32;
+                    let tr = bb.y() as f32;
+                    [x - tl, y - tr]
+                }
+
+                    
+                let [a, b] = convert_coord(&e, event);
+
+                let e = MEvent::MouseClick {
+                    elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
+                    client_x: a,
+                    client_y: b,
+                };
+
+                let k = &e.into_js();
+
+                let arr = js_sys::Array::new_with_length(1);
+                arr.set(0, k.into());
+                w.borrow()
+                    .post_message_with_transfer(k, &arr)
+                    .unwrap_throw();
+            })
+        }
+
+        pub fn register_mousemove(
+            &mut self,
+            elem: &web_sys::HtmlElement,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
@@ -272,6 +320,15 @@ pub mod main {
                     .unwrap_throw()
                     .clone();
 
+                fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+                    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
+                    let bb = canvas.get_bounding_client_rect();
+                    let tl = bb.x() as f32;
+                    let tr = bb.y() as f32;
+                    [x - tl, y - tr]
+                }
+
+                    
                 let [a, b] = convert_coord(&e, event);
 
                 let e = MEvent::MouseMove {
@@ -338,15 +395,14 @@ pub mod worker {
                         fs.send(()).unwrap_throw();
                     }
 
-                    log!("got offscreen canvas!");
                     let data = data.dyn_into().unwrap_throw();
                     *caa.borrow_mut() = Some(data);
                 } else {
+
                     log!("got something unexpected!");
                 }
             });
 
-            log!("workering:posting ready message!");
             scope
                 .post_message(&JsValue::from_str("ready"))
                 .unwrap_throw();
@@ -370,12 +426,3 @@ pub mod worker {
     }
 }
 
-
-//TODO remove?
-fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
-    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
-    let bb = canvas.get_bounding_client_rect();
-    let tl = bb.x() as f32;
-    let tr = bb.y() as f32;
-    [x - tl, y - tr]
-}
