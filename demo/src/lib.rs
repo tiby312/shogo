@@ -1,4 +1,4 @@
-use gloo::console::console_dbg;
+//use gloo::console::console_dbg;
 use gloo::console::log;
 use serde::{Deserialize, Serialize};
 use shogo::{
@@ -79,11 +79,9 @@ pub async fn worker_entry() {
     let mut verts = vec![];
     'outer: loop {
         for e in w.next().await {
-            console_dbg!(e);
             match e {
                 MEvent::MouseMove { elem, x, y } => match elem.as_str() {
                     "mycanvas" => {
-                        log!("new mouse pos!!!!");
                         mouse_pos = [*x, *y];
                     }
                     _ => {}
@@ -99,7 +97,6 @@ pub async fn worker_entry() {
                 },
             }
         }
-        log!("worker:next frame!");
 
         let radius = 30.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
