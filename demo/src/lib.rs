@@ -33,14 +33,8 @@ pub async fn main_entry() {
 
     let mut worker = shogo::main::WorkerInterface::new(offscreen).await;
 
-    let _handler = worker.register_event(&canvas, "mousemove", |elem, _, event| {
-        let event = event
-            .dyn_ref::<web_sys::MouseEvent>()
-            .unwrap_throw()
-            .clone();
-
+    let _handler = worker.register_event(&canvas, "mousemove", |elem, event, _| {
         let [a, b] = convert_coord(&elem, event);
-
         MEvent::MouseMove {
             elem: elem.id(),
             x: a,
@@ -135,7 +129,12 @@ pub async fn worker_entry() {
     log!("worker thread closing");
 }
 
-fn convert_coord(canvas: &web_sys::HtmlElement, e: web_sys::MouseEvent) -> [f32; 2] {
+fn convert_coord(canvas: &web_sys::HtmlElement, event: &web_sys::Event) -> [f32; 2] {
+    let e = event
+        .dyn_ref::<web_sys::MouseEvent>()
+        .unwrap_throw()
+        .clone();
+
     let [x, y] = [e.client_x() as f32, e.client_y() as f32];
     let bb = canvas.get_bounding_client_rect();
     let tl = bb.x() as f32;

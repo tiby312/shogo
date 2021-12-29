@@ -238,13 +238,13 @@ pub mod main {
             &mut self,
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
-            mut func: impl FnMut(web_sys::HtmlElement, &'static str, &web_sys::Event) -> T + 'static,
+            mut func: impl FnMut(web_sys::HtmlElement, &web_sys::Event,&'static str, ) -> T + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
             gloo::events::EventListener::new(&elem, event_type, move |event| {
-                let val = func(e.clone(), event_type, event);
+                let val = func(e.clone(), event,event_type);
 
                 let a = JsValue::from_serde(&val).unwrap_throw();
 
