@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use serde::{Serialize,Deserialize };
 
 mod circle_program;
 pub mod dots;
@@ -171,52 +172,18 @@ impl Timer {
     }
 }
 
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub enum MEvent {
-    #[non_exhaustive]
-    MouseMove {
-        elem: arrayvec::ArrayString<30>,
-        x: f32,
-        y: f32,
-    },
-    #[non_exhaustive]
-    MouseClick {
-        elem: arrayvec::ArrayString<30>,
-        x: f32,
-        y: f32,
-    },
-}
 
-impl MEvent {
-    pub fn into_js(self) -> js_sys::ArrayBuffer {
-        let l = std::mem::size_of::<Self>();
-        let arr: &[u8] = unsafe { std::slice::from_raw_parts(&self as *const _ as *const _, l) };
-        let buffer = js_sys::Uint8Array::new_with_length(l as u32);
-        buffer.copy_from(arr);
-        buffer.buffer()
-    }
-    pub fn from_js(ar: &js_sys::ArrayBuffer) -> MEvent {
-        let ar = js_sys::Uint8Array::new_with_byte_offset(ar, 0);
-
-        let mut j: MEvent = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
-        let l = std::mem::size_of::<Self>();
-        let arr: &mut [u8] =
-            unsafe { std::slice::from_raw_parts_mut(&mut j as *mut _ as *mut _, l) };
-        ar.copy_to(arr);
-        j
-    }
-}
-
+use std::marker::PhantomData;
 pub mod main {
     use super::*;
-    pub struct WorkerInterface {
+    pub struct WorkerInterface<T> {
         pub worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         shutdown_fr: futures::channel::oneshot::Receiver<()>,
         _handle: gloo::events::EventListener,
+        _p:PhantomData<T>
     }
 
-    impl WorkerInterface {
+    impl<T:'static+Serialize> WorkerInterface<T> {
         pub async fn new(canvas: web_sys::OffscreenCanvas) -> Self {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
@@ -260,6 +227,7 @@ pub mod main {
                 worker,
                 shutdown_fr,
                 _handle,
+                _p:PhantomData
             }
         }
 
@@ -267,38 +235,23 @@ pub mod main {
             let _ = self.shutdown_fr.await.unwrap_throw();
         }
 
-        pub fn register_click(
-            &mut self,
-            elem: &web_sys::HtmlElement,
-        ) -> gloo::events::EventListener {
+        pub fn register_event(&mut self,
+            elem:& web_sys::HtmlElement,
+            event_type:&'static str,
+            mut func:impl FnMut(web_sys::HtmlElement,&'static str,&web_sys::Event)->T+'static)->gloo::events::EventListener{
             let w = self.worker.clone();
 
             let e = elem.clone();
-            gloo::events::EventListener::new(&elem, "click", move |event| {
-                let event = event
-                    .dyn_ref::<web_sys::MouseEvent>()
-                    .unwrap_throw()
-                    .clone();
+            gloo::events::EventListener::new(&elem, event_type, move |event| {
+                
+                let val=func(e.clone(),event_type,event);
 
-                fn convert_coord(
-                    canvas: &web_sys::HtmlElement,
-                    e: web_sys::MouseEvent,
-                ) -> [f32; 2] {
-                    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
-                    let bb = canvas.get_bounding_client_rect();
-                    let tl = bb.x() as f32;
-                    let tr = bb.y() as f32;
-                    [x - tl, y - tr]
-                }
+                
+                
+                let a=JsValue::from_serde(&val).unwrap_throw();
 
-                let [a, b] = convert_coord(&e, event);
 
-                let e = MEvent::MouseClick {
-                    elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
-                    x: a,
-                    y: b,
-                };
-
+                /*
                 let k = &e.into_js();
 
                 let arr = js_sys::Array::new_with_length(1);
@@ -306,64 +259,25 @@ pub mod main {
                 w.borrow()
                     .post_message_with_transfer(k, &arr)
                     .unwrap_throw();
-            })
+                */
+                w.borrow().post_message(&a).unwrap_throw();
+            }) 
         }
 
-        pub fn register_mousemove(
-            &mut self,
-            elem: &web_sys::HtmlElement,
-        ) -> gloo::events::EventListener {
-            let w = self.worker.clone();
-
-            let e = elem.clone();
-            gloo::events::EventListener::new(&elem, "mousemove", move |event| {
-                let event = event
-                    .dyn_ref::<web_sys::MouseEvent>()
-                    .unwrap_throw()
-                    .clone();
-
-                fn convert_coord(
-                    canvas: &web_sys::HtmlElement,
-                    e: web_sys::MouseEvent,
-                ) -> [f32; 2] {
-                    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
-                    let bb = canvas.get_bounding_client_rect();
-                    let tl = bb.x() as f32;
-                    let tr = bb.y() as f32;
-                    [x - tl, y - tr]
-                }
-
-                let [a, b] = convert_coord(&e, event);
-
-                let e = MEvent::MouseMove {
-                    elem: arrayvec::ArrayString::from(&e.id()).unwrap_throw(),
-                    x: a,
-                    y: b,
-                };
-
-                let k = &e.into_js();
-
-                let arr = js_sys::Array::new_with_length(1);
-                arr.set(0, k.into());
-                w.borrow()
-                    .post_message_with_transfer(k, &arr)
-                    .unwrap_throw();
-            })
-        }
     }
 }
 
 pub mod worker {
     use super::*;
-    pub struct WorkerHandler {
+    pub struct WorkerHandler<T> {
         _handle: gloo::events::EventListener,
-        queue: Rc<RefCell<Vec<MEvent>>>,
-        buffer: Vec<MEvent>,
+        queue: Rc<RefCell<Vec<T>>>,
+        buffer: Vec<T>,
         timer: crate::Timer,
         canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
     }
 
-    impl Drop for WorkerHandler {
+    impl<T> Drop for WorkerHandler<T> {
         fn drop(&mut self) {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
@@ -373,16 +287,16 @@ pub mod worker {
                 .unwrap_throw();
         }
     }
-    impl WorkerHandler {
+    impl<T:'static+for<'a> Deserialize<'a>> WorkerHandler<T> {
         pub fn canvas(&self) -> web_sys::OffscreenCanvas {
             self.canvas.borrow().as_ref().unwrap_throw().clone()
         }
 
-        pub async fn new(time: usize) -> WorkerHandler {
+        pub async fn new(time: usize) -> WorkerHandler<T> {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
 
-            let queue: Rc<RefCell<Vec<MEvent>>> = std::rc::Rc::new(std::cell::RefCell::new(vec![]));
+            let queue: Rc<RefCell<Vec<T>>> = std::rc::Rc::new(std::cell::RefCell::new(vec![]));
 
             let ca: Rc<RefCell<Option<web_sys::OffscreenCanvas>>> =
                 std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -397,10 +311,10 @@ pub mod worker {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 let data = event.data();
 
-                if data.is_instance_of::<js_sys::ArrayBuffer>() {
-                    let data = data.dyn_ref::<js_sys::ArrayBuffer>().unwrap_throw();
+                if data.is_instance_of::<js_sys::JsString>() {
+                    let data = data.dyn_ref::<js_sys::JsString>().unwrap_throw();
 
-                    let e = MEvent::from_js(&data);
+                    let e=data.into_serde().unwrap_throw();
 
                     q.borrow_mut().push(e);
                 } else if data.is_instance_of::<web_sys::OffscreenCanvas>() {
@@ -429,7 +343,7 @@ pub mod worker {
                 canvas: ca,
             }
         }
-        pub async fn next(&mut self) -> &[MEvent] {
+        pub async fn next(&mut self) -> &[T] {
             self.timer.next().await;
             self.buffer.clear();
             self.buffer.append(&mut self.queue.borrow_mut());
