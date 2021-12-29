@@ -1,5 +1,6 @@
 use gloo::console::log;
 use wasm_bindgen::prelude::*;
+use gloo::timers::future::TimeoutFuture;
 
 use shogo::{
     dots::{CtxExt, Shapes},
@@ -10,6 +11,27 @@ use shogo::{
 pub async fn init_module() {
     log!("initing a module");
 }
+
+#[wasm_bindgen]
+pub async fn main_entry() {
+    log!("demo start!");
+
+    let (canvas, button, shutdown_button) = (
+        utils::get_by_id_canvas("mycanvas"),
+        utils::get_by_id_elem("mybutton"),
+        utils::get_by_id_elem("shutdownbutton"),
+    );
+
+    let mut worker =
+        shogo::main::WorkerInterface::new(canvas.transfer_control_to_offscreen().unwrap_throw())
+            .await;
+    let _handler = worker.register_mousemove(&canvas);
+    let _handler = worker.register_click(&button);
+    let _handler = worker.register_click(&shutdown_button);
+
+    TimeoutFuture::new(100000).await;
+}
+
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
@@ -81,25 +103,5 @@ pub async fn worker_entry() {
         );
         draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], [0.0, 0.0], radius);
     }
-}
-use gloo::timers::future::TimeoutFuture;
-
-#[wasm_bindgen]
-pub async fn main_entry() {
-    log!("demo start!");
-
-    let (canvas, button, shutdown_button) = (
-        utils::get_by_id_canvas("mycanvas"),
-        utils::get_by_id_elem("mybutton"),
-        utils::get_by_id_elem("shutdownbutton"),
-    );
-
-    let mut worker =
-        shogo::main::WorkerInterface::new(canvas.transfer_control_to_offscreen().unwrap_throw())
-            .await;
-    let _handler = worker.register_mousemove(&canvas);
-    let _handler = worker.register_click(&button);
-    let _handler = worker.register_click(&shutdown_button);
-
-    TimeoutFuture::new(100000).await;
+    log!("worker shutdown");
 }

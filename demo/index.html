@@ -4,7 +4,6 @@
     import { default as init } from './pkg/demo.js';
     delete WebAssembly.instantiateStreaming;
     var w=await init('pkg/demo_bg.wasm');
-    console.log(self);
     await w.main_entry();
   </script>
   
