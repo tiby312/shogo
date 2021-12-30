@@ -1,3 +1,3 @@
 # shogo
 
-A library to make it easier to write rust web programs that need also need to interact with the DOM. 
+An engine that spawns a worker thread and then forwards on events from the main thread in a user defined format.
