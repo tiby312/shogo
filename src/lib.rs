@@ -83,6 +83,43 @@ impl Timer {
 }
 
 
+use futures::Stream;
+use futures::StreamExt;
+use futures::FutureExt;
+
+
+pub struct FrameTimer<T,K>{
+    timer:Timer,
+    buffer:Vec<T>,
+    stream:K
+}
+impl<T,K:Stream<Item=T>+std::marker::Unpin> FrameTimer<T,K>{
+    pub fn new(frame_rate:usize,stream:K)->Self{
+        FrameTimer{
+            timer:Timer::new(frame_rate),
+            buffer:vec![],
+            stream
+        }
+    }
+    pub async fn next(&mut self)->&[T]{
+        loop{
+            futures::select_biased!(
+                _ = self.timer.next().fuse() =>{
+                    break;
+                },
+                val = self.stream.next().fuse()=>{
+                    self.buffer.push(val.unwrap_throw());
+                }
+            )
+
+        }
+        &self.buffer
+    }
+}
+
+
+
+
 
 pub use main::EngineMain;
 use std::marker::PhantomData;
