@@ -26,7 +26,6 @@ features=[
 version = "0.3"
 features = [
   'OffscreenCanvas',
-  'Blob',
   'MessageEvent',
   'DedicatedWorkerGlobalScope',
   'Worker',
@@ -41,7 +40,6 @@ features = [
   'Element',
   'HtmlCanvasElement',
   'KeyboardEvent',
-  
   'WebGlBuffer',
   'WebGlVertexArrayObject',
   'WebGl2RenderingContext',
