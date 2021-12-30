@@ -10,6 +10,9 @@ mod circle_program;
 pub mod dots;
 
 pub mod utils {
+    //!
+    //! Helper functions to access elements
+    //!
     use super::*;
     pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
         gloo::utils::document()
@@ -18,23 +21,9 @@ pub mod utils {
             .dyn_into()
             .unwrap_throw()
     }
-    pub fn get_context_2d(
-        canvas: &web_sys::HtmlCanvasElement,
-    ) -> web_sys::CanvasRenderingContext2d {
-        canvas
-            .get_context("2d")
-            .unwrap_throw()
-            .unwrap_throw()
-            .dyn_into()
-            .unwrap_throw()
-    }
-
-    pub fn get_context_webgl2(
-        canvas: &web_sys::HtmlCanvasElement,
-    ) -> web_sys::WebGl2RenderingContext {
-        canvas
-            .get_context("webgl2")
-            .unwrap_throw()
+    pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
+        gloo::utils::document()
+            .get_element_by_id(id)
             .unwrap_throw()
             .dyn_into()
             .unwrap_throw()
@@ -50,85 +39,6 @@ pub mod utils {
             .dyn_into()
             .unwrap_throw()
     }
-
-    pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
-        gloo::utils::document()
-            .get_element_by_id(id)
-            .unwrap_throw()
-            .dyn_into()
-            .unwrap_throw()
-    }
-
-    pub mod render {
-        //! Similar to [`gloo::render::request_animation_frame`] except lifetimed.
-        //!
-
-        use std::cell::RefCell;
-        use std::fmt;
-        use std::rc::Rc;
-        use wasm_bindgen::prelude::*;
-        use wasm_bindgen::JsCast;
-
-        /// Handle for [`request_animation_frame`].
-        #[derive(Debug)]
-        pub struct AnimationFrame<'a> {
-            render_id: i32,
-            _closure: Closure<dyn Fn(JsValue)>,
-            callback_wrapper: Rc<RefCell<Option<CallbackWrapper>>>,
-            _p: std::marker::PhantomData<&'a i32>,
-        }
-
-        struct CallbackWrapper(Box<dyn FnOnce(f64) + 'static>);
-        impl fmt::Debug for CallbackWrapper {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("CallbackWrapper")
-            }
-        }
-
-        impl Drop for AnimationFrame<'_> {
-            fn drop(&mut self) {
-                if self.callback_wrapper.borrow_mut().is_some() {
-                    web_sys::window()
-                        .unwrap_throw()
-                        .cancel_animation_frame(self.render_id)
-                        .unwrap_throw()
-                }
-            }
-        }
-
-        /// Calls browser's `requestAnimationFrame`. It is cancelled when the handler is dropped.
-        ///
-        /// [MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
-        pub fn request_animation_frame<'a, F>(callback_once: F) -> AnimationFrame<'a>
-        where
-            F: FnOnce(f64) + 'a,
-        {
-            let j: Box<dyn FnOnce(f64) + 'a> = Box::new(callback_once);
-            let k: Box<dyn FnOnce(f64) + 'static> = unsafe { std::mem::transmute(j) };
-
-            let callback_wrapper = Rc::new(RefCell::new(Some(CallbackWrapper(k))));
-            let callback: Closure<dyn Fn(JsValue)> = {
-                let callback_wrapper = Rc::clone(&callback_wrapper);
-                Closure::wrap(Box::new(move |v: JsValue| {
-                    let time: f64 = v.as_f64().unwrap_or(0.0);
-                    let callback = callback_wrapper.borrow_mut().take().unwrap().0;
-                    callback(time);
-                }))
-            };
-
-            let render_id = web_sys::window()
-                .unwrap_throw()
-                .request_animation_frame(callback.as_ref().unchecked_ref())
-                .unwrap_throw();
-
-            AnimationFrame {
-                render_id,
-                _closure: callback,
-                callback_wrapper,
-                _p: std::marker::PhantomData,
-            }
-        }
-    }
 }
 
 #[wasm_bindgen]
@@ -138,12 +48,12 @@ extern "C" {
     static performance: web_sys::Performance;
 }
 
-pub struct Timer {
+struct Timer {
     last: f64,
     frame_rate: usize,
 }
 impl Timer {
-    pub fn new(frame_rate: usize) -> Timer {
+    fn new(frame_rate: usize) -> Timer {
         let frame_rate = ((1.0 / frame_rate as f64) * 1000.0).round() as usize;
 
         assert!(frame_rate > 0);
@@ -156,7 +66,7 @@ impl Timer {
         }
     }
 
-    pub async fn next(&mut self) {
+    async fn next(&mut self) {
         //let window = gloo::utils::window();
         //let performance = window.performance().unwrap_throw();
 
@@ -172,17 +82,25 @@ impl Timer {
     }
 }
 
+pub use main::EngineMain;
 use std::marker::PhantomData;
-pub mod main {
+mod main {
     use super::*;
-    pub struct WorkerInterface<T> {
-        pub worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
+    ///
+    /// The component of the engine that runs on the main thread.
+    ///
+    pub struct EngineMain<T> {
+        worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         shutdown_fr: futures::channel::oneshot::Receiver<()>,
         _handle: gloo::events::EventListener,
         _p: PhantomData<T>,
     }
 
-    impl<T: 'static + Serialize> WorkerInterface<T> {
+    impl<T: 'static + Serialize> EngineMain<T> {
+        ///
+        /// Create the engine. Blocks until the worker thread reports that
+        /// it is ready to receive the offscreen canvas.
+        ///
         pub async fn new(canvas: web_sys::OffscreenCanvas) -> Self {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
@@ -222,7 +140,7 @@ pub mod main {
                 .post_message_with_transfer(&canvas, &arr)
                 .unwrap_throw();
 
-            WorkerInterface {
+            EngineMain {
                 worker,
                 shutdown_fr,
                 _handle,
@@ -230,55 +148,57 @@ pub mod main {
             }
         }
 
+        ///
+        /// Block until the worker thread returns.
+        ///
         pub async fn join(self) {
             let _ = self.shutdown_fr.await.unwrap_throw();
         }
 
+        ///
+        /// Register a new event that will be packaged and sent to the worker thread.
+        ///
         pub fn register_event(
             &mut self,
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
-            mut func: impl FnMut(EventInformation) -> T + 'static,
+            mut func: impl FnMut(EventData) -> T + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
             gloo::events::EventListener::new(&elem, event_type, move |event| {
-                let e=EventInformation{
-                    elem:&e,
+                let e = EventData {
+                    elem: &e,
                     event,
-                    event_type
+                    event_type,
                 };
 
                 let val = func(e);
-
-
                 let a = JsValue::from_serde(&val).unwrap_throw();
-
-                /*
-                let k = &e.into_js();
-
-                let arr = js_sys::Array::new_with_length(1);
-                arr.set(0, k.into());
-                w.borrow()
-                    .post_message_with_transfer(k, &arr)
-                    .unwrap_throw();
-                */
                 w.borrow().post_message(&a).unwrap_throw();
             })
         }
     }
 }
 
-pub struct EventInformation<'a>{
-    pub elem:&'a web_sys::HtmlElement,
-    pub event:&'a web_sys::Event,
-    pub event_type:&'static str,
+///
+/// Data that can be accessed when handling events in the main thread to help
+/// construct the data to be passed to the worker thread.
+///
+pub struct EventData<'a> {
+    pub elem: &'a web_sys::HtmlElement,
+    pub event: &'a web_sys::Event,
+    pub event_type: &'static str,
 }
 
-pub mod worker {
+pub use worker::EngineWorker;
+mod worker {
     use super::*;
-    pub struct WorkerHandler<T> {
+    ///
+    /// The component of the engine that runs on the worker thread spawn inside of worker.js.
+    ///
+    pub struct EngineWorker<T> {
         _handle: gloo::events::EventListener,
         queue: Rc<RefCell<Vec<T>>>,
         buffer: Vec<T>,
@@ -286,7 +206,7 @@ pub mod worker {
         canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
     }
 
-    impl<T> Drop for WorkerHandler<T> {
+    impl<T> Drop for EngineWorker<T> {
         fn drop(&mut self) {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
@@ -296,12 +216,20 @@ pub mod worker {
                 .unwrap_throw();
         }
     }
-    impl<T: 'static + for<'a> Deserialize<'a>> WorkerHandler<T> {
+    impl<T: 'static + for<'a> Deserialize<'a>> EngineWorker<T> {
+        ///
+        /// Get the offscreen canvas.
+        ///
         pub fn canvas(&self) -> web_sys::OffscreenCanvas {
             self.canvas.borrow().as_ref().unwrap_throw().clone()
         }
 
-        pub async fn new(time: usize) -> WorkerHandler<T> {
+        ///
+        /// Create the worker component of the engine.
+        /// Specify the frame rate.
+        /// Blocks until it receives the offscreen canvas from the main thread.
+        ///
+        pub async fn new(time: usize) -> EngineWorker<T> {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
 
@@ -344,7 +272,7 @@ pub mod worker {
             fr.await.unwrap_throw();
 
             log!("worker:ready to continue");
-            WorkerHandler {
+            EngineWorker {
                 _handle,
                 queue,
                 buffer: vec![],
@@ -352,6 +280,11 @@ pub mod worker {
                 canvas: ca,
             }
         }
+
+        ///
+        /// Blocks until the next frame. Returns all events that
+        /// transpired since the previous call to next.
+        ///
         pub async fn next(&mut self) -> &[T] {
             self.timer.next().await;
             self.buffer.clear();

@@ -1,3 +1,7 @@
+//!
+//! A simple webgl drawing system that draws shapes using many small circles or squares.
+//!
+
 use web_sys::WebGl2RenderingContext;
 
 use crate::circle_program::*;
