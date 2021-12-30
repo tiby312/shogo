@@ -178,6 +178,16 @@ mod main {
             let _ = self.shutdown_fr.await.unwrap_throw();
         }
 
+        pub fn send_event(&mut self,val:T){
+            let a = JsValue::from_serde(&val).unwrap_throw();
+
+            let data=js_sys::Array::new();
+            data.set(0,JsValue::null());
+            data.set(1,a);
+
+            self.worker.borrow().post_message(&data).unwrap_throw();
+        }
+
         ///
         /// Register a new event that will be packaged and sent to the worker thread.
         ///
