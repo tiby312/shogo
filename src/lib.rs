@@ -82,6 +82,8 @@ impl Timer {
     }
 }
 
+
+
 pub use main::EngineMain;
 use std::marker::PhantomData;
 mod main {
@@ -89,19 +91,19 @@ mod main {
     ///
     /// The component of the engine that runs on the main thread.
     ///
-    pub struct EngineMain<T> {
+    pub struct EngineMain<T,K> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         shutdown_fr: futures::channel::oneshot::Receiver<()>,
         _handle: gloo::events::EventListener,
-        _p: PhantomData<T>,
+        _p: PhantomData<(T,K)>,
     }
 
-    impl<T: 'static + Serialize> EngineMain<T> {
+    impl<T: 'static + Serialize,K:for<'a>Deserialize<'a>+'static> EngineMain<T,K> {
         ///
         /// Create the engine. Blocks until the worker thread reports that
         /// it is ready to receive the offscreen canvas.
         ///
-        pub async fn new(canvas: web_sys::OffscreenCanvas) -> Self {
+        pub async fn new(canvas: web_sys::OffscreenCanvas) -> (Self,futures::channel::mpsc::UnboundedReceiver<K>) {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(
@@ -114,38 +116,59 @@ mod main {
             let (fs, fr) = futures::channel::oneshot::channel();
             let mut fs = Some(fs);
 
+            let (ks,kr)=futures::channel::mpsc::unbounded();
             let _handle =
                 gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
                     let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                     let data = event.data();
-                    if let Some(s) = data.as_string() {
-                        if s == "ready" {
-                            if let Some(f) = fs.take() {
-                                f.send(()).unwrap_throw();
-                            }
-                        } else if s == "close" {
-                            if let Some(f) = shutdown_fs.take() {
-                                f.send(()).unwrap_throw();
+
+                    let data:js_sys::Array = data.dyn_into().unwrap_throw();
+                    let m=data.get(0);
+                    let k=data.get(1);
+
+                    if !m.is_null(){
+                        if let Some(s) = m.as_string() {
+                        
+                            if s == "ready" {
+                        
+                                if let Some(f) = fs.take() {
+                                    f.send(()).unwrap_throw();
+                                }
+                            } else if s == "close" {
+                                if let Some(f) = shutdown_fs.take() {
+                                    f.send(()).unwrap_throw();
+                                }
                             }
                         }
                     }
+
+                    if !k.is_null(){
+                        ks.unbounded_send(k.into_serde().unwrap_throw()).unwrap_throw();
+                    }
+
                 });
 
             let _ = fr.await.unwrap_throw();
+            log!("main:got ready response!");
 
             let arr = js_sys::Array::new_with_length(1);
             arr.set(0, canvas.clone().into());
+
+            let data=js_sys::Array::new();
+            data.set(0,canvas.into());
+            data.set(1,JsValue::null());
+
             worker
                 .borrow()
-                .post_message_with_transfer(&canvas, &arr)
+                .post_message_with_transfer(&data, &arr)
                 .unwrap_throw();
 
-            EngineMain {
+            (EngineMain {
                 worker,
                 shutdown_fr,
                 _handle,
                 _p: PhantomData,
-            }
+            },kr)
         }
 
         ///
@@ -176,7 +199,14 @@ mod main {
 
                 let val = func(e);
                 let a = JsValue::from_serde(&val).unwrap_throw();
-                w.borrow().post_message(&a).unwrap_throw();
+
+
+                let data=js_sys::Array::new();
+                data.set(0,JsValue::null());
+                data.set(1,a);
+
+                
+                w.borrow().post_message(&data).unwrap_throw();
             })
         }
     }
@@ -198,25 +228,31 @@ mod worker {
     ///
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
-    pub struct EngineWorker<T> {
+    pub struct EngineWorker<T,K> {
         _handle: gloo::events::EventListener,
         queue: Rc<RefCell<Vec<T>>>,
         buffer: Vec<T>,
         timer: crate::Timer,
         canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
+        _p:PhantomData<K>
     }
 
-    impl<T> Drop for EngineWorker<T> {
+    impl<T,K> Drop for EngineWorker<T,K> {
         fn drop(&mut self) {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
 
+
+            let data = js_sys::Array::new();
+            data.set(0,JsValue::from_str("close"));
+            data.set(1,JsValue::null());
+
             scope
-                .post_message(&JsValue::from_str("close"))
+                .post_message(&data)
                 .unwrap_throw();
         }
     }
-    impl<T: 'static + for<'a> Deserialize<'a>> EngineWorker<T> {
+    impl<T: 'static + for<'a> Deserialize<'a>,K:Serialize> EngineWorker<T,K> {
         ///
         /// Get the offscreen canvas.
         ///
@@ -229,7 +265,7 @@ mod worker {
         /// Specify the frame rate.
         /// Blocks until it receives the offscreen canvas from the main thread.
         ///
-        pub async fn new(time: usize) -> EngineWorker<T> {
+        pub async fn new(time: usize) -> EngineWorker<T,K> {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
 
@@ -248,24 +284,34 @@ mod worker {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 let data = event.data();
 
-                if data.is_instance_of::<web_sys::OffscreenCanvas>() {
-                    log!("worker:received offscreen canvas");
+                let data:js_sys::Array=data.dyn_into().unwrap_throw();
+                let offscreen=data.get(0);
+                let payload=data.get(1);
+
+                if !offscreen.is_null(){
+                    
+                    let offscreen:web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
+                    *caa.borrow_mut() = Some(offscreen);
                     if let Some(fs) = fs.take() {
                         fs.send(()).unwrap_throw();
                     }
+                }
 
-                    let data = data.dyn_into().unwrap_throw();
-                    *caa.borrow_mut() = Some(data);
-                } else {
-                    //let data = data.dyn_ref::<js_sys::JsString>().unwrap_throw();
-                    let e = data.into_serde().unwrap_throw();
+                if !payload.is_null() {
+                    let e = payload.into_serde().unwrap_throw();
 
                     q.borrow_mut().push(e);
+                    
                 }
             });
 
+
+            let data = js_sys::Array::new();
+            data.set(0,JsValue::from_str("ready"));
+            data.set(1,JsValue::null());
+
             scope
-                .post_message(&JsValue::from_str("ready"))
+                .post_message(&data)
                 .unwrap_throw();
             log!("worker:sent ready");
 
@@ -278,7 +324,19 @@ mod worker {
                 buffer: vec![],
                 timer: crate::Timer::new(time),
                 canvas: ca,
+                _p:PhantomData
             }
+        }
+
+        pub fn post_message(&mut self,a:K){
+            let scope: web_sys::DedicatedWorkerGlobalScope =
+                js_sys::global().dyn_into().unwrap_throw();
+
+            let data = js_sys::Array::new();
+            data.set(0,JsValue::null());
+            data.set(1,JsValue::from_serde(&a).unwrap_throw());
+
+            scope.post_message(&data).unwrap_throw();
         }
 
         ///
