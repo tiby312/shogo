@@ -89,6 +89,10 @@ use futures::FutureExt;
 use futures::Stream;
 use futures::StreamExt;
 
+///
+/// Takes a stream, and continually returns a list of its items that have accumulated over
+/// the specified period.
+///
 pub struct FrameTimer<T, K> {
     timer: Timer,
     buffer: Vec<T>,
@@ -125,20 +129,25 @@ mod main {
     ///
     /// The component of the engine that runs on the main thread.
     ///
-    pub struct EngineMain<T, K> {
+    pub struct EngineMain<MainToWorker, WorkerToMain> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         _handle: gloo::events::EventListener,
-        _p: PhantomData<(T, K)>,
+        _p: PhantomData<(MainToWorker, WorkerToMain)>,
     }
 
-    impl<T: 'static + Serialize, K: for<'a> Deserialize<'a> + 'static> EngineMain<T, K> {
+    impl<MainToWorker: 'static + Serialize, WorkerToMain: for<'a> Deserialize<'a> + 'static>
+        EngineMain<MainToWorker, WorkerToMain>
+    {
         ///
         /// Create the engine. Blocks until the worker thread reports that
         /// it is ready to receive the offscreen canvas.
         ///
         pub async fn new(
             canvas: web_sys::OffscreenCanvas,
-        ) -> (Self, futures::channel::mpsc::UnboundedReceiver<K>) {
+        ) -> (
+            Self,
+            futures::channel::mpsc::UnboundedReceiver<WorkerToMain>,
+        ) {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(
@@ -197,7 +206,7 @@ mod main {
             )
         }
 
-        pub fn send_event(&mut self, val: T) {
+        pub fn send_event(&mut self, val: MainToWorker) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
             let data = js_sys::Array::new();
@@ -214,12 +223,12 @@ mod main {
             &mut self,
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
-            mut func: impl FnMut(EventData) -> T + 'static,
+            mut func: impl FnMut(EventData) -> MainToWorker + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
-            gloo::events::EventListener::new(&elem, event_type, move |event| {
+            gloo::events::EventListener::new(elem, event_type, move |event| {
                 let e = EventData {
                     elem: &e,
                     event,
@@ -255,13 +264,15 @@ mod worker {
     ///
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
-    pub struct EngineWorker<T, K> {
+    pub struct EngineWorker<MainToWorker, WorkerToMain> {
         _handle: gloo::events::EventListener,
         canvas: web_sys::OffscreenCanvas,
-        _p: PhantomData<(T, K)>,
+        _p: PhantomData<(MainToWorker, WorkerToMain)>,
     }
 
-    impl<T: 'static + for<'a> Deserialize<'a>, K: Serialize> EngineWorker<T, K> {
+    impl<MainToWorker: 'static + for<'a> Deserialize<'a>, WorkerToMain: Serialize>
+        EngineWorker<MainToWorker, WorkerToMain>
+    {
         ///
         /// Get the offscreen canvas.
         ///
@@ -275,8 +286,8 @@ mod worker {
         /// Blocks until it receives the offscreen canvas from the main thread.
         ///
         pub async fn new() -> (
-            EngineWorker<T, K>,
-            futures::channel::mpsc::UnboundedReceiver<T>,
+            EngineWorker<MainToWorker, WorkerToMain>,
+            futures::channel::mpsc::UnboundedReceiver<MainToWorker>,
         ) {
             let scope = utils::get_worker_global_context();
 
@@ -324,7 +335,7 @@ mod worker {
             )
         }
 
-        pub fn post_message(&mut self, a: K) {
+        pub fn post_message(&mut self, a: WorkerToMain) {
             let scope = utils::get_worker_global_context();
 
             let data = js_sys::Array::new();

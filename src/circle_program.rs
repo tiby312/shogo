@@ -4,7 +4,7 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 pub struct Buffer {
     pub(crate) buffer: web_sys::WebGlBuffer,
-    pub(crate) num_verticies: usize,
+    pub(crate) num_verts: usize,
     pub(crate) ctx: WebGl2RenderingContext,
 }
 impl Buffer {
@@ -12,7 +12,7 @@ impl Buffer {
         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
         Ok(Buffer {
             buffer,
-            num_verticies: 0,
+            num_verts: 0,
             ctx: ctx.clone(),
         })
     }
@@ -32,7 +32,7 @@ impl CircleProgram {
         point_size: f32,
         color: &[f32; 4],
     ) {
-        if buffer.num_verticies == 0 {
+        if buffer.num_verts == 0 {
             return;
         }
 
@@ -65,33 +65,29 @@ impl CircleProgram {
         );
         context.enable_vertex_attrib_array(0);
 
-        context.draw_arrays(
-            WebGl2RenderingContext::POINTS,
-            0,
-            buffer.num_verticies as i32,
-        );
+        context.draw_arrays(WebGl2RenderingContext::POINTS, 0, buffer.num_verts as i32);
     }
 
     pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
-        let vert_shader = compile_shader(&context, WebGl2RenderingContext::VERTEX_SHADER, vs)?;
-        let frag_shader = compile_shader(&context, WebGl2RenderingContext::FRAGMENT_SHADER, fs)?;
-        let program = link_program(&context, &vert_shader, &frag_shader)?;
+        let vert_shader = compile_shader(context, WebGl2RenderingContext::VERTEX_SHADER, vs)?;
+        let frag_shader = compile_shader(context, WebGl2RenderingContext::FRAGMENT_SHADER, fs)?;
+        let program = link_program(context, &vert_shader, &frag_shader)?;
 
         context.delete_shader(Some(&vert_shader));
         context.delete_shader(Some(&frag_shader));
 
         let mmatrix = context
             .get_uniform_location(&program, "mmatrix")
-            .ok_or("uniform err".to_string())?;
+            .ok_or_else(|| "uniform err".to_string())?;
         let point_size = context
             .get_uniform_location(&program, "point_size")
-            .ok_or("uniform err".to_string())?;
+            .ok_or_else(|| "uniform err".to_string())?;
         let offset = context
             .get_uniform_location(&program, "offset")
-            .ok_or("uniform err".to_string())?;
+            .ok_or_else(|| "uniform err".to_string())?;
         let bg = context
             .get_uniform_location(&program, "bg")
-            .ok_or("uniform err".to_string())?;
+            .ok_or_else(|| "uniform err".to_string())?;
         let position = context.get_attrib_location(&program, "position");
         if position < 0 {
             return Err("attribute err".to_string());

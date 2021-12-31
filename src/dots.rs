@@ -8,7 +8,7 @@ use crate::circle_program::*;
 
 pub use crate::circle_program::Buffer;
 
-const SQUARE_FRAG_SHADER_STR: &'static str = r#"#version 300 es
+const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
 uniform vec4 bg;
@@ -27,7 +27,7 @@ void main() {
 }
 "#;
 
-const CIRCLE_FRAG_SHADER_STR: &'static str = r#"#version 300 es
+const CIRCLE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
 uniform vec4 bg;
@@ -61,7 +61,7 @@ void main() {
 }
 "#;
 
-const VERT_SHADER_STR: &'static str = r#"#version 300 es
+const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
 out float extra;
 uniform vec2 offset;
@@ -85,16 +85,16 @@ impl std::ops::Deref for StaticBuffer {
 }
 
 impl StaticBuffer {
-    pub fn new(ctx: &WebGl2RenderingContext, vertices: &[[f32; 2]]) -> Result<Self, String> {
+    pub fn new(ctx: &WebGl2RenderingContext, verts: &[[f32; 2]]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
-        buffer.0.num_verticies = vertices.len();
+        buffer.0.num_verts = verts.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
+        let n_bytes = verts.len() * std::mem::size_of::<[f32; 2]>();
         let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+            unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
 
         ctx.buffer_data_with_u8_array(
             WebGl2RenderingContext::ARRAY_BUFFER,
@@ -122,7 +122,7 @@ impl DynamicBuffer {
     pub fn update(&mut self, vertices: &[[f32; 2]]) {
         let ctx = &self.0.ctx;
 
-        self.0.num_verticies = vertices.len();
+        self.0.num_verts = vertices.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
@@ -181,8 +181,8 @@ impl Drop for ShaderSystem {
 
 impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
-        let circle_program = CircleProgram::new(&ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
-        let square_program = CircleProgram::new(&ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
+        let circle_program = CircleProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
+        let square_program = CircleProgram::new(ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
 
         Ok(ShaderSystem {
             circle_program,
