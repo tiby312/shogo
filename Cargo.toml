@@ -22,7 +22,7 @@ axgeom = "1.9"
 serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.gloo]
-version = "*"
+version = "0.5"
 features=[
   'futures'
   ]
