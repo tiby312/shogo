@@ -1,13 +1,9 @@
-//use gloo::console::console_dbg;
 use gloo::console::log;
 use serde::{Deserialize, Serialize};
-use shogo::{
-    dots::{CtxExt, Shapes},
-    utils,
-};
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use shogo::utils;
+use wasm_bindgen::{prelude::*, JsCast};
 
+///Common data sent from the main thread to the worker.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MEvent {
     CanvasMouseMove { x: f32, y: f32 },
@@ -17,6 +13,8 @@ pub enum MEvent {
 
 #[wasm_bindgen]
 pub async fn main_entry() {
+    use futures::StreamExt;
+
     log!("demo start");
 
     let (canvas, button, shutdown_button) = (
@@ -38,13 +36,14 @@ pub async fn main_entry() {
 
     let _handler = worker.register_event(&shutdown_button, "click", |_| MEvent::ShutdownClick);
 
-    use futures::StreamExt;
     let _: () = response.next().await.unwrap_throw();
     log!("main thread is closing");
 }
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
+    use shogo::dots::{CtxExt, Shapes};
+
     let (mut w, ss) = shogo::EngineWorker::new().await;
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
