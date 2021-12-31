@@ -102,6 +102,7 @@ impl<T,K:Stream<Item=T>+std::marker::Unpin> FrameTimer<T,K>{
         }
     }
     pub async fn next(&mut self)->&[T]{
+        self.buffer.clear();
         loop{
             futures::select_biased!(
                 _ = self.timer.next().fuse() =>{
@@ -277,11 +278,8 @@ mod worker {
     ///
     pub struct EngineWorker<T,K> {
         _handle: gloo::events::EventListener,
-        queue: Rc<RefCell<Vec<T>>>,
-        buffer: Vec<T>,
-        timer: crate::Timer,
         canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
-        _p:PhantomData<K>
+        _p:PhantomData<(T,K)>
     }
 
     impl<T,K> Drop for EngineWorker<T,K> {
@@ -307,17 +305,18 @@ mod worker {
             self.canvas.borrow().as_ref().unwrap_throw().clone()
         }
 
+
+
         ///
         /// Create the worker component of the engine.
         /// Specify the frame rate.
         /// Blocks until it receives the offscreen canvas from the main thread.
         ///
-        pub async fn new(time: usize) -> EngineWorker<T,K> {
+        pub async fn new() -> (EngineWorker<T,K>,futures::channel::mpsc::UnboundedReceiver<T>) {
             let scope: web_sys::DedicatedWorkerGlobalScope =
                 js_sys::global().dyn_into().unwrap_throw();
 
-            let queue: Rc<RefCell<Vec<T>>> = std::rc::Rc::new(std::cell::RefCell::new(vec![]));
-
+            
             let ca: Rc<RefCell<Option<web_sys::OffscreenCanvas>>> =
                 std::rc::Rc::new(std::cell::RefCell::new(None));
 
@@ -325,7 +324,9 @@ mod worker {
             let mut fs = Some(fs);
 
             let caa = ca.clone();
-            let q = queue.clone();
+            //let q = queue.clone();
+
+            let (bags,bagf) = futures::channel::mpsc::unbounded();
 
             let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
@@ -336,7 +337,6 @@ mod worker {
                 let payload=data.get(1);
 
                 if !offscreen.is_null(){
-                    
                     let offscreen:web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
                     *caa.borrow_mut() = Some(offscreen);
                     if let Some(fs) = fs.take() {
@@ -347,7 +347,8 @@ mod worker {
                 if !payload.is_null() {
                     let e = payload.into_serde().unwrap_throw();
 
-                    q.borrow_mut().push(e);
+                    bags.unbounded_send(e).unwrap_throw();
+                    //q.borrow_mut().push(e);
                     
                 }
             });
@@ -365,14 +366,11 @@ mod worker {
             fr.await.unwrap_throw();
 
             log!("worker:ready to continue");
-            EngineWorker {
+            (EngineWorker {
                 _handle,
-                queue,
-                buffer: vec![],
-                timer: crate::Timer::new(time),
                 canvas: ca,
                 _p:PhantomData
-            }
+            },bagf)
         }
 
         pub fn post_message(&mut self,a:K){
@@ -386,6 +384,7 @@ mod worker {
             scope.post_message(&data).unwrap_throw();
         }
 
+        /*
         ///
         /// Blocks until the next frame. Returns all events that
         /// transpired since the previous call to next.
@@ -396,5 +395,6 @@ mod worker {
             self.buffer.append(&mut self.queue.borrow_mut());
             &self.buffer
         }
+        */
     }
 }

@@ -44,7 +44,9 @@ pub async fn main_entry() {
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
-    let mut w = shogo::EngineWorker::<MEvent,()>::new(30).await;
+    let (w,ss) = shogo::EngineWorker::<MEvent,()>::new().await;
+
+    let mut frame_timer=shogo::FrameTimer::new(30,ss);
 
     let canvas = w.canvas();
 
@@ -69,7 +71,7 @@ pub async fn worker_entry() {
 
     let mut verts = vec![];
     'outer: loop {
-        for e in w.next().await {
+        for e in frame_timer.next().await {
             match e {
                 MEvent::CanvasMouseMove { x, y } => mouse_pos = [*x, *y],
                 MEvent::ButtonClick => {
