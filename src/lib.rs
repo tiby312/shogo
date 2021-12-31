@@ -1,4 +1,3 @@
-use gloo::console::log;
 use gloo::timers::future::TimeoutFuture;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -38,6 +37,10 @@ pub mod utils {
             .unwrap_throw()
             .dyn_into()
             .unwrap_throw()
+    }
+
+    pub fn get_worker_global_context() -> web_sys::DedicatedWorkerGlobalScope {
+        js_sys::global().dyn_into().unwrap_throw()
     }
 }
 
@@ -82,28 +85,26 @@ impl Timer {
     }
 }
 
-
+use futures::FutureExt;
 use futures::Stream;
 use futures::StreamExt;
-use futures::FutureExt;
 
-
-pub struct FrameTimer<T,K>{
-    timer:Timer,
-    buffer:Vec<T>,
-    stream:K
+pub struct FrameTimer<T, K> {
+    timer: Timer,
+    buffer: Vec<T>,
+    stream: K,
 }
-impl<T,K:Stream<Item=T>+std::marker::Unpin> FrameTimer<T,K>{
-    pub fn new(frame_rate:usize,stream:K)->Self{
-        FrameTimer{
-            timer:Timer::new(frame_rate),
-            buffer:vec![],
-            stream
+impl<T, K: Stream<Item = T> + std::marker::Unpin> FrameTimer<T, K> {
+    pub fn new(frame_rate: usize, stream: K) -> Self {
+        FrameTimer {
+            timer: Timer::new(frame_rate),
+            buffer: vec![],
+            stream,
         }
     }
-    pub async fn next(&mut self)->&[T]{
+    pub async fn next(&mut self) -> &[T] {
         self.buffer.clear();
-        loop{
+        loop {
             futures::select_biased!(
                 _ = self.timer.next().fuse() =>{
                     break;
@@ -112,15 +113,10 @@ impl<T,K:Stream<Item=T>+std::marker::Unpin> FrameTimer<T,K>{
                     self.buffer.push(val.unwrap_throw());
                 }
             )
-
         }
         &self.buffer
     }
 }
-
-
-
-
 
 pub use main::EngineMain;
 use std::marker::PhantomData;
@@ -129,99 +125,84 @@ mod main {
     ///
     /// The component of the engine that runs on the main thread.
     ///
-    pub struct EngineMain<T,K> {
+    pub struct EngineMain<T, K> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
-        shutdown_fr: futures::channel::oneshot::Receiver<()>,
         _handle: gloo::events::EventListener,
-        _p: PhantomData<(T,K)>,
+        _p: PhantomData<(T, K)>,
     }
 
-    impl<T: 'static + Serialize,K:for<'a>Deserialize<'a>+'static> EngineMain<T,K> {
+    impl<T: 'static + Serialize, K: for<'a> Deserialize<'a> + 'static> EngineMain<T, K> {
         ///
         /// Create the engine. Blocks until the worker thread reports that
         /// it is ready to receive the offscreen canvas.
         ///
-        pub async fn new(canvas: web_sys::OffscreenCanvas) -> (Self,futures::channel::mpsc::UnboundedReceiver<K>) {
+        pub async fn new(
+            canvas: web_sys::OffscreenCanvas,
+        ) -> (Self, futures::channel::mpsc::UnboundedReceiver<K>) {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(
                 web_sys::Worker::new_with_options("./worker.js", &options).unwrap(),
             ));
 
-            let (shutdown_fs, shutdown_fr) = futures::channel::oneshot::channel();
-            let mut shutdown_fs = Some(shutdown_fs);
-
             let (fs, fr) = futures::channel::oneshot::channel();
             let mut fs = Some(fs);
 
-            let (ks,kr)=futures::channel::mpsc::unbounded();
+            let (ks, kr) = futures::channel::mpsc::unbounded();
             let _handle =
                 gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+                    //log!("waaa");
                     let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                     let data = event.data();
 
-                    let data:js_sys::Array = data.dyn_into().unwrap_throw();
-                    let m=data.get(0);
-                    let k=data.get(1);
+                    let data: js_sys::Array = data.dyn_into().unwrap_throw();
+                    let m = data.get(0);
+                    let k = data.get(1);
 
-                    if !m.is_null(){
+                    if !m.is_null() {
                         if let Some(s) = m.as_string() {
-                        
                             if s == "ready" {
-                        
                                 if let Some(f) = fs.take() {
-                                    f.send(()).unwrap_throw();
-                                }
-                            } else if s == "close" {
-                                if let Some(f) = shutdown_fs.take() {
                                     f.send(()).unwrap_throw();
                                 }
                             }
                         }
+                    } else {
+                        let a = k.into_serde().unwrap_throw();
+                        ks.unbounded_send(a).unwrap_throw();
                     }
-
-                    if !k.is_null(){
-                        ks.unbounded_send(k.into_serde().unwrap_throw()).unwrap_throw();
-                    }
-
                 });
 
             let _ = fr.await.unwrap_throw();
-            log!("main:got ready response!");
 
             let arr = js_sys::Array::new_with_length(1);
             arr.set(0, canvas.clone().into());
 
-            let data=js_sys::Array::new();
-            data.set(0,canvas.into());
-            data.set(1,JsValue::null());
+            let data = js_sys::Array::new();
+            data.set(0, canvas.into());
+            data.set(1, JsValue::null());
 
             worker
                 .borrow()
                 .post_message_with_transfer(&data, &arr)
                 .unwrap_throw();
 
-            (EngineMain {
-                worker,
-                shutdown_fr,
-                _handle,
-                _p: PhantomData,
-            },kr)
+            (
+                EngineMain {
+                    worker,
+                    _handle,
+                    _p: PhantomData,
+                },
+                kr,
+            )
         }
 
-        ///
-        /// Block until the worker thread returns.
-        ///
-        pub async fn join(self) {
-            let _ = self.shutdown_fr.await.unwrap_throw();
-        }
-
-        pub fn send_event(&mut self,val:T){
+        pub fn send_event(&mut self, val: T) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
-            let data=js_sys::Array::new();
-            data.set(0,JsValue::null());
-            data.set(1,a);
+            let data = js_sys::Array::new();
+            data.set(0, JsValue::null());
+            data.set(1, a);
 
             self.worker.borrow().post_message(&data).unwrap_throw();
         }
@@ -248,12 +229,10 @@ mod main {
                 let val = func(e);
                 let a = JsValue::from_serde(&val).unwrap_throw();
 
+                let data = js_sys::Array::new();
+                data.set(0, JsValue::null());
+                data.set(1, a);
 
-                let data=js_sys::Array::new();
-                data.set(0,JsValue::null());
-                data.set(1,a);
-
-                
                 w.borrow().post_message(&data).unwrap_throw();
             })
         }
@@ -276,125 +255,83 @@ mod worker {
     ///
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
-    pub struct EngineWorker<T,K> {
+    pub struct EngineWorker<T, K> {
         _handle: gloo::events::EventListener,
-        canvas: Rc<RefCell<Option<web_sys::OffscreenCanvas>>>,
-        _p:PhantomData<(T,K)>
+        canvas: web_sys::OffscreenCanvas,
+        _p: PhantomData<(T, K)>,
     }
 
-    impl<T,K> Drop for EngineWorker<T,K> {
-        fn drop(&mut self) {
-            let scope: web_sys::DedicatedWorkerGlobalScope =
-                js_sys::global().dyn_into().unwrap_throw();
-
-
-            let data = js_sys::Array::new();
-            data.set(0,JsValue::from_str("close"));
-            data.set(1,JsValue::null());
-
-            scope
-                .post_message(&data)
-                .unwrap_throw();
-        }
-    }
-    impl<T: 'static + for<'a> Deserialize<'a>,K:Serialize> EngineWorker<T,K> {
+    impl<T: 'static + for<'a> Deserialize<'a>, K: Serialize> EngineWorker<T, K> {
         ///
         /// Get the offscreen canvas.
         ///
         pub fn canvas(&self) -> web_sys::OffscreenCanvas {
-            self.canvas.borrow().as_ref().unwrap_throw().clone()
+            self.canvas.clone()
         }
-
-
 
         ///
         /// Create the worker component of the engine.
         /// Specify the frame rate.
         /// Blocks until it receives the offscreen canvas from the main thread.
         ///
-        pub async fn new() -> (EngineWorker<T,K>,futures::channel::mpsc::UnboundedReceiver<T>) {
-            let scope: web_sys::DedicatedWorkerGlobalScope =
-                js_sys::global().dyn_into().unwrap_throw();
-
-            
-            let ca: Rc<RefCell<Option<web_sys::OffscreenCanvas>>> =
-                std::rc::Rc::new(std::cell::RefCell::new(None));
+        pub async fn new() -> (
+            EngineWorker<T, K>,
+            futures::channel::mpsc::UnboundedReceiver<T>,
+        ) {
+            let scope = utils::get_worker_global_context();
 
             let (fs, fr) = futures::channel::oneshot::channel();
             let mut fs = Some(fs);
 
-            let caa = ca.clone();
-            //let q = queue.clone();
-
-            let (bags,bagf) = futures::channel::mpsc::unbounded();
+            let (bags, bagf) = futures::channel::mpsc::unbounded();
 
             let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 let data = event.data();
 
-                let data:js_sys::Array=data.dyn_into().unwrap_throw();
-                let offscreen=data.get(0);
-                let payload=data.get(1);
+                let data: js_sys::Array = data.dyn_into().unwrap_throw();
+                let offscreen = data.get(0);
+                let payload = data.get(1);
 
-                if !offscreen.is_null(){
-                    let offscreen:web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
-                    *caa.borrow_mut() = Some(offscreen);
+                if !offscreen.is_null() {
+                    let offscreen: web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
                     if let Some(fs) = fs.take() {
-                        fs.send(()).unwrap_throw();
+                        fs.send(offscreen).unwrap_throw();
                     }
                 }
 
                 if !payload.is_null() {
                     let e = payload.into_serde().unwrap_throw();
-
                     bags.unbounded_send(e).unwrap_throw();
-                    //q.borrow_mut().push(e);
-                    
                 }
             });
 
-
             let data = js_sys::Array::new();
-            data.set(0,JsValue::from_str("ready"));
-            data.set(1,JsValue::null());
+            data.set(0, JsValue::from_str("ready"));
+            data.set(1, JsValue::null());
 
-            scope
-                .post_message(&data)
-                .unwrap_throw();
-            log!("worker:sent ready");
+            scope.post_message(&data).unwrap_throw();
 
-            fr.await.unwrap_throw();
+            let canvas = fr.await.unwrap_throw();
 
-            log!("worker:ready to continue");
-            (EngineWorker {
-                _handle,
-                canvas: ca,
-                _p:PhantomData
-            },bagf)
+            (
+                EngineWorker {
+                    _handle,
+                    canvas,
+                    _p: PhantomData,
+                },
+                bagf,
+            )
         }
 
-        pub fn post_message(&mut self,a:K){
-            let scope: web_sys::DedicatedWorkerGlobalScope =
-                js_sys::global().dyn_into().unwrap_throw();
+        pub fn post_message(&mut self, a: K) {
+            let scope = utils::get_worker_global_context();
 
             let data = js_sys::Array::new();
-            data.set(0,JsValue::null());
-            data.set(1,JsValue::from_serde(&a).unwrap_throw());
+            data.set(0, JsValue::null());
+            data.set(1, JsValue::from_serde(&a).unwrap_throw());
 
             scope.post_message(&data).unwrap_throw();
         }
-
-        /*
-        ///
-        /// Blocks until the next frame. Returns all events that
-        /// transpired since the previous call to next.
-        ///
-        pub async fn next(&mut self) -> &[T] {
-            self.timer.next().await;
-            self.buffer.clear();
-            self.buffer.append(&mut self.queue.borrow_mut());
-            &self.buffer
-        }
-        */
     }
 }

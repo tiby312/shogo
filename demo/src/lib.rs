@@ -17,7 +17,7 @@ pub enum MEvent {
 
 #[wasm_bindgen]
 pub async fn main_entry() {
-    log!("demo start!");
+    log!("demo start");
 
     let (canvas, button, shutdown_button) = (
         utils::get_by_id_canvas("mycanvas"),
@@ -27,7 +27,7 @@ pub async fn main_entry() {
 
     let offscreen = canvas.transfer_control_to_offscreen().unwrap_throw();
 
-    let (mut worker,_) = shogo::EngineMain::<MEvent,()>::new(offscreen).await;
+    let (mut worker, mut response) = shogo::EngineMain::new(offscreen).await;
 
     let _handler = worker.register_event(&canvas, "mousemove", |e| {
         let [x, y] = convert_coord(e.elem, e.event);
@@ -38,15 +38,15 @@ pub async fn main_entry() {
 
     let _handler = worker.register_event(&shutdown_button, "click", |_| MEvent::ShutdownClick);
 
-    worker.join().await;
-    log!("main thread closing");
+    use futures::StreamExt;
+    let _: () = response.next().await.unwrap_throw();
+    log!("main thread is closing");
 }
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
-    let (w,ss) = shogo::EngineWorker::<MEvent,()>::new().await;
-
-    let mut frame_timer=shogo::FrameTimer::new(30,ss);
+    let (mut w, ss) = shogo::EngineWorker::new().await;
+    let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
     let canvas = w.canvas();
 
@@ -103,6 +103,9 @@ pub async fn worker_entry() {
         );
         draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], [0.0, 0.0], radius);
     }
+
+    w.post_message(());
+
     log!("worker thread closing");
 }
 
