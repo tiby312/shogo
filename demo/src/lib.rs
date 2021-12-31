@@ -3,6 +3,12 @@ use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::{prelude::*, JsCast};
 
+const COLORS: &[[f32; 4]] = &[
+    [1.0, 0.0, 0.0, 0.5],
+    [0.0, 1.0, 0.0, 0.5],
+    [0.0, 0.0, 1.0, 0.5],
+];
+
 ///Common data sent from the main thread to the worker.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MEvent {
@@ -53,14 +59,7 @@ pub async fn worker_entry() {
 
     let mut mouse_pos = [0.0f32; 2];
 
-    let mut color_iter = {
-        let colors = [
-            [1.0, 0.0, 0.0, 0.5],
-            [0.0, 1.0, 0.0, 0.5],
-            [0.0, 0.0, 1.0, 0.5],
-        ];
-        colors.into_iter().cycle().peekable()
-    };
+    let mut color_iter = COLORS.into_iter().cycle().peekable();
 
     let (mut draw_sys, mut buffer, walls) = (
         ctx.shader_system(),
