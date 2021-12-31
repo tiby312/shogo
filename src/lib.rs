@@ -206,7 +206,7 @@ mod main {
             )
         }
 
-        pub fn send_event(&mut self, val: MainToWorker) {
+        pub fn post_message(&mut self, val: MainToWorker) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
             let data = js_sys::Array::new();
