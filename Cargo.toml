@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Ken Reed <kenakioreed@gmail.com>"]
 edition = "2021"
 license = "MIT"
+description = "webgl game engine using offscreencanvas"
 repository = "https://github.com/tiby312/shogo"
 keywords = ["canvas", "webgl","webworker","worker","OffscreenCanvas"]
 readme = "README.md"
