@@ -92,14 +92,14 @@ pub async fn worker_entry() {
         ctx.clear_color(0.13, 0.13, 0.13, 1.0);
         ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        draw_sys.draw_circles(
+        let mut cam=draw_sys.camera(game_dim,[0.0,0.0]);
+        
+        cam.draw_circles(
             &buffer,
-            game_dim,
-            color_iter.peek().unwrap_throw(),
-            [0.0, 0.0],
             radius,
+            color_iter.peek().unwrap_throw(),
         );
-        draw_sys.draw_squares(&walls, game_dim, &[1.0, 1.0, 1.0, 0.2], [0.0, 0.0], radius);
+        cam.draw_squares(&walls, radius, &[1.0, 1.0, 1.0, 0.2]);
     }
 
     w.post_message(());

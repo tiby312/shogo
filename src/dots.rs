@@ -216,41 +216,55 @@ impl ShaderSystem {
                 .draw(verts, offset, &matrix, point_size, color);
         };
     }
-    pub fn draw_circles(
-        &mut self,
-        verts: &Buffer,
-        game_dim: impl Into<[f32; 2]>,
-        color: &[f32; 4],
-        offset: impl Into<[f32; 2]>,
-        point_size: f32,
-    ) {
-        self.draw(Args {
-            verts,
-            game_dim: game_dim.into(),
-            as_square: false,
-            color,
-            offset: offset.into(),
-            point_size,
-        })
+
+    pub fn camera(&mut self,game_dim:impl Into<[f32;2]>,offset:impl Into<[f32;2]>)->Camera{
+        Camera{
+            sys:self,
+            offset:offset.into(),
+            dim:game_dim.into()
+        }
     }
+    
+}
+
+pub struct Camera<'a>{
+    sys:&'a mut ShaderSystem,
+    offset:[f32;2],
+    dim:[f32;2]
+}
+impl Camera<'_>{
     pub fn draw_squares(
         &mut self,
         verts: &Buffer,
-        game_dim: impl Into<[f32; 2]>,
-        color: &[f32; 4],
-        offset: impl Into<[f32; 2]>,
         point_size: f32,
+        color: &[f32; 4]
     ) {
-        self.draw(Args {
+        self.sys.draw(Args {
             verts,
-            game_dim: game_dim.into(),
+            game_dim: self.dim,
             as_square: true,
             color,
-            offset: offset.into(),
+            offset: self.offset,
+            point_size,
+        })
+    }
+    pub fn draw_circles(
+        &mut self,
+        verts: &Buffer,
+        point_size: f32,
+        color: &[f32; 4],
+    ) {
+        self.sys.draw(Args {
+            verts,
+            game_dim: self.dim,
+            as_square: false,
+            color,
+            offset: self.offset,
             point_size,
         })
     }
 }
+
 
 pub trait Shapes {
     fn line(
