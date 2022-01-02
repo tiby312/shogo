@@ -64,7 +64,7 @@ pub async fn worker_entry() {
     let (mut draw_sys, mut buffer, walls) = (
         ctx.shader_system(),
         ctx.buffer_dynamic(),
-        ctx.buffer_static(vec![].rect(30.0, [40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0])),
+        ctx.buffer_static(vec![].rect([40.0, 40.0], [800.0 - 80.0, 600.0 - 80.0])),
     );
 
     let mut verts = vec![];

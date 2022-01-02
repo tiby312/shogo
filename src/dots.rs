@@ -275,7 +275,6 @@ pub trait Shapes {
     ) -> &mut Self;
     fn rect(
         &mut self,
-        radius: f32,
         start: impl Into<[f32; 2]>,
         dim: impl Into<[f32; 2]>,
     ) -> &mut Self;
@@ -309,7 +308,6 @@ impl Shapes for Vec<[f32; 2]> {
 
     fn rect(
         &mut self,
-        radius: f32,
         start: impl Into<[f32; 2]>,
         dim: impl Into<[f32; 2]>,
     ) -> &mut Self {
@@ -318,10 +316,13 @@ impl Shapes for Vec<[f32; 2]> {
         let start = Vec2::from(start.into());
         let dim = Vec2::from(dim.into());
 
-        buffer.line(radius, start, start + vec2(dim.x, 0.0));
-        buffer.line(radius, start, start + vec2(0.0, dim.y));
-        buffer.line(radius, start + vec2(0.0, dim.y), start + dim);
-        buffer.line(radius, start + vec2(dim.x, 0.0), start + dim);
+        buffer.push(start.into());
+        buffer.push((start+vec2(dim.x,0.0)).into());
+        buffer.push((start+vec2(0.0,dim.y)).into());
+
+        buffer.push((start+vec2(dim.x,0.0)).into());
+        buffer.push((start+dim).into());
+        buffer.push((start+vec2(0.0,dim.y)).into());
         buffer
     }
 }
