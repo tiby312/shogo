@@ -140,6 +140,7 @@ impl DynamicBuffer {
 
 struct Args<'a> {
     pub verts: &'a Buffer,
+    pub primitive:u32,
     pub game_dim: [f32; 2],
     pub as_square: bool,
     pub color: &'a [f32; 4],
@@ -193,6 +194,7 @@ impl ShaderSystem {
     fn draw(&mut self, args: Args) {
         let Args {
             verts,
+            primitive,
             game_dim,
             as_square,
             color,
@@ -210,10 +212,10 @@ impl ShaderSystem {
 
         if as_square {
             self.square_program
-                .draw(verts, offset, &matrix, point_size, color);
+                .draw(verts,primitive, offset, &matrix, point_size, color);
         } else {
             self.circle_program
-                .draw(verts, offset, &matrix, point_size, color);
+                .draw(verts,primitive, offset, &matrix, point_size, color);
         };
     }
 
@@ -241,6 +243,7 @@ impl Camera<'_>{
     ) {
         self.sys.draw(Args {
             verts,
+            primitive:WebGl2RenderingContext::POINTS,
             game_dim: self.dim,
             as_square: true,
             color,
@@ -248,6 +251,22 @@ impl Camera<'_>{
             point_size,
         })
     }
+    pub fn draw_triangles(
+        &mut self,
+        verts: &Buffer,
+        color: &[f32; 4]
+    ) {
+        self.sys.draw(Args {
+            verts,
+            primitive:WebGl2RenderingContext::TRIANGLES,
+            game_dim: self.dim,
+            as_square: true,
+            color,
+            offset: self.offset,
+            point_size:0.0,
+        })
+    }
+    
     pub fn draw_circles(
         &mut self,
         verts: &Buffer,
@@ -256,6 +275,7 @@ impl Camera<'_>{
     ) {
         self.sys.draw(Args {
             verts,
+            primitive:WebGl2RenderingContext::POINTS,
             game_dim: self.dim,
             as_square: false,
             color,
@@ -269,19 +289,25 @@ impl Camera<'_>{
 pub trait Shapes {
     fn line(
         &mut self,
+        width: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self;
+    fn dot_line(
+        &mut self,
         radius: f32,
         start: impl Into<[f32; 2]>,
         end: impl Into<[f32; 2]>,
     ) -> &mut Self;
+    
     fn rect(
         &mut self,
-        radius: f32,
         start: impl Into<[f32; 2]>,
         dim: impl Into<[f32; 2]>,
     ) -> &mut Self;
 }
 impl Shapes for Vec<[f32; 2]> {
-    fn line(
+    fn dot_line(
         &mut self,
         radius: f32,
         start: impl Into<[f32; 2]>,
@@ -307,9 +333,56 @@ impl Shapes for Vec<[f32; 2]> {
         buffer
     }
 
-    fn rect(
+    fn line(
         &mut self,
         radius: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self {
+        let buffer = self;
+        use axgeom::*;
+        let start = Vec2::from(start.into());
+        let end = Vec2::from(end.into());
+
+        /*
+        let offset = end - start;
+        let dis_sqr = offset.magnitude2();
+        let dis = dis_sqr.sqrt();
+
+        let norm = offset / dis;
+
+
+        
+        let num = (dis / (radius)).floor() as usize;
+
+        for i in 0..num {
+            let pos = start + norm * (i as f32) * radius;
+            buffer.push(pos.into());
+        }
+        */
+
+        let offset = end - start;
+        let k = offset.rotate_90deg_right().normalize_to(1.0);
+        let start1 = start + k * radius;
+        let start2 = start - k * radius;
+
+        let end1 = end + k * radius;
+        let end2 = end - k * radius;
+
+        //let arr = [start1, start2, end1, start2, end1, end2];
+
+        buffer.push(start1.into());
+        buffer.push(start2.into());
+        buffer.push(end1.into());
+        buffer.push(start2.into());
+        buffer.push(end1.into());
+        buffer.push(end2.into());
+        buffer
+    }
+
+
+    fn rect(
+        &mut self,
         start: impl Into<[f32; 2]>,
         dim: impl Into<[f32; 2]>,
     ) -> &mut Self {
@@ -318,10 +391,13 @@ impl Shapes for Vec<[f32; 2]> {
         let start = Vec2::from(start.into());
         let dim = Vec2::from(dim.into());
 
-        buffer.line(radius, start, start + vec2(dim.x, 0.0));
-        buffer.line(radius, start, start + vec2(0.0, dim.y));
-        buffer.line(radius, start + vec2(0.0, dim.y), start + dim);
-        buffer.line(radius, start + vec2(dim.x, 0.0), start + dim);
+        buffer.push(start.into());
+        buffer.push((start+vec2(dim.x,0.0)).into());
+        buffer.push((start+vec2(0.0,dim.y)).into());
+
+        buffer.push((start+vec2(dim.x,0.0)).into());
+        buffer.push((start+dim).into());
+        buffer.push((start+vec2(0.0,dim.y)).into());
         buffer
     }
 }
