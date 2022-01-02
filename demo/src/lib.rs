@@ -79,7 +79,7 @@ pub async fn worker_entry() {
             }
         }
 
-        let radius = 30.0;
+        let radius = 4.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
         verts.clear();
@@ -94,12 +94,11 @@ pub async fn worker_entry() {
 
         let mut cam=draw_sys.camera(game_dim,[0.0,0.0]);
         
-        cam.draw_circles(
+        cam.draw_triangles(
             &buffer,
-            radius,
             color_iter.peek().unwrap_throw(),
         );
-        cam.draw_squares(&walls, radius, &[1.0, 1.0, 1.0, 0.2]);
+        cam.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
     }
 
     w.post_message(());

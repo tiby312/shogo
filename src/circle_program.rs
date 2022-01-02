@@ -27,6 +27,7 @@ impl CircleProgram {
     pub fn draw(
         &self,
         buffer: &Buffer,
+        primitive:u32,
         offset: [f32; 2],
         mmatrix: &[f32; 9],
         point_size: f32,
@@ -65,7 +66,7 @@ impl CircleProgram {
         );
         context.enable_vertex_attrib_array(0);
 
-        context.draw_arrays(WebGl2RenderingContext::POINTS, 0, buffer.num_verts as i32);
+        context.draw_arrays(primitive, 0, buffer.num_verts as i32);
     }
 
     pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
