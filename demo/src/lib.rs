@@ -102,6 +102,8 @@ pub async fn worker_entry() {
             &buffer,
             color_iter.peek().unwrap_throw(),
         );
+
+        ctx.flush();
     }
 
     w.post_message(());
