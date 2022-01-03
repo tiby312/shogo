@@ -151,11 +151,21 @@ struct Args<'a> {
 use wasm_bindgen::prelude::*;
 
 pub trait CtxExt {
+    fn setup_alpha(&self);
     fn buffer_dynamic(&self) -> DynamicBuffer;
     fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer;
     fn shader_system(&self) -> ShaderSystem;
 }
 impl CtxExt for WebGl2RenderingContext {
+    fn setup_alpha(&self){
+        self.disable(WebGl2RenderingContext::DEPTH_TEST);
+        self.enable(WebGl2RenderingContext::BLEND);
+        self.blend_func(
+            WebGl2RenderingContext::SRC_ALPHA,
+            WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
+        );
+        
+    }
     fn buffer_dynamic(&self) -> DynamicBuffer {
         DynamicBuffer::new(self).unwrap_throw()
     }
