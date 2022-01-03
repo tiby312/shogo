@@ -178,8 +178,8 @@ impl CtxExt for WebGl2RenderingContext {
 }
 
 pub struct ShaderSystem {
-    circle_program: CircleProgram,
-    square_program: CircleProgram,
+    circle_program: GlProgram,
+    square_program: GlProgram,
     ctx: WebGl2RenderingContext,
 }
 
@@ -192,8 +192,8 @@ impl Drop for ShaderSystem {
 
 impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
-        let circle_program = CircleProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
-        let square_program = CircleProgram::new(ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
+        let circle_program = GlProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
+        let square_program = GlProgram::new(ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
 
         Ok(ShaderSystem {
             circle_program,

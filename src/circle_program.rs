@@ -23,7 +23,7 @@ impl Drop for Buffer {
     }
 }
 
-impl CircleProgram {
+impl GlProgram {
     pub fn draw(
         &self,
         buffer: &Buffer,
@@ -89,7 +89,7 @@ impl CircleProgram {
         }
         let position = position as u32;
 
-        Ok(CircleProgram {
+        Ok(GlProgram {
             program,
             offset,
             mmatrix,
@@ -100,7 +100,7 @@ impl CircleProgram {
     }
 }
 
-pub struct CircleProgram {
+pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     offset: WebGlUniformLocation,
     mmatrix: WebGlUniformLocation,
