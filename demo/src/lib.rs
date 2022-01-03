@@ -61,6 +61,7 @@ pub async fn worker_entry() {
 
     let mut color_iter = COLORS.iter().cycle().peekable();
 
+    ctx.setup_alpha();
     let (mut draw_sys, mut buffer, walls) = (
         ctx.shader_system(),
         ctx.buffer_dynamic(),
@@ -94,11 +95,13 @@ pub async fn worker_entry() {
 
         let mut cam=draw_sys.camera(game_dim,[0.0,0.0]);
         
+        cam.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
+
+
         cam.draw_triangles(
             &buffer,
             color_iter.peek().unwrap_throw(),
         );
-        cam.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
     }
 
     w.post_message(());
