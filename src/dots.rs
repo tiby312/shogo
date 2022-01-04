@@ -323,18 +323,18 @@ pub trait Shapes {
         width: f32,
         start: impl Into<[f32; 2]>,
         end: impl Into<[f32; 2]>,
-    ) -> &mut Self;
+    ) ;
     fn dot_line(
         &mut self,
         radius: f32,
         start: impl Into<[f32; 2]>,
         end: impl Into<[f32; 2]>,
-    ) -> &mut Self;
+    ) ;
     
     fn rect(
         &mut self,
         rect:impl Into<Rect>,
-    ) -> &mut Self;
+    ) ;
 }
 impl Shapes for Vec<[f32; 2]> {
     fn dot_line(
@@ -342,7 +342,7 @@ impl Shapes for Vec<[f32; 2]> {
         radius: f32,
         start: impl Into<[f32; 2]>,
         end: impl Into<[f32; 2]>,
-    ) -> &mut Self {
+    ) {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -360,7 +360,6 @@ impl Shapes for Vec<[f32; 2]> {
             let pos = start + norm * (i as f32) * radius;
             buffer.push(pos.into());
         }
-        buffer
     }
 
     fn line(
@@ -368,7 +367,7 @@ impl Shapes for Vec<[f32; 2]> {
         radius: f32,
         start: impl Into<[f32; 2]>,
         end: impl Into<[f32; 2]>,
-    ) -> &mut Self {
+    ) {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -407,14 +406,13 @@ impl Shapes for Vec<[f32; 2]> {
         buffer.push(start2.into());
         buffer.push(end1.into());
         buffer.push(end2.into());
-        buffer
     }
 
 
     fn rect(
         &mut self,
         rect: impl Into<Rect>,
-    ) -> &mut Self {
+    ){
         use axgeom::vec2;
         let rect:Rect=rect.into();
 
@@ -429,6 +427,5 @@ impl Shapes for Vec<[f32; 2]> {
         buffer.push((start+vec2(dim.x,0.0)).into());
         buffer.push((start+dim).into());
         buffer.push((start+vec2(0.0,dim.y)).into());
-        buffer
     }
 }

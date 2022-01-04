@@ -62,10 +62,13 @@ pub async fn worker_entry() {
     let mut color_iter = COLORS.iter().cycle().peekable();
 
     ctx.setup_alpha();
+    let mut rr=vec![];
+    rr.rect(shogo::dots::Rect{x:40.0,y:40.0,w:800.0 - 80.0,h:600.0 - 80.0});
+
     let (mut draw_sys, mut buffer, walls) = (
         ctx.shader_system(),
         ctx.buffer_dynamic(),
-        ctx.buffer_static(vec![].rect(shogo::dots::Rect{x:40.0,y:40.0,w:800.0 - 80.0,h:600.0 - 80.0})),
+        ctx.buffer_static(&rr),
     );
 
     let mut verts = vec![];
