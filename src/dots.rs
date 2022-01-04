@@ -177,6 +177,27 @@ impl CtxExt for WebGl2RenderingContext {
     }
 }
 
+
+pub struct Rect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl From<axgeom::Rect<f32>> for Rect{
+    fn from(a:axgeom::Rect<f32>)->Rect{
+        Rect{
+            x:a.x.start,
+            y:a.y.start,
+            w:a.x.end-a.x.start,
+            h:a.y.end-a.y.start
+        }
+    }
+}
+
+
+
 pub struct ShaderSystem {
     circle_program: GlProgram,
     square_program: GlProgram,
@@ -312,8 +333,7 @@ pub trait Shapes {
     
     fn rect(
         &mut self,
-        start: impl Into<[f32; 2]>,
-        dim: impl Into<[f32; 2]>,
+        rect:impl Into<Rect>,
     ) -> &mut Self;
 }
 impl Shapes for Vec<[f32; 2]> {
@@ -393,13 +413,14 @@ impl Shapes for Vec<[f32; 2]> {
 
     fn rect(
         &mut self,
-        start: impl Into<[f32; 2]>,
-        dim: impl Into<[f32; 2]>,
+        rect: impl Into<Rect>,
     ) -> &mut Self {
+        use axgeom::vec2;
+        let rect:Rect=rect.into();
+
         let buffer = self;
-        use axgeom::*;
-        let start = Vec2::from(start.into());
-        let dim = Vec2::from(dim.into());
+        let start = vec2(rect.x,rect.y);
+        let dim = vec2(rect.w,rect.h);
 
         buffer.push(start.into());
         buffer.push((start+vec2(dim.x,0.0)).into());
