@@ -150,14 +150,24 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
-pub trait CtxExt {
-    fn setup_alpha(&self);
-    fn buffer_dynamic(&self) -> DynamicBuffer;
-    fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer;
-    fn shader_system(&self) -> ShaderSystem;
+
+
+pub struct CtxWrap{
+    pub ctx:WebGl2RenderingContext
 }
-impl CtxExt for WebGl2RenderingContext {
-    fn setup_alpha(&self){
+
+impl std::ops::Deref for CtxWrap{
+    type Target=WebGl2RenderingContext;
+    fn deref(&self)->&Self::Target{
+        &self.ctx
+    }
+}
+
+impl CtxWrap{
+    pub fn new(a:&WebGl2RenderingContext)->Self{
+        CtxWrap{ctx:a.clone()}
+    }
+    pub fn setup_alpha(&self){
         self.disable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
         self.blend_func(
@@ -166,17 +176,16 @@ impl CtxExt for WebGl2RenderingContext {
         );
         
     }
-    fn buffer_dynamic(&self) -> DynamicBuffer {
+    pub fn buffer_dynamic(&self) -> DynamicBuffer {
         DynamicBuffer::new(self).unwrap_throw()
     }
-    fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer {
+    pub fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer {
         StaticBuffer::new(self, a).unwrap_throw()
     }
-    fn shader_system(&self) -> ShaderSystem {
+    pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
 }
-
 
 pub struct Rect {
     pub x: f32,
