@@ -27,7 +27,7 @@ impl GlProgram {
     pub fn draw(
         &self,
         buffer: &Buffer,
-        primitive:u32,
+        primitive: u32,
         offset: [f32; 2],
         mmatrix: &[f32; 9],
         point_size: f32,
@@ -40,7 +40,6 @@ impl GlProgram {
         let context = &buffer.ctx;
 
         context.use_program(Some(&self.program));
-
 
         context.uniform2f(Some(&self.offset), offset[0], offset[1]);
         context.uniform1f(Some(&self.point_size), point_size);

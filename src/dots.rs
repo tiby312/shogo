@@ -140,7 +140,7 @@ impl DynamicBuffer {
 
 struct Args<'a> {
     pub verts: &'a Buffer,
-    pub primitive:u32,
+    pub primitive: u32,
     pub game_dim: [f32; 2],
     pub as_square: bool,
     pub color: &'a [f32; 4],
@@ -150,31 +150,28 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
-
-
-pub struct CtxWrap{
-    pub ctx:WebGl2RenderingContext
+pub struct CtxWrap {
+    pub ctx: WebGl2RenderingContext,
 }
 
-impl std::ops::Deref for CtxWrap{
-    type Target=WebGl2RenderingContext;
-    fn deref(&self)->&Self::Target{
+impl std::ops::Deref for CtxWrap {
+    type Target = WebGl2RenderingContext;
+    fn deref(&self) -> &Self::Target {
         &self.ctx
     }
 }
 
-impl CtxWrap{
-    pub fn new(a:&WebGl2RenderingContext)->Self{
-        CtxWrap{ctx:a.clone()}
+impl CtxWrap {
+    pub fn new(a: &WebGl2RenderingContext) -> Self {
+        CtxWrap { ctx: a.clone() }
     }
-    pub fn setup_alpha(&self){
+    pub fn setup_alpha(&self) {
         self.disable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
         self.blend_func(
             WebGl2RenderingContext::SRC_ALPHA,
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
-        
     }
     pub fn buffer_dynamic(&self) -> DynamicBuffer {
         DynamicBuffer::new(self).unwrap_throw()
@@ -185,6 +182,13 @@ impl CtxWrap{
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
+
+    pub fn draw_clear(&self, color: [f32; 4]) {
+        let [a, b, c, d] = color;
+        self.ctx.clear_color(a, b, c, d);
+        self.ctx
+            .clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
+    }
 }
 
 pub struct Rect {
@@ -194,18 +198,16 @@ pub struct Rect {
     pub h: f32,
 }
 
-impl From<axgeom::Rect<f32>> for Rect{
-    fn from(a:axgeom::Rect<f32>)->Rect{
-        Rect{
-            x:a.x.start,
-            y:a.y.start,
-            w:a.x.end-a.x.start,
-            h:a.y.end-a.y.start
+impl From<axgeom::Rect<f32>> for Rect {
+    fn from(a: axgeom::Rect<f32>) -> Rect {
+        Rect {
+            x: a.x.start,
+            y: a.y.start,
+            w: a.x.end - a.x.start,
+            h: a.y.end - a.y.start,
         }
     }
 }
-
-
 
 pub struct ShaderSystem {
     circle_program: GlProgram,
@@ -252,38 +254,32 @@ impl ShaderSystem {
 
         if as_square {
             self.square_program
-                .draw(verts,primitive, offset, &matrix, point_size, color);
+                .draw(verts, primitive, offset, &matrix, point_size, color);
         } else {
             self.circle_program
-                .draw(verts,primitive, offset, &matrix, point_size, color);
+                .draw(verts, primitive, offset, &matrix, point_size, color);
         };
     }
 
-    pub fn camera(&mut self,game_dim:impl Into<[f32;2]>,offset:impl Into<[f32;2]>)->Camera{
-        Camera{
-            sys:self,
-            offset:offset.into(),
-            dim:game_dim.into()
+    pub fn camera(&mut self, game_dim: impl Into<[f32; 2]>, offset: impl Into<[f32; 2]>) -> Camera {
+        Camera {
+            sys: self,
+            offset: offset.into(),
+            dim: game_dim.into(),
         }
     }
-    
 }
 
-pub struct Camera<'a>{
-    sys:&'a mut ShaderSystem,
-    offset:[f32;2],
-    dim:[f32;2]
+pub struct Camera<'a> {
+    sys: &'a mut ShaderSystem,
+    offset: [f32; 2],
+    dim: [f32; 2],
 }
-impl Camera<'_>{
-    pub fn draw_squares(
-        &mut self,
-        verts: &Buffer,
-        point_size: f32,
-        color: &[f32; 4]
-    ) {
+impl Camera<'_> {
+    pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
-            primitive:WebGl2RenderingContext::POINTS,
+            primitive: WebGl2RenderingContext::POINTS,
             game_dim: self.dim,
             as_square: true,
             color,
@@ -291,31 +287,22 @@ impl Camera<'_>{
             point_size,
         })
     }
-    pub fn draw_triangles(
-        &mut self,
-        verts: &Buffer,
-        color: &[f32; 4]
-    ) {
+    pub fn draw_triangles(&mut self, verts: &Buffer, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
-            primitive:WebGl2RenderingContext::TRIANGLES,
+            primitive: WebGl2RenderingContext::TRIANGLES,
             game_dim: self.dim,
             as_square: true,
             color,
             offset: self.offset,
-            point_size:0.0,
+            point_size: 0.0,
         })
     }
-    
-    pub fn draw_circles(
-        &mut self,
-        verts: &Buffer,
-        point_size: f32,
-        color: &[f32; 4],
-    ) {
+
+    pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
-            primitive:WebGl2RenderingContext::POINTS,
+            primitive: WebGl2RenderingContext::POINTS,
             game_dim: self.dim,
             as_square: false,
             color,
@@ -325,33 +312,14 @@ impl Camera<'_>{
     }
 }
 
-
 pub trait Shapes {
-    fn line(
-        &mut self,
-        width: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) ;
-    fn dot_line(
-        &mut self,
-        radius: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) ;
-    
-    fn rect(
-        &mut self,
-        rect:impl Into<Rect>,
-    ) ;
+    fn line(&mut self, width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
+    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
+
+    fn rect(&mut self, rect: impl Into<Rect>);
 }
 impl Shapes for Vec<[f32; 2]> {
-    fn dot_line(
-        &mut self,
-        radius: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) {
+    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -371,12 +339,7 @@ impl Shapes for Vec<[f32; 2]> {
         }
     }
 
-    fn line(
-        &mut self,
-        radius: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) {
+    fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
         let buffer = self;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -390,7 +353,7 @@ impl Shapes for Vec<[f32; 2]> {
         let norm = offset / dis;
 
 
-        
+
         let num = (dis / (radius)).floor() as usize;
 
         for i in 0..num {
@@ -417,24 +380,20 @@ impl Shapes for Vec<[f32; 2]> {
         buffer.push(end2.into());
     }
 
-
-    fn rect(
-        &mut self,
-        rect: impl Into<Rect>,
-    ){
+    fn rect(&mut self, rect: impl Into<Rect>) {
         use axgeom::vec2;
-        let rect:Rect=rect.into();
+        let rect: Rect = rect.into();
 
         let buffer = self;
-        let start = vec2(rect.x,rect.y);
-        let dim = vec2(rect.w,rect.h);
+        let start = vec2(rect.x, rect.y);
+        let dim = vec2(rect.w, rect.h);
 
         buffer.push(start.into());
-        buffer.push((start+vec2(dim.x,0.0)).into());
-        buffer.push((start+vec2(0.0,dim.y)).into());
+        buffer.push((start + vec2(dim.x, 0.0)).into());
+        buffer.push((start + vec2(0.0, dim.y)).into());
 
-        buffer.push((start+vec2(dim.x,0.0)).into());
-        buffer.push((start+dim).into());
-        buffer.push((start+vec2(0.0,dim.y)).into());
+        buffer.push((start + vec2(dim.x, 0.0)).into());
+        buffer.push((start + dim).into());
+        buffer.push((start + vec2(0.0, dim.y)).into());
     }
 }

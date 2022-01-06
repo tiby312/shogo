@@ -62,8 +62,13 @@ pub async fn worker_entry() {
     let mut color_iter = COLORS.iter().cycle().peekable();
 
     ctx.setup_alpha();
-    let mut rr=vec![];
-    rr.rect(shogo::dots::Rect{x:40.0,y:40.0,w:800.0 - 80.0,h:600.0 - 80.0});
+    let mut rr = vec![];
+    rr.rect(shogo::dots::Rect {
+        x: 40.0,
+        y: 40.0,
+        w: 800.0 - 80.0,
+        h: 600.0 - 80.0,
+    });
 
     let (mut draw_sys, mut buffer, walls) = (
         ctx.shader_system(),
@@ -93,18 +98,13 @@ pub async fn worker_entry() {
         verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
         buffer.update(&verts);
 
-        ctx.clear_color(0.13, 0.13, 0.13, 1.0);
-        ctx.clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
+        ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
 
-        let mut cam=draw_sys.camera(game_dim,[0.0,0.0]);
-        
+        let mut cam = draw_sys.camera(game_dim, [0.0, 0.0]);
+
         cam.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
 
-
-        cam.draw_triangles(
-            &buffer,
-            color_iter.peek().unwrap_throw(),
-        );
+        cam.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
 
         ctx.flush();
     }

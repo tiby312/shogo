@@ -51,7 +51,6 @@ extern "C" {
     static performance: web_sys::Performance;
 }
 
-
 struct Timer {
     last: f64,
     frame_rate: usize,
