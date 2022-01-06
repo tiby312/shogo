@@ -75,24 +75,24 @@ void main() {
 }
 "#;
 
-pub struct StaticBuffer(Buffer);
+pub struct StaticBuffer<T>(Buffer<T>);
 
-impl std::ops::Deref for StaticBuffer {
-    type Target = Buffer;
-    fn deref(&self) -> &Buffer {
+impl<T> std::ops::Deref for StaticBuffer<T> {
+    type Target = Buffer<T>;
+    fn deref(&self) -> &Buffer<T> {
         &self.0
     }
 }
 
-impl StaticBuffer {
-    pub fn new(ctx: &WebGl2RenderingContext, verts: &[[f32; 2]]) -> Result<Self, String> {
+impl<T> StaticBuffer<T> {
+    pub fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verts = verts.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
 
-        let n_bytes = verts.len() * std::mem::size_of::<[f32; 2]>();
+        let n_bytes = verts.len() * std::mem::size_of::<T>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
 
@@ -106,27 +106,27 @@ impl StaticBuffer {
     }
 }
 
-pub struct DynamicBuffer(Buffer);
+pub struct DynamicBuffer<T>(Buffer<T>);
 
-impl std::ops::Deref for DynamicBuffer {
-    type Target = Buffer;
-    fn deref(&self) -> &Buffer {
+impl<T> std::ops::Deref for DynamicBuffer<T> {
+    type Target = Buffer<T>;
+    fn deref(&self) -> &Buffer<T> {
         &self.0
     }
 }
 
-impl DynamicBuffer {
+impl<T> DynamicBuffer<T> {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
-    pub fn update(&mut self, vertices: &[[f32; 2]]) {
+    pub fn update(&mut self, vertices: &[T]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
+        let n_bytes = vertices.len() * std::mem::size_of::<T>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
@@ -139,7 +139,7 @@ impl DynamicBuffer {
 }
 
 struct Args<'a> {
-    pub verts: &'a Buffer,
+    pub verts: &'a Buffer<[f32; 2]>,
     pub primitive: u32,
     pub game_dim: [f32; 2],
     pub as_square: bool,
@@ -173,10 +173,10 @@ impl CtxWrap {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
     }
-    pub fn buffer_dynamic(&self) -> DynamicBuffer {
+    pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
         DynamicBuffer::new(self).unwrap_throw()
     }
-    pub fn buffer_static(&self, a: &[[f32; 2]]) -> StaticBuffer {
+    pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
         StaticBuffer::new(self, a).unwrap_throw()
     }
     pub fn shader_system(&self) -> ShaderSystem {
@@ -276,7 +276,7 @@ pub struct Camera<'a> {
     dim: [f32; 2],
 }
 impl Camera<'_> {
-    pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
+    pub fn draw_squares(&mut self, verts: &Buffer<[f32; 2]>, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,
@@ -287,7 +287,7 @@ impl Camera<'_> {
             point_size,
         })
     }
-    pub fn draw_triangles(&mut self, verts: &Buffer, color: &[f32; 4]) {
+    pub fn draw_triangles(&mut self, verts: &Buffer<[f32; 2]>, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::TRIANGLES,
@@ -299,7 +299,7 @@ impl Camera<'_> {
         })
     }
 
-    pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
+    pub fn draw_circles(&mut self, verts: &Buffer<[f32; 2]>, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,

@@ -2,22 +2,26 @@ use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
-pub struct Buffer {
+use std::marker::PhantomData;
+
+pub struct Buffer<T> {
     pub(crate) buffer: web_sys::WebGlBuffer,
     pub(crate) num_verts: usize,
     pub(crate) ctx: WebGl2RenderingContext,
+    _p: PhantomData<T>,
 }
-impl Buffer {
+impl<T> Buffer<T> {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
         Ok(Buffer {
             buffer,
             num_verts: 0,
             ctx: ctx.clone(),
+            _p: PhantomData,
         })
     }
 }
-impl Drop for Buffer {
+impl<T> Drop for Buffer<T> {
     fn drop(&mut self) {
         self.ctx.delete_buffer(Some(&self.buffer));
     }
@@ -26,7 +30,7 @@ impl Drop for Buffer {
 impl GlProgram {
     pub fn draw(
         &self,
-        buffer: &Buffer,
+        buffer: &Buffer<[f32; 2]>,
         primitive: u32,
         offset: [f32; 2],
         mmatrix: &[f32; 9],
