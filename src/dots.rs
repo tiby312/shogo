@@ -13,16 +13,9 @@ precision mediump float;
 out vec4 out_color;
 uniform vec4 bg;
 
-
 void main() {
     //coord is between -0.5 and 0.5
-    vec2 coord = gl_PointCoord - vec2(0.5,0.5);
-    /*
-    float foo=coord.x*coord.x*coord.x*coord.x+coord.y*coord.y*coord.y*coord.y;
-    if(foo > 0.25*0.25){                  //outside of circle radius?
-        discard;
-    } 
-    */           
+    vec2 coord = gl_PointCoord - vec2(0.5,0.5);         
     out_color = bg;
 }
 "#;
@@ -31,47 +24,27 @@ const CIRCLE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
 uniform vec4 bg;
-in float extra;
 
 void main() {
     //coord is between -0.5 and 0.5
     vec2 coord = gl_PointCoord - vec2(0.5,0.5);
     float dissqr=dot(coord,coord);
-    if(dissqr > 0.25){                  //outside of circle radius?
+    if(dissqr > 0.25){
         discard;
     }
-
-    /*
-    vec2 rot=vec2(cos(extra),sin(extra));
-
-    vec2 perpDir = vec2(rot.y, -rot.x);
-    vec2 dirToPt1 = coord;
-    float dist= abs(dot(normalize(perpDir), dirToPt1));
-    
-    
-    if (dist<0.1 &&  dot(rot,coord)>0.0){
-        out_color = vec4(0.0,0.0,0.0,1.0);
-    }else{
-        out_color = bg;
-    }
-    */
-    out_color = bg;
-    
-    
+    out_color = bg;    
 }
 "#;
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
-in vec3 position;
-out float extra;
+in vec2 position;
 uniform vec2 offset;
 uniform mat3 mmatrix;
 uniform float point_size;
 void main() {
     gl_PointSize = point_size;
     vec3 pp=vec3(position.xy+offset,1.0);
-    extra=position.z;
-    gl_Position = vec4(mmatrix*pp, 1.0); //TODO optimize
+    gl_Position = vec4(mmatrix*pp, 1.0);
 }
 "#;
 
