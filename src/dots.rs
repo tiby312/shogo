@@ -44,7 +44,7 @@ uniform float point_size;
 void main() {
     gl_PointSize = point_size;
     vec3 pp=vec3(position.xy+offset,1.0);
-    gl_Position = vec4(mmatrix*pp, 1.0);
+    gl_Position = vec4((mmatrix*pp).xy,0.0, 1.0);
 }
 "#;
 
