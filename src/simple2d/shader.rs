@@ -4,6 +4,9 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 use std::marker::PhantomData;
 
+///
+/// A webgl2 buffer that automatically deletes itself when dropped.
+///
 pub struct Buffer<T> {
     pub(crate) buffer: web_sys::WebGlBuffer,
     pub(crate) num_verts: usize,

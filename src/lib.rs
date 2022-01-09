@@ -13,6 +13,9 @@ pub mod utils {
     //!
     use super::*;
 
+    ///
+    /// Get an element with the specified id.
+    ///
     pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
         gloo::utils::document()
             .get_element_by_id(id)
@@ -21,13 +24,9 @@ pub mod utils {
             .unwrap_throw()
     }
 
-    pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
-        gloo::utils::document()
-            .get_element_by_id(id)
-            .unwrap_throw()
-            .dyn_into()
-            .unwrap_throw()
-    }
+    ///
+    /// Get a webgl2 context for an offscreen canvas element.
+    ///
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {
@@ -39,6 +38,9 @@ pub mod utils {
             .unwrap_throw()
     }
 
+    ///
+    /// Get the worker global scope. Call from within a webworker.
+    ///
     pub fn get_worker_global_context() -> web_sys::DedicatedWorkerGlobalScope {
         js_sys::global().dyn_into().unwrap_throw()
     }
@@ -129,25 +131,20 @@ mod main {
     ///
     /// The component of the engine that runs on the main thread.
     ///
-    pub struct EngineMain<MainToWorker, WorkerToMain> {
+    pub struct EngineMain<MW, WM> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
         _handle: gloo::events::EventListener,
-        _p: PhantomData<(MainToWorker, WorkerToMain)>,
+        _p: PhantomData<(MW, WM)>,
     }
 
-    impl<MainToWorker: 'static + Serialize, WorkerToMain: for<'a> Deserialize<'a> + 'static>
-        EngineMain<MainToWorker, WorkerToMain>
-    {
+    impl<MW: 'static + Serialize, WM: for<'a> Deserialize<'a> + 'static> EngineMain<MW, WM> {
         ///
         /// Create the engine. Blocks until the worker thread reports that
         /// it is ready to receive the offscreen canvas.
         ///
         pub async fn new(
             canvas: web_sys::OffscreenCanvas,
-        ) -> (
-            Self,
-            futures::channel::mpsc::UnboundedReceiver<WorkerToMain>,
-        ) {
+        ) -> (Self, futures::channel::mpsc::UnboundedReceiver<WM>) {
             let mut options = web_sys::WorkerOptions::new();
             options.type_(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(
@@ -206,7 +203,7 @@ mod main {
             )
         }
 
-        pub fn post_message(&mut self, val: MainToWorker) {
+        pub fn post_message(&mut self, val: MW) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
             let data = js_sys::Array::new();
@@ -223,7 +220,7 @@ mod main {
             &mut self,
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
-            mut func: impl FnMut(EventData) -> MainToWorker + 'static,
+            mut func: impl FnMut(EventData) -> MW + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
@@ -264,15 +261,13 @@ mod worker {
     ///
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
-    pub struct EngineWorker<MainToWorker, WorkerToMain> {
+    pub struct EngineWorker<MW, WM> {
         _handle: gloo::events::EventListener,
         canvas: web_sys::OffscreenCanvas,
-        _p: PhantomData<(MainToWorker, WorkerToMain)>,
+        _p: PhantomData<(MW, WM)>,
     }
 
-    impl<MainToWorker: 'static + for<'a> Deserialize<'a>, WorkerToMain: Serialize>
-        EngineWorker<MainToWorker, WorkerToMain>
-    {
+    impl<MW: 'static + for<'a> Deserialize<'a>, WM: Serialize> EngineWorker<MW, WM> {
         ///
         /// Get the offscreen canvas.
         ///
@@ -286,8 +281,8 @@ mod worker {
         /// Blocks until it receives the offscreen canvas from the main thread.
         ///
         pub async fn new() -> (
-            EngineWorker<MainToWorker, WorkerToMain>,
-            futures::channel::mpsc::UnboundedReceiver<MainToWorker>,
+            EngineWorker<MW, WM>,
+            futures::channel::mpsc::UnboundedReceiver<MW>,
         ) {
             let scope = utils::get_worker_global_context();
 
@@ -335,7 +330,7 @@ mod worker {
             )
         }
 
-        pub fn post_message(&mut self, a: WorkerToMain) {
+        pub fn post_message(&mut self, a: WM) {
             let scope = utils::get_worker_global_context();
 
             let data = js_sys::Array::new();

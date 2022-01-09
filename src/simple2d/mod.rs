@@ -2,7 +2,7 @@
 //! A simple webgl 2d drawing system that draws shapes using many small circles or squares.
 //!
 //! The data sent to the gpu is minimized by only sending the positions of the vertex.
-//! The color can also be changed for all verticies in a buffer.
+//! The color can also be changed for all vertices in a buffer.
 //!
 //!
 //!
@@ -54,7 +54,7 @@ void main() {
 "#;
 
 ///
-/// A buffer make with `WebGl2RenderingContext::STATIC_DRAW`.
+/// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
 ///
 pub struct StaticBuffer<T>(Buffer<T>);
 
@@ -88,7 +88,7 @@ impl<T> StaticBuffer<T> {
 }
 
 ///
-/// A buffer make with `WebGl2RenderingContext::DYNAMIC_DRAW`.
+/// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
 ///
 pub struct DynamicBuffer<T>(Buffer<T>);
 
@@ -135,7 +135,7 @@ struct Args<'a> {
 use wasm_bindgen::prelude::*;
 
 ///
-/// Wrapper around a webgl2 context with convenience functions. Derefs to `WebGl2RenderingContext`.
+/// Wrapper around a webgl2 context with convenience functions. Derefs to [`WebGl2RenderingContext`].
 ///
 pub struct CtxWrap {
     pub ctx: WebGl2RenderingContext,
@@ -182,6 +182,9 @@ impl CtxWrap {
     }
 }
 
+///
+/// Primitive use to [`Shapes::rect`]
+///
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -391,6 +394,9 @@ impl Shapes for Vec<[f32; 2]> {
     }
 }
 
+///
+/// Convert a mouse event to a coordinate for simple2d.
+///
 pub fn convert_coord(canvas: &web_sys::HtmlElement, e: &web_sys::MouseEvent) -> [f32; 2] {
     let rect = canvas.get_bounding_client_rect();
 
