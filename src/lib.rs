@@ -5,21 +5,14 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-mod circle_program;
-pub mod dots;
+pub mod simple2d;
 
 pub mod utils {
     //!
     //! Helper functions to access elements
     //!
     use super::*;
-    pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
-        gloo::utils::document()
-            .get_element_by_id(id)
-            .unwrap_throw()
-            .dyn_into()
-            .unwrap_throw()
-    }
+
     pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
         gloo::utils::document()
             .get_element_by_id(id)
@@ -28,6 +21,13 @@ pub mod utils {
             .unwrap_throw()
     }
 
+    pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
+        gloo::utils::document()
+            .get_element_by_id(id)
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
+    }
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {

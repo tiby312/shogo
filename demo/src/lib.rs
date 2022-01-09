@@ -1,7 +1,7 @@
 use gloo::console::log;
 use serde::{Deserialize, Serialize};
 use shogo::utils;
-use wasm_bindgen::{prelude::*, JsCast};
+use wasm_bindgen::prelude::*;
 
 const COLORS: &[[f32; 4]] = &[
     [1.0, 0.0, 0.0, 0.5],
@@ -48,14 +48,15 @@ pub async fn main_entry() {
 
 #[wasm_bindgen]
 pub async fn worker_entry() {
-    use shogo::dots::Shapes;
+    use shogo::simple2d;
+    use simple2d::Shapes;
 
     let (mut w, ss) = shogo::EngineWorker::new().await;
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
     let canvas = w.canvas();
 
-    let ctx = shogo::dots::CtxWrap::new(&utils::get_context_webgl2_offscreen(&canvas));
+    let ctx = simple2d::CtxWrap::new(&utils::get_context_webgl2_offscreen(&canvas));
 
     let mut mouse_pos = [0.0f32; 2];
 
@@ -63,7 +64,7 @@ pub async fn worker_entry() {
 
     ctx.setup_alpha();
     let mut rr = vec![];
-    rr.rect(shogo::dots::Rect {
+    rr.rect(simple2d::Rect {
         x: 40.0,
         y: 40.0,
         w: 800.0 - 80.0,
@@ -100,11 +101,11 @@ pub async fn worker_entry() {
 
         ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
 
-        let mut cam = draw_sys.camera(game_dim, [0.0, 0.0]);
+        let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
 
-        cam.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
+        v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
 
-        cam.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
+        v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
 
         ctx.flush();
     }
@@ -115,14 +116,6 @@ pub async fn worker_entry() {
 }
 
 fn convert_coord(canvas: &web_sys::HtmlElement, event: &web_sys::Event) -> [f32; 2] {
-    let e = event
-        .dyn_ref::<web_sys::MouseEvent>()
-        .unwrap_throw()
-        .clone();
-
-    let [x, y] = [e.client_x() as f32, e.client_y() as f32];
-    let bb = canvas.get_bounding_client_rect();
-    let tl = bb.x() as f32;
-    let tr = bb.y() as f32;
-    [x - tl, y - tr]
+    use wasm_bindgen::JsCast;
+    shogo::simple2d::convert_coord(canvas, event.dyn_ref().unwrap_throw())
 }

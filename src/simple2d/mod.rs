@@ -1,12 +1,17 @@
 //!
-//! A simple webgl drawing system that draws shapes using many small circles or squares.
+//! A simple webgl 2d drawing system that draws shapes using many small circles or squares.
 //!
-
+//! The data sent to the gpu is minimized by only sending the positions of the vertex.
+//! The color can also be changed for all verticies in a buffer.
+//!
+//!
+//!
 use web_sys::WebGl2RenderingContext;
+mod shader;
 
-use crate::circle_program::*;
+use shader::*;
 
-pub use crate::circle_program::Buffer;
+pub use shader::Buffer;
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
@@ -48,6 +53,9 @@ void main() {
 }
 "#;
 
+///
+/// A buffer make with `WebGl2RenderingContext::STATIC_DRAW`.
+///
 pub struct StaticBuffer<T>(Buffer<T>);
 
 impl<T> std::ops::Deref for StaticBuffer<T> {
@@ -79,6 +87,9 @@ impl<T> StaticBuffer<T> {
     }
 }
 
+///
+/// A buffer make with `WebGl2RenderingContext::DYNAMIC_DRAW`.
+///
 pub struct DynamicBuffer<T>(Buffer<T>);
 
 impl<T> std::ops::Deref for DynamicBuffer<T> {
@@ -123,6 +134,9 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
+///
+/// Wrapper around a webgl2 context with convenience functions. Derefs to `WebGl2RenderingContext`.
+///
 pub struct CtxWrap {
     pub ctx: WebGl2RenderingContext,
 }
@@ -138,6 +152,10 @@ impl CtxWrap {
     pub fn new(a: &WebGl2RenderingContext) -> Self {
         CtxWrap { ctx: a.clone() }
     }
+
+    ///
+    /// Sets up alpha blending and disables depth testing.
+    ///
     pub fn setup_alpha(&self) {
         self.disable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
@@ -182,6 +200,9 @@ impl From<axgeom::Rect<f32>> for Rect {
     }
 }
 
+///
+/// A simple shader program that allows the user to draw simple primitives.
+///
 pub struct ShaderSystem {
     circle_program: GlProgram,
     square_program: GlProgram,
@@ -206,6 +227,7 @@ impl ShaderSystem {
             ctx: ctx.clone(),
         })
     }
+
     fn draw(&mut self, args: Args) {
         let Args {
             verts,
@@ -234,8 +256,13 @@ impl ShaderSystem {
         };
     }
 
-    pub fn camera(&mut self, game_dim: impl Into<[f32; 2]>, offset: impl Into<[f32; 2]>) -> Camera {
-        Camera {
+    ///
+    /// when using [`View`],
+    /// topleft corner maps to `[0,0]`
+    /// borrom right maps to `dim`
+    ///
+    pub fn view(&mut self, game_dim: impl Into<[f32; 2]>, offset: impl Into<[f32; 2]>) -> View {
+        View {
             sys: self,
             offset: offset.into(),
             dim: game_dim.into(),
@@ -243,12 +270,15 @@ impl ShaderSystem {
     }
 }
 
-pub struct Camera<'a> {
+///
+/// A view to draw in. See [`ShaderSystem::view`]
+///
+pub struct View<'a> {
     sys: &'a mut ShaderSystem,
     offset: [f32; 2],
     dim: [f32; 2],
 }
-impl Camera<'_> {
+impl View<'_> {
     pub fn draw_squares(&mut self, verts: &Buffer<[f32; 2]>, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
@@ -285,10 +315,12 @@ impl Camera<'_> {
     }
 }
 
+///
+/// Functions to draw shapes.
+///
 pub trait Shapes {
     fn line(&mut self, width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
     fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
-
     fn rect(&mut self, rect: impl Into<Rect>);
 }
 impl Shapes for Vec<[f32; 2]> {
@@ -318,23 +350,6 @@ impl Shapes for Vec<[f32; 2]> {
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
 
-        /*
-        let offset = end - start;
-        let dis_sqr = offset.magnitude2();
-        let dis = dis_sqr.sqrt();
-
-        let norm = offset / dis;
-
-
-
-        let num = (dis / (radius)).floor() as usize;
-
-        for i in 0..num {
-            let pos = start + norm * (i as f32) * radius;
-            buffer.push(pos.into());
-        }
-        */
-
         let offset = end - start;
         let k = offset.rotate_90deg_right().normalize_to(1.0);
         let start1 = start + k * radius;
@@ -343,14 +358,16 @@ impl Shapes for Vec<[f32; 2]> {
         let end1 = end + k * radius;
         let end2 = end - k * radius;
 
-        //let arr = [start1, start2, end1, start2, end1, end2];
+        let arr: [[f32; 2]; 6] = [
+            start1.into(),
+            start2.into(),
+            end1.into(),
+            start2.into(),
+            end1.into(),
+            end2.into(),
+        ];
 
-        buffer.push(start1.into());
-        buffer.push(start2.into());
-        buffer.push(end1.into());
-        buffer.push(start2.into());
-        buffer.push(end1.into());
-        buffer.push(end2.into());
+        buffer.extend(arr);
     }
 
     fn rect(&mut self, rect: impl Into<Rect>) {
@@ -361,12 +378,38 @@ impl Shapes for Vec<[f32; 2]> {
         let start = vec2(rect.x, rect.y);
         let dim = vec2(rect.w, rect.h);
 
-        buffer.push(start.into());
-        buffer.push((start + vec2(dim.x, 0.0)).into());
-        buffer.push((start + vec2(0.0, dim.y)).into());
+        let arr: [[f32; 2]; 6] = [
+            start.into(),
+            (start + vec2(dim.x, 0.0)).into(),
+            (start + vec2(0.0, dim.y)).into(),
+            (start + vec2(dim.x, 0.0)).into(),
+            (start + dim).into(),
+            (start + vec2(0.0, dim.y)).into(),
+        ];
 
-        buffer.push((start + vec2(dim.x, 0.0)).into());
-        buffer.push((start + dim).into());
-        buffer.push((start + vec2(0.0, dim.y)).into());
+        buffer.extend(arr);
     }
+}
+
+pub fn convert_coord(canvas: &web_sys::HtmlElement, e: &web_sys::MouseEvent) -> [f32; 2] {
+    let rect = canvas.get_bounding_client_rect();
+
+    let canvas_width: f64 = canvas
+        .get_attribute("width")
+        .unwrap_throw()
+        .parse()
+        .unwrap_throw();
+    let canvas_height: f64 = canvas
+        .get_attribute("height")
+        .unwrap_throw()
+        .parse()
+        .unwrap_throw();
+
+    let scalex = canvas_width / rect.width();
+    let scaley = canvas_height / rect.height();
+
+    let [x, y] = [e.client_x() as f64, e.client_y() as f64];
+
+    let [x, y] = [(x - rect.left()) * scalex, (y - rect.top()) * scaley];
+    [x as f32, y as f32]
 }
