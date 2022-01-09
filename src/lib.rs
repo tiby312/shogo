@@ -5,6 +5,7 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+#[cfg(feature = "simple2d")]
 pub mod simple2d;
 
 pub mod utils {
@@ -17,6 +18,17 @@ pub mod utils {
     /// Get an element with the specified id.
     ///
     pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
+        gloo::utils::document()
+            .get_element_by_id(id)
+            .unwrap_throw()
+            .dyn_into()
+            .unwrap_throw()
+    }
+
+    ///
+    /// Get a canvas element with the specified id.
+    ///
+    pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
         gloo::utils::document()
             .get_element_by_id(id)
             .unwrap_throw()

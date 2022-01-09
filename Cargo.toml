@@ -8,10 +8,14 @@ description = "webgl game engine using offscreencanvas"
 repository = "https://github.com/tiby312/shogo"
 keywords = ["canvas", "webgl","webworker","worker","OffscreenCanvas"]
 readme = "README.md"
+include = ["src/**/*", "LICENSE-MIT", "README.md"]
 
 
 [workspace]
 members = [ "demo"]
+
+[features]
+simple2d=[]
 
 [dependencies]
 wasm-bindgen = "0.2"
