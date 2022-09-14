@@ -1,4 +1,4 @@
-use gloo::console::log;
+use gloo_console::log;
 use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
@@ -49,8 +49,7 @@ pub async fn main_entry() {
 #[wasm_bindgen]
 pub async fn worker_entry() {
     use shogo::simple2d;
-    use simple2d::Shapes;
-
+    
     let (mut w, ss) = shogo::EngineWorker::new().await;
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
@@ -63,21 +62,24 @@ pub async fn worker_entry() {
     let mut color_iter = COLORS.iter().cycle().peekable();
 
     ctx.setup_alpha();
-    let mut rr = vec![];
-    rr.rect(simple2d::Rect {
-        x: 40.0,
-        y: 40.0,
-        w: 800.0 - 80.0,
-        h: 600.0 - 80.0,
-    });
 
-    let (mut draw_sys, mut buffer, walls) = (
+    let mut vv=simple2d::VertSys::new();
+
+    let walls=vv.create_static(&ctx.ctx,|rr|{
+        rr.rect(simple2d::Rect {
+            x: 40.0,
+            y: 40.0,
+            w: 800.0 - 80.0,
+            h: 600.0 - 80.0,
+        });
+    }).unwrap();
+
+    
+    let (mut draw_sys, mut buffer) = (
         ctx.shader_system(),
         ctx.buffer_dynamic(),
-        ctx.buffer_static(&rr),
     );
 
-    let mut verts = vec![];
     'outer: loop {
         for e in frame_timer.next().await {
             match e {
@@ -92,12 +94,12 @@ pub async fn worker_entry() {
         let radius = 4.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
-        verts.clear();
-        verts.line(radius, mouse_pos, [0.0, 0.0]);
-        verts.line(radius, mouse_pos, game_dim);
-        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
-        buffer.update(&verts);
+        vv.fill(&mut buffer,|verts|{
+            verts.line(radius, mouse_pos, [0.0, 0.0]);
+            verts.line(radius, mouse_pos, game_dim);
+            verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
+            verts.line(radius, mouse_pos, [game_dim[0], 0.0]); 
+        });
 
         ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
 

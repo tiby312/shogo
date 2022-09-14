@@ -1,4 +1,5 @@
-use gloo::timers::future::TimeoutFuture;
+use gloo_timers::future::TimeoutFuture;
+use gloo_utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,7 +19,7 @@ pub mod utils {
     /// Get an element with the specified id.
     ///
     pub fn get_by_id_elem(id: &str) -> web_sys::HtmlElement {
-        gloo::utils::document()
+        gloo_utils::document()
             .get_element_by_id(id)
             .unwrap_throw()
             .dyn_into()
@@ -29,7 +30,7 @@ pub mod utils {
     /// Get a canvas element with the specified id.
     ///
     pub fn get_by_id_canvas(id: &str) -> web_sys::HtmlCanvasElement {
-        gloo::utils::document()
+        gloo_utils::document()
             .get_element_by_id(id)
             .unwrap_throw()
             .dyn_into()
@@ -62,7 +63,7 @@ pub mod utils {
 extern "C" {
     #[no_mangle]
     #[used]
-    static performance: web_sys::Performance;
+    static PERFORMANCE: web_sys::Performance;
 }
 
 struct Timer {
@@ -78,7 +79,7 @@ impl Timer {
         //let performance = window.performance().unwrap_throw();
 
         Timer {
-            last: performance.now(),
+            last: PERFORMANCE.now(),
             frame_rate,
         }
     }
@@ -87,8 +88,8 @@ impl Timer {
         //let window = gloo::utils::window();
         //let performance = window.performance().unwrap_throw();
 
-        let tt = performance.now();
-        let diff = performance.now() - self.last;
+        let tt = PERFORMANCE.now();
+        let diff = PERFORMANCE.now() - self.last;
 
         if self.frame_rate as f64 - diff > 0.0 {
             let d = (self.frame_rate as f64 - diff) as usize;
@@ -145,7 +146,7 @@ mod main {
     ///
     pub struct EngineMain<MW, WM> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
-        _handle: gloo::events::EventListener,
+        _handle: gloo_events::EventListener,
         _p: PhantomData<(MW, WM)>,
     }
 
@@ -168,7 +169,7 @@ mod main {
 
             let (ks, kr) = futures::channel::mpsc::unbounded();
             let _handle =
-                gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+                gloo_events::EventListener::new(&worker.borrow(), "message", move |event| {
                     //log!("waaa");
                     let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                     let data = event.data();
@@ -233,11 +234,11 @@ mod main {
             elem: &web_sys::HtmlElement,
             event_type: &'static str,
             mut func: impl FnMut(EventData) -> MW + 'static,
-        ) -> gloo::events::EventListener {
+        ) -> gloo_events::EventListener {
             let w = self.worker.clone();
 
             let e = elem.clone();
-            gloo::events::EventListener::new(elem, event_type, move |event| {
+            gloo_events::EventListener::new(elem, event_type, move |event| {
                 let e = EventData {
                     elem: &e,
                     event,
@@ -274,7 +275,7 @@ mod worker {
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
     pub struct EngineWorker<MW, WM> {
-        _handle: gloo::events::EventListener,
+        _handle: gloo_events::EventListener,
         canvas: web_sys::OffscreenCanvas,
         _p: PhantomData<(MW, WM)>,
     }
@@ -303,7 +304,7 @@ mod worker {
 
             let (bags, bagf) = futures::channel::mpsc::unbounded();
 
-            let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
+            let _handle = gloo_events::EventListener::new(&scope, "message", move |event| {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
                 let data = event.data();
 

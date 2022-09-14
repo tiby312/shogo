@@ -53,6 +53,115 @@ void main() {
 }
 "#;
 
+
+pub struct VertSys {
+    verts: Vec<[f32; 2]>,
+}
+
+pub struct VertAdder<'a> {
+    verts: &'a mut Vec<[f32; 2]>,
+}
+impl<'a> VertAdder<'a> {
+    pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+        let buffer = &mut *self.verts;
+        use axgeom::*;
+        let start = Vec2::from(start.into());
+        let end = Vec2::from(end.into());
+
+        let offset = end - start;
+        let dis_sqr = offset.magnitude2();
+        let dis = dis_sqr.sqrt();
+
+        let norm = offset / dis;
+
+        let num = (dis / (radius)).floor() as usize;
+
+        for i in 0..num {
+            let pos = start + norm * (i as f32) * radius;
+            buffer.push(pos.into());
+        }
+    }
+
+    pub fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+        let buffer = &mut *self.verts;
+        use axgeom::*;
+        let start = Vec2::from(start.into());
+        let end = Vec2::from(end.into());
+
+        let offset = end - start;
+        let k = offset.rotate_90deg_right().normalize_to(1.0);
+        let start1 = start + k * radius;
+        let start2 = start - k * radius;
+
+        let end1 = end + k * radius;
+        let end2 = end - k * radius;
+
+        let arr: [[f32; 2]; 6] = [
+            start1.into(),
+            start2.into(),
+            end1.into(),
+            start2.into(),
+            end1.into(),
+            end2.into(),
+        ];
+
+        buffer.extend(arr);
+    }
+
+    pub fn rect(&mut self, rect: impl Into<Rect>) {
+        use axgeom::vec2;
+        let rect: Rect = rect.into();
+
+        let buffer = &mut *self.verts;
+        let start = vec2(rect.x, rect.y);
+        let dim = vec2(rect.w, rect.h);
+
+        let arr: [[f32; 2]; 6] = [
+            start.into(),
+            (start + vec2(dim.x, 0.0)).into(),
+            (start + vec2(0.0, dim.y)).into(),
+            (start + vec2(dim.x, 0.0)).into(),
+            (start + dim).into(),
+            (start + vec2(0.0, dim.y)).into(),
+        ];
+
+        buffer.extend(arr);
+    }
+
+    // pub fn line(&mut self,width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+    //     self.verts.line(width, start, end);
+    // }
+}
+impl VertSys {
+    pub fn new()->Self{
+        VertSys{
+            verts:vec!()
+        }
+    }
+    pub fn fill(&mut self, buffer: &mut DynamicBuffer<[f32;2]>, func: impl FnOnce(&mut VertAdder)) {
+        let mut adder = VertAdder {
+            verts: &mut self.verts,
+        };
+        func(&mut adder);
+
+        buffer.update(&self.verts);
+
+        self.verts.clear();
+    }
+
+    pub fn create_static(&mut self, ctx: &WebGl2RenderingContext, func: impl FnOnce(&mut VertAdder))->Result<StaticBuffer<[f32;2]>,String> {
+        
+        let mut adder = VertAdder {
+            verts: &mut self.verts,
+        };
+        func(&mut adder);
+        let res=StaticBuffer::new(ctx,&self.verts);
+        self.verts.clear();
+        res
+    }
+}
+
+
 ///
 /// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
 ///
@@ -66,7 +175,7 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
 }
 
 impl<T> StaticBuffer<T> {
-    pub fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
+    fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verts = verts.len();
@@ -103,7 +212,7 @@ impl<T> DynamicBuffer<T> {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
-    pub fn update(&mut self, vertices: &[T]) {
+    fn update(&mut self, vertices: &[T]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
@@ -167,9 +276,9 @@ impl CtxWrap {
     pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
         DynamicBuffer::new(self).unwrap_throw()
     }
-    pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
-        StaticBuffer::new(self, a).unwrap_throw()
-    }
+    // pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
+    //     StaticBuffer::new(self, a).unwrap_throw()
+    // }
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
@@ -318,81 +427,16 @@ impl View<'_> {
     }
 }
 
-///
-/// Functions to draw shapes.
-///
-pub trait Shapes {
-    fn line(&mut self, width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
-    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
-    fn rect(&mut self, rect: impl Into<Rect>);
-}
-impl Shapes for Vec<[f32; 2]> {
-    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = self;
-        use axgeom::*;
-        let start = Vec2::from(start.into());
-        let end = Vec2::from(end.into());
-
-        let offset = end - start;
-        let dis_sqr = offset.magnitude2();
-        let dis = dis_sqr.sqrt();
-
-        let norm = offset / dis;
-
-        let num = (dis / (radius)).floor() as usize;
-
-        for i in 0..num {
-            let pos = start + norm * (i as f32) * radius;
-            buffer.push(pos.into());
-        }
-    }
-
-    fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = self;
-        use axgeom::*;
-        let start = Vec2::from(start.into());
-        let end = Vec2::from(end.into());
-
-        let offset = end - start;
-        let k = offset.rotate_90deg_right().normalize_to(1.0);
-        let start1 = start + k * radius;
-        let start2 = start - k * radius;
-
-        let end1 = end + k * radius;
-        let end2 = end - k * radius;
-
-        let arr: [[f32; 2]; 6] = [
-            start1.into(),
-            start2.into(),
-            end1.into(),
-            start2.into(),
-            end1.into(),
-            end2.into(),
-        ];
-
-        buffer.extend(arr);
-    }
-
-    fn rect(&mut self, rect: impl Into<Rect>) {
-        use axgeom::vec2;
-        let rect: Rect = rect.into();
-
-        let buffer = self;
-        let start = vec2(rect.x, rect.y);
-        let dim = vec2(rect.w, rect.h);
-
-        let arr: [[f32; 2]; 6] = [
-            start.into(),
-            (start + vec2(dim.x, 0.0)).into(),
-            (start + vec2(0.0, dim.y)).into(),
-            (start + vec2(dim.x, 0.0)).into(),
-            (start + dim).into(),
-            (start + vec2(0.0, dim.y)).into(),
-        ];
-
-        buffer.extend(arr);
-    }
-}
+// ///
+// /// Functions to draw shapes.
+// ///
+// pub trait Shapes {
+//     fn line(&mut self, width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
+//     fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
+//     fn rect(&mut self, rect: impl Into<Rect>);
+// }
+// impl Shapes for Vec<[f32; 2]> {
+// }
 
 ///
 /// Convert a mouse event to a coordinate for simple2d.
