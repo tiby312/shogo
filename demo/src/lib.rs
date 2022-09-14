@@ -49,7 +49,7 @@ pub async fn main_entry() {
 #[wasm_bindgen]
 pub async fn worker_entry() {
     use shogo::simple2d;
-    
+
     let (mut w, ss) = shogo::EngineWorker::new().await;
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
@@ -63,22 +63,20 @@ pub async fn worker_entry() {
 
     ctx.setup_alpha();
 
-    let mut vv=simple2d::VertSys::new();
+    let mut vv = simple2d::VertSys::new();
 
-    let walls=vv.create_static(&ctx.ctx,|rr|{
-        rr.rect(simple2d::Rect {
-            x: 40.0,
-            y: 40.0,
-            w: 800.0 - 80.0,
-            h: 600.0 - 80.0,
-        });
-    }).unwrap();
+    let walls = vv
+        .create_static(&ctx.ctx, |rr| {
+            rr.rect(simple2d::Rect {
+                x: 40.0,
+                y: 40.0,
+                w: 800.0 - 80.0,
+                h: 600.0 - 80.0,
+            });
+        })
+        .unwrap();
 
-    
-    let (mut draw_sys, mut buffer) = (
-        ctx.shader_system(),
-        ctx.buffer_dynamic(),
-    );
+    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
 
     'outer: loop {
         for e in frame_timer.next().await {
@@ -94,11 +92,11 @@ pub async fn worker_entry() {
         let radius = 4.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
-        vv.fill(&mut buffer,|verts|{
+        vv.fill(&mut buffer, |verts| {
             verts.line(radius, mouse_pos, [0.0, 0.0]);
             verts.line(radius, mouse_pos, game_dim);
             verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-            verts.line(radius, mouse_pos, [game_dim[0], 0.0]); 
+            verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
         });
 
         ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);

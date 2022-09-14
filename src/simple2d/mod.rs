@@ -53,7 +53,6 @@ void main() {
 }
 "#;
 
-
 pub struct VertSys {
     verts: Vec<[f32; 2]>,
 }
@@ -133,12 +132,14 @@ impl<'a> VertAdder<'a> {
     // }
 }
 impl VertSys {
-    pub fn new()->Self{
-        VertSys{
-            verts:vec!()
-        }
+    pub fn new() -> Self {
+        VertSys { verts: vec![] }
     }
-    pub fn fill(&mut self, buffer: &mut DynamicBuffer<[f32;2]>, func: impl FnOnce(&mut VertAdder)) {
+    pub fn fill(
+        &mut self,
+        buffer: &mut DynamicBuffer<[f32; 2]>,
+        func: impl FnOnce(&mut VertAdder),
+    ) {
         let mut adder = VertAdder {
             verts: &mut self.verts,
         };
@@ -149,18 +150,20 @@ impl VertSys {
         self.verts.clear();
     }
 
-    pub fn create_static(&mut self, ctx: &WebGl2RenderingContext, func: impl FnOnce(&mut VertAdder))->Result<StaticBuffer<[f32;2]>,String> {
-        
+    pub fn create_static(
+        &mut self,
+        ctx: &WebGl2RenderingContext,
+        func: impl FnOnce(&mut VertAdder),
+    ) -> Result<StaticBuffer<[f32; 2]>, String> {
         let mut adder = VertAdder {
             verts: &mut self.verts,
         };
         func(&mut adder);
-        let res=StaticBuffer::new(ctx,&self.verts);
+        let res = StaticBuffer::new(ctx, &self.verts);
         self.verts.clear();
         res
     }
 }
-
 
 ///
 /// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
