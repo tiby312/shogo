@@ -65,18 +65,18 @@ pub async fn worker_entry() {
 
     let mut vv = simple2d::VertSys::new();
 
-    let walls = vv
-        .create_static(&ctx.ctx, |rr| {
-            rr.rect(simple2d::Rect {
-                x: 40.0,
-                y: 40.0,
-                w: 800.0 - 80.0,
-                h: 600.0 - 80.0,
-            });
-        })
-        .unwrap();
+    let mut draw_sys = ctx.shader_system();
+    let mut buffer = ctx.buffer();
+    let mut walls = ctx.buffer();
 
-    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
+    walls.fill(&mut vv, |verts| {
+        verts.rect(simple2d::Rect {
+            x: 40.0,
+            y: 40.0,
+            w: 800.0 - 80.0,
+            h: 600.0 - 80.0,
+        });
+    });
 
     'outer: loop {
         for e in frame_timer.next().await {
@@ -92,22 +92,18 @@ pub async fn worker_entry() {
         let radius = 4.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
-        vv.fill(&mut buffer, |verts| {
+        buffer.fill(&mut vv, |verts| {
             verts.line(radius, mouse_pos, [0.0, 0.0]);
             verts.line(radius, mouse_pos, game_dim);
             verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
             verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
         });
 
-        ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
-
-        let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
-
-        v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
-
-        v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
-
-        ctx.flush();
+        ctx.draw([0.13, 0.13, 0.13, 1.0], || {
+            let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
+            v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
+            v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
+        })
     }
 
     w.post_message(());

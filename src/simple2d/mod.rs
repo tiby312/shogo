@@ -6,12 +6,13 @@
 //!
 //!
 //!
+use std::marker::PhantomData;
+
 use web_sys::WebGl2RenderingContext;
 mod shader;
 
 use shader::*;
 
-pub use shader::Buffer;
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
@@ -52,6 +53,62 @@ void main() {
     gl_Position = vec4((mmatrix*pp).xy,0.0, 1.0);
 }
 "#;
+
+
+///
+/// A webgl2 buffer that automatically deletes itself when dropped.
+///
+pub struct Buffer<T> {
+    pub(crate) buffer: web_sys::WebGlBuffer,
+    pub(crate) num_verts: usize,
+    pub(crate) ctx: WebGl2RenderingContext,
+    _p: PhantomData<T>,
+}
+impl<T> Buffer<T> {
+    pub fn fill(
+        &mut self,
+        vv:&mut VertSys,
+        func: impl FnOnce(&mut VertAdder),
+    ) {
+        let mut adder = VertAdder {
+            verts: &mut vv.verts,
+        };
+        func(&mut adder);
+        let vertices=adder.verts;
+
+        self.num_verts = vertices.len();
+
+        let ctx=&self.ctx;
+        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.buffer));
+
+        let n_bytes = vertices.len() * std::mem::size_of::<[f32;2]>();
+        let points_buf: &[u8] =
+            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+
+        ctx.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
+        );
+
+        vv.verts.clear();
+    }
+
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+        Ok(Buffer {
+            buffer,
+            num_verts: 0,
+            ctx: ctx.clone(),
+            _p: PhantomData,
+        })
+    }
+}
+impl<T> Drop for Buffer<T> {
+    fn drop(&mut self) {
+        self.ctx.delete_buffer(Some(&self.buffer));
+    }
+}
 
 pub struct VertSys {
     verts: Vec<[f32; 2]>,
@@ -131,108 +188,85 @@ impl<'a> VertAdder<'a> {
     //     self.verts.line(width, start, end);
     // }
 }
+
+
 impl VertSys {
     pub fn new() -> Self {
         VertSys { verts: vec![] }
     }
-    pub fn fill(
-        &mut self,
-        buffer: &mut DynamicBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut VertAdder),
-    ) {
-        let mut adder = VertAdder {
-            verts: &mut self.verts,
-        };
-        func(&mut adder);
+    
 
-        buffer.update(&self.verts);
-
-        self.verts.clear();
-    }
-
-    pub fn create_static(
-        &mut self,
-        ctx: &WebGl2RenderingContext,
-        func: impl FnOnce(&mut VertAdder),
-    ) -> Result<StaticBuffer<[f32; 2]>, String> {
-        let mut adder = VertAdder {
-            verts: &mut self.verts,
-        };
-        func(&mut adder);
-        let res = StaticBuffer::new(ctx, &self.verts);
-        self.verts.clear();
-        res
-    }
 }
 
-///
-/// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
-///
-pub struct StaticBuffer<T>(Buffer<T>);
+// ///
+// /// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
+// ///
+// pub struct StaticBuffer<T>(Buffer<T>);
 
-impl<T> std::ops::Deref for StaticBuffer<T> {
-    type Target = Buffer<T>;
-    fn deref(&self) -> &Buffer<T> {
-        &self.0
-    }
-}
+// impl<T> std::ops::Deref for StaticBuffer<T> {
+//     type Target = Buffer<T>;
+//     fn deref(&self) -> &Buffer<T> {
+//         &self.0
+//     }
+// }
 
-impl<T> StaticBuffer<T> {
-    fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
-        let mut buffer = StaticBuffer(Buffer::new(ctx)?);
+// impl<T> StaticBuffer<T> {
+//     fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
+//         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
-        buffer.0.num_verts = verts.len();
+//         buffer.0.num_verts = verts.len();
 
-        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
+//         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
 
-        let n_bytes = verts.len() * std::mem::size_of::<T>();
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
+//         let n_bytes = verts.len() * std::mem::size_of::<T>();
+//         let points_buf: &[u8] =
+//             unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
 
-        ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            points_buf,
-            WebGl2RenderingContext::STATIC_DRAW,
-        );
+//         ctx.buffer_data_with_u8_array(
+//             WebGl2RenderingContext::ARRAY_BUFFER,
+//             points_buf,
+//             WebGl2RenderingContext::STATIC_DRAW,
+//         );
 
-        Ok(buffer)
-    }
-}
+//         Ok(buffer)
+//     }
+// }
 
-///
-/// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
-///
-pub struct DynamicBuffer<T>(Buffer<T>);
+// ///
+// /// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
+// ///
+// pub struct DynamicBuffer<T>(Buffer<T>);
 
-impl<T> std::ops::Deref for DynamicBuffer<T> {
-    type Target = Buffer<T>;
-    fn deref(&self) -> &Buffer<T> {
-        &self.0
-    }
-}
+// impl<T> std::ops::Deref for DynamicBuffer<T> {
+//     type Target = Buffer<T>;
+//     fn deref(&self) -> &Buffer<T> {
+//         &self.0
+//     }
+// }
 
-impl<T> DynamicBuffer<T> {
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        Ok(DynamicBuffer(Buffer::new(ctx)?))
-    }
-    fn update(&mut self, vertices: &[T]) {
-        let ctx = &self.0.ctx;
+// impl<T> DynamicBuffer<T> {
+//     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+//         Ok(DynamicBuffer(Buffer::new(ctx)?))
+//     }
+//     fn update(&mut self, vertices: &[T]) {
+//         let ctx = &self.0.ctx;
 
-        self.0.num_verts = vertices.len();
+//         self.0.num_verts = vertices.len();
 
-        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
+//         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<T>();
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+//         let n_bytes = vertices.len() * std::mem::size_of::<T>();
+//         let points_buf: &[u8] =
+//             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
-        ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            points_buf,
-            WebGl2RenderingContext::DYNAMIC_DRAW,
-        );
-    }
-}
+//         ctx.buffer_data_with_u8_array(
+//             WebGl2RenderingContext::ARRAY_BUFFER,
+//             points_buf,
+//             WebGl2RenderingContext::DYNAMIC_DRAW,
+//         );
+//     }
+// }
+
 
 struct Args<'a> {
     pub verts: &'a Buffer<[f32; 2]>,
@@ -265,6 +299,11 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
+    pub fn draw(&self,color:[f32;4],func:impl FnOnce()){
+        self.draw_clear(color);
+        func();
+        self.flush();
+    }
     ///
     /// Sets up alpha blending and disables depth testing.
     ///
@@ -276,17 +315,15 @@ impl CtxWrap {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
     }
-    pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
-        DynamicBuffer::new(self).unwrap_throw()
+    pub fn buffer<T>(&self) -> Buffer<T> {
+        Buffer::new(&self.ctx).unwrap_throw()
     }
-    // pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
-    //     StaticBuffer::new(self, a).unwrap_throw()
-    // }
+
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
 
-    pub fn draw_clear(&self, color: [f32; 4]) {
+    fn draw_clear(&self, color: [f32; 4]) {
         let [a, b, c, d] = color;
         self.ctx.clear_color(a, b, c, d);
         self.ctx

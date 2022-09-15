@@ -4,31 +4,7 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 use std::marker::PhantomData;
 
-///
-/// A webgl2 buffer that automatically deletes itself when dropped.
-///
-pub struct Buffer<T> {
-    pub(crate) buffer: web_sys::WebGlBuffer,
-    pub(crate) num_verts: usize,
-    pub(crate) ctx: WebGl2RenderingContext,
-    _p: PhantomData<T>,
-}
-impl<T> Buffer<T> {
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-        Ok(Buffer {
-            buffer,
-            num_verts: 0,
-            ctx: ctx.clone(),
-            _p: PhantomData,
-        })
-    }
-}
-impl<T> Drop for Buffer<T> {
-    fn drop(&mut self) {
-        self.ctx.delete_buffer(Some(&self.buffer));
-    }
-}
+use super::Buffer;
 
 impl GlProgram {
     pub fn draw(
