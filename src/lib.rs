@@ -59,12 +59,16 @@ pub mod utils {
     }
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[allow(non_upper_case_globals)]
-    #[no_mangle]
-    #[used]
-    static performance: web_sys::Performance;
+mod perf {
+    #![allow(non_upper_case_globals)]
+    use wasm_bindgen::prelude::*;
+    #[wasm_bindgen]
+    extern "C" {
+
+        #[no_mangle]
+        #[used]
+        pub static performance: web_sys::Performance;
+    }
 }
 
 struct Timer {
@@ -80,7 +84,7 @@ impl Timer {
         //let performance = window.performance().unwrap_throw();
 
         Timer {
-            last: performance.now(),
+            last: perf::performance.now(),
             frame_rate,
         }
     }
@@ -89,8 +93,8 @@ impl Timer {
         //let window = gloo::utils::window();
         //let performance = window.performance().unwrap_throw();
 
-        let tt = performance.now();
-        let diff = performance.now() - self.last;
+        let tt = perf::performance.now();
+        let diff = perf::performance.now() - self.last;
 
         if self.frame_rate as f64 - diff > 0.0 {
             let d = (self.frame_rate as f64 - diff) as usize;

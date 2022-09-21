@@ -13,7 +13,6 @@ mod shader;
 
 use shader::*;
 
-
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
@@ -54,7 +53,6 @@ void main() {
 }
 "#;
 
-
 ///
 /// A webgl2 buffer that automatically deletes itself when dropped.
 ///
@@ -65,23 +63,19 @@ pub struct Buffer<T> {
     _p: PhantomData<T>,
 }
 impl<T> Buffer<T> {
-    pub fn fill(
-        &mut self,
-        vv:&mut VertSys,
-        func: impl FnOnce(&mut VertAdder),
-    ) {
+    pub fn fill(&mut self, vv: &mut VertSys, func: impl FnOnce(&mut VertAdder)) {
         let mut adder = VertAdder {
             verts: &mut vv.verts,
         };
         func(&mut adder);
-        let vertices=adder.verts;
+        let vertices = adder.verts;
 
         self.num_verts = vertices.len();
 
-        let ctx=&self.ctx;
+        let ctx = &self.ctx;
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<[f32;2]>();
+        let n_bytes = vertices.len() * std::mem::size_of::<[f32; 2]>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
@@ -189,13 +183,10 @@ impl<'a> VertAdder<'a> {
     // }
 }
 
-
 impl VertSys {
     pub fn new() -> Self {
         VertSys { verts: vec![] }
     }
-    
-
 }
 
 // ///
@@ -267,7 +258,6 @@ impl VertSys {
 //     }
 // }
 
-
 struct Args<'a> {
     pub verts: &'a Buffer<[f32; 2]>,
     pub primitive: u32,
@@ -299,7 +289,7 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-    pub fn draw(&self,color:[f32;4],func:impl FnOnce()){
+    pub fn draw(&self, color: [f32; 4], func: impl FnOnce()) {
         self.draw_clear(color);
         func();
         self.flush();

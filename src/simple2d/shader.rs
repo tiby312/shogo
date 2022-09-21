@@ -2,8 +2,6 @@ use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
-use std::marker::PhantomData;
-
 use super::Buffer;
 
 impl GlProgram {
