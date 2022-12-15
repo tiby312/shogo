@@ -1,9 +1,14 @@
+
+#![allow(non_upper_case_globals)]
+
 use gloo::timers::future::TimeoutFuture;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+
+use gloo::utils::format::JsValueSerdeExt;
 
 #[cfg(feature = "simple2d")]
 pub mod simple2d;

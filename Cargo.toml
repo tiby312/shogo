@@ -1,6 +1,6 @@
 [package]
 name = "shogo"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Ken Reed <kenakioreed@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -26,7 +26,7 @@ axgeom = "1.9"
 serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.gloo]
-version = "0.5"
+version = "0.8"
 features=[
   'futures'
   ]
