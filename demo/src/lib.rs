@@ -31,7 +31,7 @@ pub async fn main_entry() {
 
     let offscreen = canvas.transfer_control_to_offscreen().unwrap_throw();
 
-    let (mut worker, mut response) = shogo::EngineMain::new("./worker.js",offscreen).await;
+    let (mut worker, mut response) = shogo::EngineMain::new("./worker.js", offscreen).await;
 
     let _handler = worker.register_event(&canvas, "mousemove", |e| {
         let [x, y] = convert_coord(e.elem, e.event);
@@ -49,7 +49,6 @@ pub async fn main_entry() {
 #[wasm_bindgen]
 pub async fn worker_entry() {
     use shogo::simple2d;
-    use simple2d::Shapes;
 
     let (mut w, ss) = shogo::EngineWorker::new().await;
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
@@ -63,21 +62,22 @@ pub async fn worker_entry() {
     let mut color_iter = COLORS.iter().cycle().peekable();
 
     ctx.setup_alpha();
-    let mut rr = vec![];
-    rr.rect(simple2d::Rect {
-        x: 40.0,
-        y: 40.0,
-        w: 800.0 - 80.0,
-        h: 600.0 - 80.0,
-    });
 
-    let (mut draw_sys, mut buffer, walls) = (
-        ctx.shader_system(),
-        ctx.buffer_dynamic(),
-        ctx.buffer_static(&rr),
-    );
+    let mut verts = ctx.vec_builder();
 
-    let mut verts = vec![];
+    let walls = ctx
+        .buffer_static(&mut verts, |rr| {
+            rr.rect(simple2d::Rect {
+                x: 40.0,
+                y: 40.0,
+                w: 800.0 - 80.0,
+                h: 600.0 - 80.0,
+            });
+        })
+        .unwrap_throw();
+
+    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
+
     'outer: loop {
         for e in frame_timer.next().await {
             match e {
@@ -92,22 +92,18 @@ pub async fn worker_entry() {
         let radius = 4.0;
         let game_dim = [canvas.width() as f32, canvas.height() as f32];
 
-        verts.clear();
-        verts.line(radius, mouse_pos, [0.0, 0.0]);
-        verts.line(radius, mouse_pos, game_dim);
-        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
-        buffer.update(&verts);
+        buffer.add_shapes(&mut verts, |verts| {
+            verts.line(radius, mouse_pos, [0.0, 0.0]);
+            verts.line(radius, mouse_pos, game_dim);
+            verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
+            verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
+        });
 
-        ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
-
-        let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
-
-        v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
-
-        v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
-
-        ctx.flush();
+        ctx.draw_all([0.13, 0.13, 0.13, 1.0],||{
+            let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
+            v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
+            v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
+        });
     }
 
     w.post_message(());

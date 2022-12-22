@@ -1,4 +1,3 @@
-
 #![allow(non_upper_case_globals)]
 
 use gloo::timers::future::TimeoutFuture;
@@ -160,7 +159,7 @@ mod main {
         /// it is ready to receive the offscreen canvas.
         ///
         pub async fn new(
-            web_worker_url:&str,
+            web_worker_url: &str,
             canvas: web_sys::OffscreenCanvas,
         ) -> (Self, futures::channel::mpsc::UnboundedReceiver<WM>) {
             let mut options = web_sys::WorkerOptions::new();
@@ -182,7 +181,7 @@ mod main {
                     let data: js_sys::Array = data.dyn_into().unwrap_throw();
                     let m = data.get(0);
                     let k = data.get(1);
-            
+
                     if !m.is_null() {
                         if let Some(s) = m.as_string() {
                             if s == "ready" {
@@ -198,19 +197,19 @@ mod main {
                 });
 
             let _ = fr.await.unwrap_throw();
-            
+
             let arr = js_sys::Array::new_with_length(1);
             arr.set(0, canvas.clone().into());
 
             let data = js_sys::Array::new();
             data.set(0, canvas.into());
             data.set(1, JsValue::null());
-            
+
             worker
                 .borrow()
                 .post_message_with_transfer(&data, &arr)
                 .unwrap_throw();
-            
+
             (
                 EngineMain {
                     worker,

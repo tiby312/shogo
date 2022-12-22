@@ -65,8 +65,23 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
     }
 }
 
+impl StaticBuffer<[f32; 2]> {
+    fn new(
+        ctx: &WebGl2RenderingContext,
+        vec: &mut VecBuilder<[f32; 2]>,
+        func: impl FnOnce(&mut ShapeBuilder),
+    ) -> Result<Self, String> {
+        vec.inner.clear();
+        let mut k = ShapeBuilder {
+            inner: &mut vec.inner,
+        };
+        func(&mut k);
+        Self::new_inner(ctx, &vec.inner)
+    }
+}
+
 impl<T> StaticBuffer<T> {
-    pub fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
+    fn new_inner(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verts = verts.len();
@@ -99,11 +114,26 @@ impl<T> std::ops::Deref for DynamicBuffer<T> {
     }
 }
 
+impl DynamicBuffer<[f32; 2]> {
+    pub fn add_shapes(
+        &mut self,
+        vec: &mut VecBuilder<[f32; 2]>,
+        func: impl FnOnce(&mut ShapeBuilder),
+    ) {
+        vec.inner.clear();
+        let mut k = ShapeBuilder {
+            inner: &mut vec.inner,
+        };
+        func(&mut k);
+        self.update(&vec.inner);
+    }
+}
 impl<T> DynamicBuffer<T> {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
-    pub fn update(&mut self, vertices: &[T]) {
+
+    fn update(&mut self, vertices: &[T]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
@@ -132,6 +162,15 @@ struct Args<'a> {
     pub point_size: f32,
 }
 
+pub struct VecBuilder<T> {
+    inner: Vec<T>,
+}
+impl<T> VecBuilder<T> {
+    pub fn new() -> Self {
+        VecBuilder { inner: vec![] }
+    }
+}
+
 use wasm_bindgen::prelude::*;
 
 ///
@@ -153,6 +192,9 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
+    pub fn vec_builder<T>(&self) -> VecBuilder<T> {
+        VecBuilder::new()
+    }
     ///
     /// Sets up alpha blending and disables depth testing.
     ///
@@ -167,11 +209,25 @@ impl CtxWrap {
     pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
         DynamicBuffer::new(self).unwrap_throw()
     }
-    pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
-        StaticBuffer::new(self, a).unwrap_throw()
+
+    pub fn buffer_static(
+        &self,
+        vec: &mut VecBuilder<[f32; 2]>,
+        func: impl FnOnce(&mut ShapeBuilder),
+    ) -> Result<StaticBuffer<[f32; 2]>, String> {
+        StaticBuffer::new(self, vec, func)
     }
+
+    // pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
+    //     StaticBuffer::new(self, a).unwrap_throw()
+    // }
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
+    }
+    pub fn draw_all(&self,color:[f32;4],func:impl FnOnce()){
+        self.draw_clear(color);
+        func();
+        self.flush();
     }
 
     pub fn draw_clear(&self, color: [f32; 4]) {
@@ -318,17 +374,13 @@ impl View<'_> {
     }
 }
 
-///
-/// Functions to draw shapes.
-///
-pub trait Shapes {
-    fn line(&mut self, width: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
-    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>);
-    fn rect(&mut self, rect: impl Into<Rect>);
+pub struct ShapeBuilder<'a> {
+    inner: &'a mut Vec<[f32; 2]>,
 }
-impl Shapes for Vec<[f32; 2]> {
-    fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = self;
+
+impl<'a> ShapeBuilder<'a> {
+    pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+        let buffer = &mut *self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
@@ -347,8 +399,8 @@ impl Shapes for Vec<[f32; 2]> {
         }
     }
 
-    fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = self;
+    pub fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+        let buffer = &mut *self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
@@ -373,11 +425,11 @@ impl Shapes for Vec<[f32; 2]> {
         buffer.extend(arr);
     }
 
-    fn rect(&mut self, rect: impl Into<Rect>) {
+    pub fn rect(&mut self, rect: impl Into<Rect>) {
         use axgeom::vec2;
         let rect: Rect = rect.into();
 
-        let buffer = self;
+        let buffer = &mut *self.inner;
         let start = vec2(rect.x, rect.y);
         let dim = vec2(rect.w, rect.h);
 
