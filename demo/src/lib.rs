@@ -31,7 +31,7 @@ pub async fn main_entry() {
 
     let offscreen = canvas.transfer_control_to_offscreen().unwrap_throw();
 
-    let (mut worker, mut response) = shogo::EngineMain::new(offscreen).await;
+    let (mut worker, mut response) = shogo::EngineMain::new("./worker.js",offscreen).await;
 
     let _handler = worker.register_event(&canvas, "mousemove", |e| {
         let [x, y] = convert_coord(e.elem, e.event);
