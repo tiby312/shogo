@@ -78,6 +78,9 @@ pub async fn worker_entry() {
 
     let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
 
+    let radius = 4.0;
+    let game_dim = [canvas.width() as f32, canvas.height() as f32];
+
     'outer: loop {
         for e in frame_timer.next().await {
             match e {
@@ -89,9 +92,7 @@ pub async fn worker_entry() {
             }
         }
 
-        let radius = 4.0;
-        let game_dim = [canvas.width() as f32, canvas.height() as f32];
-
+        
         buffer.add_shapes(&mut verts, |verts| {
             verts.line(radius, mouse_pos, [0.0, 0.0]);
             verts.line(radius, mouse_pos, game_dim);
