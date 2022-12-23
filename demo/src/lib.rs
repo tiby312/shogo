@@ -54,34 +54,25 @@ pub async fn worker_entry() {
     let mut frame_timer = shogo::FrameTimer::new(30, ss);
 
     let canvas = w.canvas();
-
     let ctx = simple2d::CtxWrap::new(&utils::get_context_webgl2_offscreen(&canvas));
-
-    let mut mouse_pos = [0.0f32; 2];
-
-    let mut color_iter = COLORS.iter().cycle().peekable();
-
-    ctx.setup_alpha();
-
-    let mut cache=vec!();
-
-
-    let mut rr=simple2d::ShapeBuilder::new(&mut cache);
-    rr.rect(simple2d::Rect {
+    let mut draw_sys = ctx.shader_system();
+    let mut buffer = ctx.buffer_dynamic();
+    let cache = &mut vec![];
+    simple2d::shapes(cache).rect(simple2d::Rect {
         x: 40.0,
         y: 40.0,
         w: 800.0 - 80.0,
         h: 600.0 - 80.0,
     });
-    let walls=ctx.buffer_static_and_clear(&mut cache);
-    
+    let walls = ctx.buffer_static_and_clear(cache);
 
+    ctx.setup_alpha();
 
-    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
-
+    // setup game data
+    let mut mouse_pos = [0.0f32; 2];
+    let mut color_iter = COLORS.iter().cycle().peekable();
     let radius = 4.0;
     let game_dim = [canvas.width() as f32, canvas.height() as f32];
-
 
     'outer: loop {
         for e in frame_timer.next().await {
@@ -94,19 +85,21 @@ pub async fn worker_entry() {
             }
         }
 
-        let mut verts=simple2d::ShapeBuilder::new(&mut cache);
-        verts.line(radius, mouse_pos, [0.0, 0.0]);
-        verts.line(radius, mouse_pos, game_dim);
-        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
-        buffer.update_and_clear(&mut cache);
+        simple2d::shapes(cache)
+            .line(radius, mouse_pos, [0.0, 0.0])
+            .line(radius, mouse_pos, game_dim)
+            .line(radius, mouse_pos, [0.0, game_dim[1]])
+            .line(radius, mouse_pos, [game_dim[0], 0.0]);
 
-        
-        ctx.draw_all([0.13, 0.13, 0.13, 1.0],||{
-            let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
-            v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
-            v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
-        });
+        buffer.update_and_clear(cache);
+
+        ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
+
+        let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
+        v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
+        v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
+
+        ctx.flush();
     }
 
     w.post_message(());

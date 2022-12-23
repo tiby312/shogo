@@ -134,7 +134,7 @@ impl<T> DynamicBuffer<T> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
 
-    pub fn update_and_clear(&mut self,verts:&mut Vec<T>){
+    pub fn update_and_clear(&mut self, verts: &mut Vec<T>) {
         self.update(verts);
         verts.clear();
     }
@@ -215,17 +215,8 @@ impl CtxWrap {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    // pub fn gpu_buffer_static<K>(
-    //     &self,
-    //     vec: &mut CpuBuffer<[f32; 2]>,
-    //     func: impl FnOnce(&mut ShapeBuilder)->K,
-    // ) -> Result<(StaticBuffer<[f32; 2]>,K), String> {
-    //     StaticBuffer::new2(self, vec, func)
-    // }
-
-
-    pub fn buffer_static_and_clear(&self,a:&mut Vec<[f32;2]>)->StaticBuffer<[f32;2]>{
-        let b=self.buffer_static(a);
+    pub fn buffer_static_and_clear(&self, a: &mut Vec<[f32; 2]>) -> StaticBuffer<[f32; 2]> {
+        let b = self.buffer_static(a);
         a.clear();
         b
     }
@@ -234,15 +225,14 @@ impl CtxWrap {
         StaticBuffer::new(self, a).unwrap_throw()
     }
 
-
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
-    pub fn draw_all(&self,color:[f32;4],func:impl FnOnce()){
-        self.draw_clear(color);
-        func();
-        self.flush();
-    }
+    // pub fn draw_all(&self, color: [f32; 4], func: impl FnOnce()) {
+    //     self.draw_clear(color);
+    //     func();
+    //     self.flush();
+    // }
 
     pub fn draw_clear(&self, color: [f32; 4]) {
         let [a, b, c, d] = color;
@@ -388,29 +378,34 @@ impl View<'_> {
     }
 }
 
+pub fn shapes(a: &mut Vec<[f32; 2]>) -> ShapeBuilder {
+    ShapeBuilder::new(a)
+}
 pub struct ShapeBuilder<'a> {
-    inner:  &'a mut Vec<[f32; 2]>,
+    inner: &'a mut Vec<[f32; 2]>,
 }
 
-impl<'a> std::ops::Deref for ShapeBuilder<'a>{
-    type Target=Vec<[f32;2]>;
+impl<'a> std::ops::Deref for ShapeBuilder<'a> {
+    type Target = Vec<[f32; 2]>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 impl<'a> ShapeBuilder<'a> {
-    pub fn clear(&mut self){
+    pub fn clear(&mut self) {
         self.inner.clear();
     }
-    pub fn new(inner: &'a mut Vec<[f32;2]>)->Self{
+    pub fn new(inner: &'a mut Vec<[f32; 2]>) -> Self {
         ShapeBuilder { inner }
     }
-    pub fn points<I:IntoIterator<Item=[f32;2]>>(&mut self,it:I){
-        self.inner.extend(it);
-    }
 
-    pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+    pub fn dot_line(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self {
         let buffer = &mut self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -428,9 +423,15 @@ impl<'a> ShapeBuilder<'a> {
             let pos = start + norm * (i as f32) * radius;
             buffer.push(pos.into());
         }
+        self
     }
 
-    pub fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
+    pub fn line(
+        &mut self,
+        radius: f32,
+        start: impl Into<[f32; 2]>,
+        end: impl Into<[f32; 2]>,
+    ) -> &mut Self {
         let buffer = &mut self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
@@ -454,9 +455,10 @@ impl<'a> ShapeBuilder<'a> {
         ];
 
         buffer.extend(arr);
+        self
     }
 
-    pub fn rect(&mut self, rect: impl Into<Rect>) {
+    pub fn rect(&mut self, rect: impl Into<Rect>) -> &mut Self {
         use axgeom::vec2;
         let rect: Rect = rect.into();
 
@@ -474,6 +476,7 @@ impl<'a> ShapeBuilder<'a> {
         ];
 
         buffer.extend(arr);
+        self
     }
 }
 
