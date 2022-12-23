@@ -65,23 +65,23 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
     }
 }
 
-impl StaticBuffer<[f32; 2]> {
-    fn new<K>(
-        ctx: &WebGl2RenderingContext,
-        vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder)->K,
-    ) -> Result<(Self,K), String> {
-        vec.inner.clear();
-        let mut k = ShapeBuilder {
-            inner: &mut vec.inner,
-        };
-        let j=func(&mut k);
-        Self::new_inner(ctx, &vec.inner).map(|a|(a,j))
-    }
-}
+// impl StaticBuffer<[f32; 2]> {
+//     fn new2<K>(
+//         ctx: &WebGl2RenderingContext,
+//         vec: &mut CpuBuffer<[f32; 2]>,
+//         func: impl FnOnce(&mut ShapeBuilder)->K,
+//     ) -> Result<(Self,K), String> {
+//         vec.inner.clear();
+//         let mut k = ShapeBuilder {
+//             inner: &mut vec.inner,
+//         };
+//         let j=func(&mut k);
+//         Self::new(ctx, &vec.inner).map(|a|(a,j))
+//     }
+// }
 
 impl<T> StaticBuffer<T> {
-    fn new_inner(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
+    pub fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verts = verts.len();
@@ -114,27 +114,31 @@ impl<T> std::ops::Deref for DynamicBuffer<T> {
     }
 }
 
-impl DynamicBuffer<[f32; 2]> {
-    pub fn push_verts<K>(
-        &mut self,
-        vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder)->K,
-    ) ->K{
-        vec.inner.clear();
-        let mut k = ShapeBuilder {
-            inner: &mut vec.inner,
-        };
-        let j=func(&mut k);
-        self.update(&vec.inner);
-        j
-    }
-}
+// impl DynamicBuffer<[f32; 2]> {
+//     pub fn push_verts<K>(
+//         &mut self,
+//         vec: &mut CpuBuffer<[f32; 2]>,
+//         func: impl FnOnce(&mut ShapeBuilder)->K,
+//     ) ->K{
+//         vec.inner.clear();
+//         let mut k = ShapeBuilder {
+//             inner: &mut vec.inner,
+//         };
+//         let j=func(&mut k);
+//         self.update(&vec.inner);
+//         j
+//     }
+// }
 impl<T> DynamicBuffer<T> {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
 
-    fn update(&mut self, vertices: &[T]) {
+    pub fn update_and_clear(&mut self,verts:&mut Vec<T>){
+        self.update(verts);
+        verts.clear();
+    }
+    pub fn update(&mut self, vertices: &[T]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
@@ -163,14 +167,14 @@ struct Args<'a> {
     pub point_size: f32,
 }
 
-pub struct CpuBuffer<T> {
-    inner: Vec<T>,
-}
-impl<T> CpuBuffer<T> {
-    pub fn new() -> Self {
-        CpuBuffer { inner: vec![] }
-    }
-}
+// pub struct CpuBuffer<T> {
+//     inner: Vec<T>,
+// }
+// impl<T> CpuBuffer<T> {
+//     pub fn new() -> Self {
+//         CpuBuffer { inner: vec![] }
+//     }
+// }
 
 use wasm_bindgen::prelude::*;
 
@@ -193,9 +197,9 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-    pub fn cpu_buffer<T>(&self) -> CpuBuffer<T> {
-        CpuBuffer::new()
-    }
+    // pub fn cpu_buffer<T>(&self) -> CpuBuffer<T> {
+    //     CpuBuffer::new()
+    // }
     ///
     /// Sets up alpha blending and disables depth testing.
     ///
@@ -207,21 +211,30 @@ impl CtxWrap {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
     }
-    pub fn gpu_buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
+    pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    pub fn gpu_buffer_static<K>(
-        &self,
-        vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder)->K,
-    ) -> Result<(StaticBuffer<[f32; 2]>,K), String> {
-        StaticBuffer::new(self, vec, func)
+    // pub fn gpu_buffer_static<K>(
+    //     &self,
+    //     vec: &mut CpuBuffer<[f32; 2]>,
+    //     func: impl FnOnce(&mut ShapeBuilder)->K,
+    // ) -> Result<(StaticBuffer<[f32; 2]>,K), String> {
+    //     StaticBuffer::new2(self, vec, func)
+    // }
+
+
+    pub fn buffer_static_and_clear(&self,a:&mut Vec<[f32;2]>)->StaticBuffer<[f32;2]>{
+        let b=self.buffer_static(a);
+        a.clear();
+        b
     }
 
-    // pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
-    //     StaticBuffer::new(self, a).unwrap_throw()
-    // }
+    pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
+        StaticBuffer::new(self, a).unwrap_throw()
+    }
+
+
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self).unwrap_throw()
     }
@@ -376,12 +389,21 @@ impl View<'_> {
 }
 
 pub struct ShapeBuilder<'a> {
-    inner: &'a mut Vec<[f32; 2]>,
+    inner:  &'a mut Vec<[f32; 2]>,
 }
 
-impl<'a> ShapeBuilder<'a> {
+impl<'a> std::ops::Deref for ShapeBuilder<'a>{
+    type Target=Vec<[f32;2]>;
 
-    pub fn new(inner:&'a mut Vec<[f32;2]>)->Self{
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl<'a> ShapeBuilder<'a> {
+    pub fn clear(&mut self){
+        self.inner.clear();
+    }
+    pub fn new(inner: &'a mut Vec<[f32;2]>)->Self{
         ShapeBuilder { inner }
     }
     pub fn points<I:IntoIterator<Item=[f32;2]>>(&mut self,it:I){
@@ -389,7 +411,7 @@ impl<'a> ShapeBuilder<'a> {
     }
 
     pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = &mut *self.inner;
+        let buffer = &mut self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
@@ -409,7 +431,7 @@ impl<'a> ShapeBuilder<'a> {
     }
 
     pub fn line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
-        let buffer = &mut *self.inner;
+        let buffer = &mut self.inner;
         use axgeom::*;
         let start = Vec2::from(start.into());
         let end = Vec2::from(end.into());
@@ -438,7 +460,7 @@ impl<'a> ShapeBuilder<'a> {
         use axgeom::vec2;
         let rect: Rect = rect.into();
 
-        let buffer = &mut *self.inner;
+        let buffer = &mut self.inner;
         let start = vec2(rect.x, rect.y);
         let dim = vec2(rect.w, rect.h);
 

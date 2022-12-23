@@ -63,23 +63,25 @@ pub async fn worker_entry() {
 
     ctx.setup_alpha();
 
-    let mut verts = ctx.cpu_buffer();
+    let mut cache=vec!();
 
-    let (walls,_) = ctx
-        .gpu_buffer_static(&mut verts, |rr| {
-            rr.rect(simple2d::Rect {
-                x: 40.0,
-                y: 40.0,
-                w: 800.0 - 80.0,
-                h: 600.0 - 80.0,
-            });
-        })
-        .unwrap_throw();
 
-    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.gpu_buffer_dynamic());
+    let mut rr=simple2d::ShapeBuilder::new(&mut cache);
+    rr.rect(simple2d::Rect {
+        x: 40.0,
+        y: 40.0,
+        w: 800.0 - 80.0,
+        h: 600.0 - 80.0,
+    });
+    let walls=ctx.buffer_static_and_clear(&mut cache);
+    
+
+
+    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
 
     let radius = 4.0;
     let game_dim = [canvas.width() as f32, canvas.height() as f32];
+
 
     'outer: loop {
         for e in frame_timer.next().await {
@@ -92,14 +94,14 @@ pub async fn worker_entry() {
             }
         }
 
-        
-        buffer.push_verts(&mut verts, |verts| {
-            verts.line(radius, mouse_pos, [0.0, 0.0]);
-            verts.line(radius, mouse_pos, game_dim);
-            verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
-            verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
-        });
+        let mut verts=simple2d::ShapeBuilder::new(&mut cache);
+        verts.line(radius, mouse_pos, [0.0, 0.0]);
+        verts.line(radius, mouse_pos, game_dim);
+        verts.line(radius, mouse_pos, [0.0, game_dim[1]]);
+        verts.line(radius, mouse_pos, [game_dim[0], 0.0]);
+        buffer.update_and_clear(&mut cache);
 
+        
         ctx.draw_all([0.13, 0.13, 0.13, 1.0],||{
             let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
             v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
