@@ -379,6 +379,11 @@ pub struct ShapeBuilder<'a> {
 }
 
 impl<'a> ShapeBuilder<'a> {
+
+    pub fn points<I:IntoIterator<Item=[f32;2]>>(&mut self,it:I){
+        self.inner.extend(it);
+    }
+    
     pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
         let buffer = &mut *self.inner;
         use axgeom::*;
