@@ -66,17 +66,17 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
 }
 
 impl StaticBuffer<[f32; 2]> {
-    fn new(
+    fn new<K>(
         ctx: &WebGl2RenderingContext,
         vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder),
-    ) -> Result<Self, String> {
+        func: impl FnOnce(&mut ShapeBuilder)->K,
+    ) -> Result<(Self,K), String> {
         vec.inner.clear();
         let mut k = ShapeBuilder {
             inner: &mut vec.inner,
         };
-        func(&mut k);
-        Self::new_inner(ctx, &vec.inner)
+        let j=func(&mut k);
+        Self::new_inner(ctx, &vec.inner).map(|a|(a,j))
     }
 }
 
@@ -115,17 +115,18 @@ impl<T> std::ops::Deref for DynamicBuffer<T> {
 }
 
 impl DynamicBuffer<[f32; 2]> {
-    pub fn push_verts(
+    pub fn push_verts<K>(
         &mut self,
         vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder),
-    ) {
+        func: impl FnOnce(&mut ShapeBuilder)->K,
+    ) ->K{
         vec.inner.clear();
         let mut k = ShapeBuilder {
             inner: &mut vec.inner,
         };
-        func(&mut k);
+        let j=func(&mut k);
         self.update(&vec.inner);
+        j
     }
 }
 impl<T> DynamicBuffer<T> {
@@ -210,11 +211,11 @@ impl CtxWrap {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    pub fn gpu_buffer_static(
+    pub fn gpu_buffer_static<K>(
         &self,
         vec: &mut CpuBuffer<[f32; 2]>,
-        func: impl FnOnce(&mut ShapeBuilder),
-    ) -> Result<StaticBuffer<[f32; 2]>, String> {
+        func: impl FnOnce(&mut ShapeBuilder)->K,
+    ) -> Result<(StaticBuffer<[f32; 2]>,K), String> {
         StaticBuffer::new(self, vec, func)
     }
 
@@ -383,7 +384,7 @@ impl<'a> ShapeBuilder<'a> {
     pub fn points<I:IntoIterator<Item=[f32;2]>>(&mut self,it:I){
         self.inner.extend(it);
     }
-    
+
     pub fn dot_line(&mut self, radius: f32, start: impl Into<[f32; 2]>, end: impl Into<[f32; 2]>) {
         let buffer = &mut *self.inner;
         use axgeom::*;

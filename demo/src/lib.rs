@@ -65,7 +65,7 @@ pub async fn worker_entry() {
 
     let mut verts = ctx.cpu_buffer();
 
-    let walls = ctx
+    let (walls,_) = ctx
         .gpu_buffer_static(&mut verts, |rr| {
             rr.rect(simple2d::Rect {
                 x: 40.0,
