@@ -63,10 +63,10 @@ pub async fn worker_entry() {
 
     ctx.setup_alpha();
 
-    let mut verts = ctx.vec_builder();
+    let mut verts = ctx.cpu_buffer();
 
     let walls = ctx
-        .buffer_static(&mut verts, |rr| {
+        .gpu_buffer_static(&mut verts, |rr| {
             rr.rect(simple2d::Rect {
                 x: 40.0,
                 y: 40.0,
@@ -76,7 +76,7 @@ pub async fn worker_entry() {
         })
         .unwrap_throw();
 
-    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.buffer_dynamic());
+    let (mut draw_sys, mut buffer) = (ctx.shader_system(), ctx.gpu_buffer_dynamic());
 
     let radius = 4.0;
     let game_dim = [canvas.width() as f32, canvas.height() as f32];
@@ -93,7 +93,7 @@ pub async fn worker_entry() {
         }
 
         
-        buffer.add_shapes(&mut verts, |verts| {
+        buffer.push_verts(&mut verts, |verts| {
             verts.line(radius, mouse_pos, [0.0, 0.0]);
             verts.line(radius, mouse_pos, game_dim);
             verts.line(radius, mouse_pos, [0.0, game_dim[1]]);

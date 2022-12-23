@@ -68,7 +68,7 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
 impl StaticBuffer<[f32; 2]> {
     fn new(
         ctx: &WebGl2RenderingContext,
-        vec: &mut VecBuilder<[f32; 2]>,
+        vec: &mut CpuBuffer<[f32; 2]>,
         func: impl FnOnce(&mut ShapeBuilder),
     ) -> Result<Self, String> {
         vec.inner.clear();
@@ -115,9 +115,9 @@ impl<T> std::ops::Deref for DynamicBuffer<T> {
 }
 
 impl DynamicBuffer<[f32; 2]> {
-    pub fn add_shapes(
+    pub fn push_verts(
         &mut self,
-        vec: &mut VecBuilder<[f32; 2]>,
+        vec: &mut CpuBuffer<[f32; 2]>,
         func: impl FnOnce(&mut ShapeBuilder),
     ) {
         vec.inner.clear();
@@ -162,12 +162,12 @@ struct Args<'a> {
     pub point_size: f32,
 }
 
-pub struct VecBuilder<T> {
+pub struct CpuBuffer<T> {
     inner: Vec<T>,
 }
-impl<T> VecBuilder<T> {
+impl<T> CpuBuffer<T> {
     pub fn new() -> Self {
-        VecBuilder { inner: vec![] }
+        CpuBuffer { inner: vec![] }
     }
 }
 
@@ -192,8 +192,8 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-    pub fn vec_builder<T>(&self) -> VecBuilder<T> {
-        VecBuilder::new()
+    pub fn cpu_buffer<T>(&self) -> CpuBuffer<T> {
+        CpuBuffer::new()
     }
     ///
     /// Sets up alpha blending and disables depth testing.
@@ -206,13 +206,13 @@ impl CtxWrap {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
     }
-    pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
+    pub fn gpu_buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    pub fn buffer_static(
+    pub fn gpu_buffer_static(
         &self,
-        vec: &mut VecBuilder<[f32; 2]>,
+        vec: &mut CpuBuffer<[f32; 2]>,
         func: impl FnOnce(&mut ShapeBuilder),
     ) -> Result<StaticBuffer<[f32; 2]>, String> {
         StaticBuffer::new(self, vec, func)
