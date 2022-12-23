@@ -381,6 +381,9 @@ pub struct ShapeBuilder<'a> {
 
 impl<'a> ShapeBuilder<'a> {
 
+    pub fn new(inner:&'a mut Vec<[f32;2]>)->Self{
+        ShapeBuilder { inner }
+    }
     pub fn points<I:IntoIterator<Item=[f32;2]>>(&mut self,it:I){
         self.inner.extend(it);
     }
