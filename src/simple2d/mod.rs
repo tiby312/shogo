@@ -248,7 +248,7 @@ impl CtxWrap {
 }
 
 ///
-/// Primitive use to [`Shapes::rect`]
+/// Primitive use to [`ShapeBuilder::rect`]
 ///
 pub struct Rect {
     pub x: f32,

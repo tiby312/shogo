@@ -9,7 +9,6 @@ use wasm_bindgen::JsCast;
 
 use gloo::utils::format::JsValueSerdeExt;
 
-#[cfg(feature = "simple2d")]
 pub mod simple2d;
 
 pub mod utils {
