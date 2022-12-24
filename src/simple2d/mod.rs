@@ -56,11 +56,11 @@ void main() {
 ///
 /// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
 ///
-pub struct StaticBuffer<T>(Buffer<T>);
+pub struct StaticBuffer(Buffer);
 
-impl<T> std::ops::Deref for StaticBuffer<T> {
-    type Target = Buffer<T>;
-    fn deref(&self) -> &Buffer<T> {
+impl std::ops::Deref for StaticBuffer {
+    type Target = Buffer;
+    fn deref(&self) -> &Buffer {
         &self.0
     }
 }
@@ -80,15 +80,17 @@ impl<T> std::ops::Deref for StaticBuffer<T> {
 //     }
 // }
 
-impl<T> StaticBuffer<T> {
-    pub fn new(ctx: &WebGl2RenderingContext, verts: &[T]) -> Result<Self, String> {
+pub type Vertex = [f32; 2];
+
+impl StaticBuffer {
+    pub fn new(ctx: &WebGl2RenderingContext, verts: &[Vertex]) -> Result<Self, String> {
         let mut buffer = StaticBuffer(Buffer::new(ctx)?);
 
         buffer.0.num_verts = verts.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
 
-        let n_bytes = verts.len() * std::mem::size_of::<T>();
+        let n_bytes = verts.len() * std::mem::size_of::<Vertex>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
 
@@ -105,11 +107,11 @@ impl<T> StaticBuffer<T> {
 ///
 /// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
 ///
-pub struct DynamicBuffer<T>(Buffer<T>);
+pub struct DynamicBuffer(Buffer);
 
-impl<T> std::ops::Deref for DynamicBuffer<T> {
-    type Target = Buffer<T>;
-    fn deref(&self) -> &Buffer<T> {
+impl std::ops::Deref for DynamicBuffer {
+    type Target = Buffer;
+    fn deref(&self) -> &Buffer {
         &self.0
     }
 }
@@ -129,23 +131,23 @@ impl<T> std::ops::Deref for DynamicBuffer<T> {
 //         j
 //     }
 // }
-impl<T> DynamicBuffer<T> {
+impl DynamicBuffer {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
 
-    pub fn update_clear(&mut self, verts: &mut Vec<T>) {
+    pub fn update_clear(&mut self, verts: &mut Vec<Vertex>) {
         self.update_no_clear(verts);
         verts.clear();
     }
-    pub fn update_no_clear(&mut self, vertices: &[T]) {
+    pub fn update_no_clear(&mut self, vertices: &[Vertex]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
 
         ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<T>();
+        let n_bytes = vertices.len() * std::mem::size_of::<Vertex>();
         let points_buf: &[u8] =
             unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
 
@@ -158,7 +160,7 @@ impl<T> DynamicBuffer<T> {
 }
 
 struct Args<'a> {
-    pub verts: &'a Buffer<[f32; 2]>,
+    pub verts: &'a Buffer,
     pub primitive: u32,
     pub game_dim: [f32; 2],
     pub as_square: bool,
@@ -178,8 +180,7 @@ struct Args<'a> {
 
 use wasm_bindgen::prelude::*;
 
-
-pub fn ctx_wrap(a: &WebGl2RenderingContext)->CtxWrap{
+pub fn ctx_wrap(a: &WebGl2RenderingContext) -> CtxWrap {
     CtxWrap::new(a)
 }
 ///
@@ -215,17 +216,17 @@ impl CtxWrap {
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
     }
-    pub fn buffer_dynamic<T>(&self) -> DynamicBuffer<T> {
+    pub fn buffer_dynamic(&self) -> DynamicBuffer {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    pub fn buffer_static_clear(&self, a: &mut Vec<[f32; 2]>) -> StaticBuffer<[f32; 2]> {
+    pub fn buffer_static_clear(&self, a: &mut Vec<Vertex>) -> StaticBuffer {
         let b = self.buffer_static_no_clear(a);
         a.clear();
         b
     }
 
-    pub fn buffer_static_no_clear<T>(&self, a: &[T]) -> StaticBuffer<T> {
+    pub fn buffer_static_no_clear(&self, a: &[Vertex]) -> StaticBuffer {
         StaticBuffer::new(self, a).unwrap_throw()
     }
 
@@ -346,7 +347,7 @@ pub struct View<'a> {
     dim: [f32; 2],
 }
 impl View<'_> {
-    pub fn draw_squares(&mut self, verts: &Buffer<[f32; 2]>, point_size: f32, color: &[f32; 4]) {
+    pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,
@@ -357,7 +358,7 @@ impl View<'_> {
             point_size,
         })
     }
-    pub fn draw_triangles(&mut self, verts: &Buffer<[f32; 2]>, color: &[f32; 4]) {
+    pub fn draw_triangles(&mut self, verts: &Buffer, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::TRIANGLES,
@@ -369,7 +370,7 @@ impl View<'_> {
         })
     }
 
-    pub fn draw_circles(&mut self, verts: &Buffer<[f32; 2]>, point_size: f32, color: &[f32; 4]) {
+    pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,
