@@ -64,7 +64,7 @@ pub async fn worker_entry() {
         w: 800.0 - 80.0,
         h: 600.0 - 80.0,
     });
-    let walls = ctx.buffer_static_and_clear(cache);
+    let walls = ctx.buffer_static_clear(cache);
 
     ctx.setup_alpha();
 
@@ -91,7 +91,7 @@ pub async fn worker_entry() {
             .line(radius, mouse_pos, [0.0, game_dim[1]])
             .line(radius, mouse_pos, [game_dim[0], 0.0]);
 
-        buffer.update_and_clear(cache);
+        buffer.update_clear(cache);
 
         ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
 

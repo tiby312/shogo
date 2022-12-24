@@ -134,11 +134,11 @@ impl<T> DynamicBuffer<T> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
     }
 
-    pub fn update_and_clear(&mut self, verts: &mut Vec<T>) {
-        self.update(verts);
+    pub fn update_clear(&mut self, verts: &mut Vec<T>) {
+        self.update_no_clear(verts);
         verts.clear();
     }
-    pub fn update(&mut self, vertices: &[T]) {
+    pub fn update_no_clear(&mut self, vertices: &[T]) {
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
@@ -219,13 +219,13 @@ impl CtxWrap {
         DynamicBuffer::new(self).unwrap_throw()
     }
 
-    pub fn buffer_static_and_clear(&self, a: &mut Vec<[f32; 2]>) -> StaticBuffer<[f32; 2]> {
-        let b = self.buffer_static(a);
+    pub fn buffer_static_clear(&self, a: &mut Vec<[f32; 2]>) -> StaticBuffer<[f32; 2]> {
+        let b = self.buffer_static_no_clear(a);
         a.clear();
         b
     }
 
-    pub fn buffer_static<T>(&self, a: &[T]) -> StaticBuffer<T> {
+    pub fn buffer_static_no_clear<T>(&self, a: &[T]) -> StaticBuffer<T> {
         StaticBuffer::new(self, a).unwrap_throw()
     }
 
