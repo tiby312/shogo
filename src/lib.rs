@@ -241,7 +241,16 @@ mod main {
             let w = self.worker.clone();
 
             let e = elem.clone();
-            gloo::events::EventListener::new(elem, event_type, move |event| {
+
+
+            use gloo::events::EventListenerOptions;
+            use gloo::events::EventListenerPhase;
+            let options=EventListenerOptions {
+                phase: EventListenerPhase::Bubble,
+                passive: false,
+            };
+
+            gloo::events::EventListener::new_with_options(elem, event_type,options, move |event| {
                 let e = EventData {
                     elem: &e,
                     event,
@@ -306,6 +315,7 @@ mod worker {
             let mut fs = Some(fs);
 
             let (bags, bagf) = futures::channel::mpsc::unbounded();
+
 
             let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
