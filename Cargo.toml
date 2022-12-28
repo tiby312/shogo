@@ -1,6 +1,6 @@
 [package]
 name = "shogo"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Ken Reed <kenakioreed@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -41,6 +41,9 @@ features = [
   'DomRect',
   'CanvasRenderingContext2d',
   'MouseEvent',
+  'Touch',
+  'TouchEvent',
+  'TouchList',
   'ErrorEvent',
   'Performance',
   'Document',
