@@ -99,7 +99,10 @@ pub async fn worker_entry() {
 
         ctx.draw_clear([0.13, 0.13, 0.13, 1.0]);
 
-        let mut v = draw_sys.view(game_dim, [0.0, 0.0]);
+
+        let matrix=projection(game_dim,[0.0,0.0]);
+
+        let mut v = draw_sys.view(&matrix);
         v.draw_triangles(&walls, &[1.0, 1.0, 1.0, 0.2]);
         v.draw_triangles(&buffer, color_iter.peek().unwrap_throw());
 
@@ -114,4 +117,74 @@ pub async fn worker_entry() {
 fn convert_coord(canvas: &web_sys::HtmlElement, event: &web_sys::Event) -> [f32; 2] {
     use wasm_bindgen::JsCast;
     shogo::simple2d::convert_coord(canvas, event.dyn_ref().unwrap_throw())
+}
+
+
+
+
+fn projection(dim:[f32;2],offset:[f32;2])->[f32;16]{
+    let scale=|scalex,scaley,scalez|{
+        [
+            scalex,0.,0.,0.,
+            0.,scaley,0.,0.,
+            0.,0.,scalez,0.,
+            0.,0.,0.,1.0]
+    };
+
+    let translation=|tx,ty,tz|{
+        [
+            1., 0., 0.,0.,
+            0., 1., 0.,0.,
+            0., 0., 1.,0.,
+            tx,ty,tz,1.
+          ]
+    };
+
+    let x_rotation=|angle_rad:f32|{
+        let c =angle_rad.cos();
+        let s = angle_rad.sin();
+     
+        [
+          1., 0., 0., 0.,
+          0., c, s, 0.,
+          0., -s, c, 0.,
+          0., 0., 0., 1.,
+        ]
+    };
+
+
+    let y_rotation=|angle_rad:f32|{
+        let c =angle_rad.cos();
+        let s = angle_rad.sin();
+     
+        [
+          c, 0., -s, 0.,
+          0., 1., 0., 0.,
+          s, 0., c, 0.,
+          0., 0., 0., 1.,
+        ]
+    };
+
+    let z_rotation=|angle_rad:f32|{
+        let c =angle_rad.cos();
+        let s = angle_rad.sin();
+     
+        [
+          c, s, 0., 0.,
+          -s, c, 0., 0.,
+          0., 0., 1., 0.,
+          0., 0., 0., 1.,
+        ]
+    };
+
+
+    use webgl_matrix::prelude::*;
+    
+    let mut id=Mat4::identity();
+    
+    let az=&translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1],0.0);
+    let a1=&scale(2.0,-2.0,0.0);
+    let a2=&scale(1.0/dim[0],1.0/dim[1],0.0);
+    id.mul(az).mul(a1).mul(a2);
+    id   
 }

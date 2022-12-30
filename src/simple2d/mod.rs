@@ -162,10 +162,11 @@ impl DynamicBuffer {
 struct Args<'a> {
     pub verts: &'a Buffer,
     pub primitive: u32,
-    pub game_dim: [f32; 2],
+    //pub game_dim: [f32; 2],
     pub as_square: bool,
     pub color: &'a [f32; 4],
-    pub offset: [f32; 2],
+    //pub offset: [f32; 2],
+    pub matrix:&'a [f32;16],
     pub point_size: f32,
 }
 
@@ -304,83 +305,14 @@ impl ShaderSystem {
         let Args {
             verts,
             primitive,
-            game_dim,
+            matrix,
             as_square,
             color,
-            offset,
             point_size,
         } = args;
 
         assert_eq!(verts.ctx, self.ctx);
 
-        fn projection(dim:[f32;2],offset:[f32;2])->[f32;16]{
-            let scale=|scalex,scaley,scalez|{
-                [
-                    scalex,0.,0.,0.,
-                    0.,scaley,0.,0.,
-                    0.,0.,scalez,0.,
-                    0.,0.,0.,1.0]
-            };
-    
-            let translation=|tx,ty,tz|{
-                [
-                    1., 0., 0.,0.,
-                    0., 1., 0.,0.,
-                    0., 0., 1.,0.,
-                    tx,ty,tz,1.
-                  ]
-            };
-
-            let x_rotation=|angle_rad:f32|{
-                let c =angle_rad.cos();
-                let s = angle_rad.sin();
-             
-                [
-                  1., 0., 0., 0.,
-                  0., c, s, 0.,
-                  0., -s, c, 0.,
-                  0., 0., 0., 1.,
-                ]
-            };
-
-
-            let y_rotation=|angle_rad:f32|{
-                let c =angle_rad.cos();
-                let s = angle_rad.sin();
-             
-                [
-                  c, 0., -s, 0.,
-                  0., 1., 0., 0.,
-                  s, 0., c, 0.,
-                  0., 0., 0., 1.,
-                ]
-            };
-
-            let z_rotation=|angle_rad:f32|{
-                let c =angle_rad.cos();
-                let s = angle_rad.sin();
-             
-                [
-                  c, s, 0., 0.,
-                  -s, c, 0., 0.,
-                  0., 0., 1., 0.,
-                  0., 0., 0., 1.,
-                ]
-            };
-
-
-            use webgl_matrix::prelude::*;
-            
-            let mut id=Mat4::identity();
-            
-            let az=&translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1],0.0);
-            let a1=&scale(2.0,-2.0,0.0);
-            let a2=&scale(1.0/dim[0],1.0/dim[1],0.0);
-            id.mul(az).mul(a1).mul(a2);
-            id   
-        }
-        
-        let matrix=projection(game_dim,offset);
 
         if as_square {
             self.square_program
@@ -396,11 +328,10 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view(&mut self, game_dim: impl Into<[f32; 2]>, offset: impl Into<[f32; 2]>) -> View {
+    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
         View {
             sys: self,
-            offset: offset.into(),
-            dim: game_dim.into(),
+            matrix
         }
     }
 }
@@ -410,18 +341,18 @@ impl ShaderSystem {
 ///
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
-    offset: [f32; 2],
-    dim: [f32; 2],
+    matrix:&'a [f32;16],
+    // offset: [f32; 2],
+    // dim: [f32; 2],
 }
 impl View<'_> {
     pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,
-            game_dim: self.dim,
+            matrix:self.matrix,
             as_square: true,
             color,
-            offset: self.offset,
             point_size,
         })
     }
@@ -429,10 +360,9 @@ impl View<'_> {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::TRIANGLES,
-            game_dim: self.dim,
+            matrix: self.matrix,
             as_square: true,
             color,
-            offset: self.offset,
             point_size: 0.0,
         })
     }
@@ -441,10 +371,9 @@ impl View<'_> {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::POINTS,
-            game_dim: self.dim,
+            matrix:self.matrix,
             as_square: false,
             color,
-            offset: self.offset,
             point_size,
         })
     }
