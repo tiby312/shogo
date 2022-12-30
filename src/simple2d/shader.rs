@@ -31,7 +31,6 @@ impl GlProgram {
         &self,
         buffer: &Buffer,
         primitive: u32,
-        offset: [f32; 2],
         mmatrix: &[f32; 9],
         point_size: f32,
         color: &[f32; 4],
@@ -44,7 +43,6 @@ impl GlProgram {
 
         context.use_program(Some(&self.program));
 
-        context.uniform2f(Some(&self.offset), offset[0], offset[1]);
         context.uniform1f(Some(&self.point_size), point_size);
         context.uniform4fv_with_f32_array(Some(&self.bg), color);
 
@@ -79,9 +77,6 @@ impl GlProgram {
         let point_size = context
             .get_uniform_location(&program, "point_size")
             .ok_or_else(|| "uniform err".to_string())?;
-        let offset = context
-            .get_uniform_location(&program, "offset")
-            .ok_or_else(|| "uniform err".to_string())?;
         let bg = context
             .get_uniform_location(&program, "bg")
             .ok_or_else(|| "uniform err".to_string())?;
@@ -93,7 +88,6 @@ impl GlProgram {
 
         Ok(GlProgram {
             program,
-            offset,
             mmatrix,
             point_size,
             bg,
@@ -104,7 +98,6 @@ impl GlProgram {
 
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
-    offset: WebGlUniformLocation,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
     bg: WebGlUniformLocation,

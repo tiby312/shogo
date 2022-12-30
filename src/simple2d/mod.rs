@@ -6,6 +6,7 @@
 //!
 //!
 //!
+use gloo::console::log;
 use web_sys::WebGl2RenderingContext;
 mod shader;
 
@@ -43,13 +44,12 @@ void main() {
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec2 position;
-uniform vec2 offset;
 uniform mat3 mmatrix;
 uniform float point_size;
 void main() {
     gl_PointSize = point_size;
-    vec3 pp=vec3(position.xy+offset,1.0);
-    gl_Position = vec4((mmatrix*pp).xy,0.0, 1.0);
+    vec3 pp=vec3(position,1.0);
+    gl_Position = vec4(mmatrix*pp, 1.0);
 }
 "#;
 
@@ -231,7 +231,11 @@ impl CtxWrap {
     }
 
     pub fn shader_system(&self) -> ShaderSystem {
-        ShaderSystem::new(self).unwrap_throw()
+
+        ShaderSystem::new(self).map_err(|e|{
+            log!(format!("{:?}",e));
+            e
+        }).unwrap_throw()
     }
     // pub fn draw_all(&self, color: [f32; 4], func: impl FnOnce()) {
     //     self.draw_clear(color);
@@ -274,7 +278,7 @@ impl From<axgeom::Rect<f32>> for Rect {
 pub struct ShaderSystem {
     circle_program: GlProgram,
     square_program: GlProgram,
-    ctx: WebGl2RenderingContext,
+    ctx: WebGl2RenderingContext
 }
 
 impl Drop for ShaderSystem {
@@ -292,7 +296,7 @@ impl ShaderSystem {
         Ok(ShaderSystem {
             circle_program,
             square_program,
-            ctx: ctx.clone(),
+            ctx: ctx.clone()
         })
     }
 
@@ -309,18 +313,38 @@ impl ShaderSystem {
 
         assert_eq!(verts.ctx, self.ctx);
 
-        let scalex = 2.0 / game_dim[0];
-        let scaley = 2.0 / game_dim[1];
-        let tx = -1.0;
-        let ty = 1.0;
-        let matrix = [scalex, 0.0, 0.0, 0.0, -scaley, 0.0, tx, ty, 1.0];
+        fn projection(dim:[f32;2],offset:[f32;2])->[f32;9]{
+            let scale=|scalex,scaley|{
+                [
+                    scalex,0.,0.,
+                    0.,scaley,0.,
+                    0.,0.,1.]
+            };
+    
+            let translation=|tx,ty|{
+                [
+                    1., 0., 0.,
+                    0., 1., 0.,
+                    tx, ty, 1.,
+                  ]
+            };
+            use webgl_matrix::prelude::*;
+            
+            let mut a3=translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1]);
+            let a1=scale(2.0,-2.0);
+            let a2=scale(1.0/dim[0],1.0/dim[1]);
+            a3.mul(&a1).mul(&a2);
+            a3    
+        }
+        
+        let matrix=projection(game_dim,offset);
 
         if as_square {
             self.square_program
-                .draw(verts, primitive, offset, &matrix, point_size, color);
+                .draw(verts, primitive, &matrix, point_size, color);
         } else {
             self.circle_program
-                .draw(verts, primitive, offset, &matrix, point_size, color);
+                .draw(verts, primitive, &matrix, point_size, color);
         };
     }
 
