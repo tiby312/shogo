@@ -44,12 +44,12 @@ void main() {
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec2 position;
-uniform mat3 mmatrix;
+uniform mat4 mmatrix;
 uniform float point_size;
 void main() {
     gl_PointSize = point_size;
-    vec3 pp=vec3(position,1.0);
-    gl_Position = vec4(mmatrix*pp, 1.0);
+    vec4 pp=vec4(position,0.0,1.0);
+    gl_Position = mmatrix*pp;
 }
 "#;
 
@@ -313,28 +313,71 @@ impl ShaderSystem {
 
         assert_eq!(verts.ctx, self.ctx);
 
-        fn projection(dim:[f32;2],offset:[f32;2])->[f32;9]{
-            let scale=|scalex,scaley|{
+        fn projection(dim:[f32;2],offset:[f32;2])->[f32;16]{
+            let scale=|scalex,scaley,scalez|{
                 [
-                    scalex,0.,0.,
-                    0.,scaley,0.,
-                    0.,0.,1.]
+                    scalex,0.,0.,0.,
+                    0.,scaley,0.,0.,
+                    0.,0.,scalez,0.,
+                    0.,0.,0.,1.0]
             };
     
-            let translation=|tx,ty|{
+            let translation=|tx,ty,tz|{
                 [
-                    1., 0., 0.,
-                    0., 1., 0.,
-                    tx, ty, 1.,
+                    1., 0., 0.,0.,
+                    0., 1., 0.,0.,
+                    0., 0., 1.,0.,
+                    tx,ty,tz,1.
                   ]
             };
+
+            let x_rotation=|angle_rad:f32|{
+                let c =angle_rad.cos();
+                let s = angle_rad.sin();
+             
+                [
+                  1., 0., 0., 0.,
+                  0., c, s, 0.,
+                  0., -s, c, 0.,
+                  0., 0., 0., 1.,
+                ]
+            };
+
+
+            let y_rotation=|angle_rad:f32|{
+                let c =angle_rad.cos();
+                let s = angle_rad.sin();
+             
+                [
+                  c, 0., -s, 0.,
+                  0., 1., 0., 0.,
+                  s, 0., c, 0.,
+                  0., 0., 0., 1.,
+                ]
+            };
+
+            let z_rotation=|angle_rad:f32|{
+                let c =angle_rad.cos();
+                let s = angle_rad.sin();
+             
+                [
+                  c, s, 0., 0.,
+                  -s, c, 0., 0.,
+                  0., 0., 1., 0.,
+                  0., 0., 0., 1.,
+                ]
+            };
+
+
             use webgl_matrix::prelude::*;
             
-            let mut a3=translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1]);
-            let a1=scale(2.0,-2.0);
-            let a2=scale(1.0/dim[0],1.0/dim[1]);
-            a3.mul(&a1).mul(&a2);
-            a3    
+            let mut id=Mat4::identity();
+            
+            let az=&translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1],0.0);
+            let a1=&scale(2.0,-2.0,0.0);
+            let a2=&scale(1.0/dim[0],1.0/dim[1],0.0);
+            id.mul(az).mul(a1).mul(a2);
+            id   
         }
         
         let matrix=projection(game_dim,offset);

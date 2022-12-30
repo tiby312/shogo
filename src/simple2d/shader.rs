@@ -31,7 +31,7 @@ impl GlProgram {
         &self,
         buffer: &Buffer,
         primitive: u32,
-        mmatrix: &[f32; 9],
+        mmatrix: &[f32; 16],
         point_size: f32,
         color: &[f32; 4],
     ) {
@@ -46,7 +46,7 @@ impl GlProgram {
         context.uniform1f(Some(&self.point_size), point_size);
         context.uniform4fv_with_f32_array(Some(&self.bg), color);
 
-        context.uniform_matrix3fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
 
