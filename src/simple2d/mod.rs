@@ -43,13 +43,14 @@ void main() {
 "#;
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
-in vec2 position;
+in vec3 position;
 uniform mat4 mmatrix;
 uniform float point_size;
 void main() {
     gl_PointSize = point_size;
-    vec4 pp=vec4(position,0.0,1.0);
-    gl_Position = mmatrix*pp;
+    vec4 pp=vec4(position,1.0);
+    vec4 j = mmatrix*pp;
+    gl_Position = j;
 }
 "#;
 
@@ -80,7 +81,7 @@ impl std::ops::Deref for StaticBuffer {
 //     }
 // }
 
-pub type Vertex = [f32; 2];
+pub type Vertex = [f32; 3];
 
 impl StaticBuffer {
     pub fn new(ctx: &WebGl2RenderingContext, verts: &[Vertex]) -> Result<Self, String> {
@@ -379,15 +380,15 @@ impl View<'_> {
     }
 }
 
-pub fn shapes(a: &mut Vec<[f32; 2]>) -> ShapeBuilder {
+pub fn shapes(a: &mut Vec<Vertex>) -> ShapeBuilder {
     ShapeBuilder::new(a)
 }
 pub struct ShapeBuilder<'a> {
-    inner: &'a mut Vec<[f32; 2]>,
+    inner: &'a mut Vec<Vertex>,
 }
 
 impl<'a> std::ops::Deref for ShapeBuilder<'a> {
-    type Target = Vec<[f32; 2]>;
+    type Target = Vec<Vertex>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -397,7 +398,7 @@ impl<'a> ShapeBuilder<'a> {
     pub fn clear(&mut self) {
         self.inner.clear();
     }
-    pub fn new(inner: &'a mut Vec<[f32; 2]>) -> Self {
+    pub fn new(inner: &'a mut Vec<Vertex>) -> Self {
         ShapeBuilder { inner }
     }
 
@@ -422,7 +423,7 @@ impl<'a> ShapeBuilder<'a> {
 
         for i in 0..num {
             let pos = start + norm * (i as f32) * radius;
-            buffer.push(pos.into());
+            buffer.push([pos.x,pos.y,0.0]);
         }
         self
     }
@@ -446,13 +447,13 @@ impl<'a> ShapeBuilder<'a> {
         let end1 = end + k * radius;
         let end2 = end - k * radius;
 
-        let arr: [[f32; 2]; 6] = [
-            start1.into(),
-            start2.into(),
-            end1.into(),
-            start2.into(),
-            end1.into(),
-            end2.into(),
+        let arr: [Vertex; 6] = [
+            [start1.x,start1.y,0.0],
+            [start2.x,start2.y,0.0],
+            [end1.x,end1.y,0.0],
+            [start2.x,start2.y,0.0],
+            [end1.x,end1.y,0.0],
+            [end2.x,end2.y,0.0],
         ];
 
         buffer.extend(arr);
@@ -467,19 +468,23 @@ impl<'a> ShapeBuilder<'a> {
         let start = vec2(rect.x, rect.y);
         let dim = vec2(rect.w, rect.h);
 
-        let arr: [[f32; 2]; 6] = [
-            start.into(),
-            (start + vec2(dim.x, 0.0)).into(),
-            (start + vec2(0.0, dim.y)).into(),
-            (start + vec2(dim.x, 0.0)).into(),
-            (start + dim).into(),
-            (start + vec2(0.0, dim.y)).into(),
+        let arr: [Vertex; 6] = [
+            to_vertex(start),
+            to_vertex(start + vec2(dim.x, 0.0)),
+            to_vertex(start + vec2(0.0, dim.y)),
+            to_vertex(start + vec2(dim.x, 0.0)),
+            to_vertex(start + dim),
+            to_vertex(start + vec2(0.0, dim.y)),
         ];
 
         buffer.extend(arr);
         self
     }
 }
+fn to_vertex(a:axgeom::Vec2<f32>)->Vertex{
+    [a.x,a.y,0.0]
+}
+
 
 ///
 /// Convert a mouse event to a coordinate for simple2d.

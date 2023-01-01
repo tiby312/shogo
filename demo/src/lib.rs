@@ -183,8 +183,9 @@ fn projection(dim:[f32;2],offset:[f32;2])->[f32;16]{
     let mut id=Mat4::identity();
     
     let az=&translation(-dim[0]/2.+offset[0],-dim[1]/2.+offset[1],0.0);
+    let t=&translation(-1.0,1.0,0.0);
     let a1=&scale(2.0,-2.0,0.0);
     let a2=&scale(1.0/dim[0],1.0/dim[1],0.0);
-    id.mul(az).mul(a1).mul(a2);
+    id.mul(az).mul(a1).mul(a2).mul(&t);
     id   
 }

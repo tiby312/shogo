@@ -52,7 +52,7 @@ impl GlProgram {
 
         context.vertex_attrib_pointer_with_i32(
             self.position as u32,
-            2,
+            3,
             WebGl2RenderingContext::FLOAT,
             false,
             0,
