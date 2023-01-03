@@ -54,11 +54,16 @@ void main() {
 }
 "#;
 
+
+
+
 ///
 /// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
 ///
 pub struct StaticBuffer(Buffer);
 
+
+//TODO why needed?
 impl std::ops::Deref for StaticBuffer {
     type Target = Buffer;
     fn deref(&self) -> &Buffer {
@@ -105,6 +110,34 @@ impl StaticBuffer {
     }
 }
 
+
+pub struct IndexBuffer(Buffer);
+impl IndexBuffer{
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+        Ok(IndexBuffer(Buffer::new(ctx)?))
+    }
+    pub fn update(&mut self, vertices: &[u16]) {
+        let ctx = &self.0.ctx;
+
+        self.0.num_verts = vertices.len();
+
+        ctx.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&self.0.buffer));
+
+        
+        let n_bytes = vertices.len() * 2;
+        let points_buf: &[u8] =
+            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+
+
+        ctx.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
+        );
+    }
+}
+
+
 ///
 /// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
 ///
@@ -132,6 +165,7 @@ impl std::ops::Deref for DynamicBuffer {
 //         j
 //     }
 // }
+
 impl DynamicBuffer {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         Ok(DynamicBuffer(Buffer::new(ctx)?))
@@ -141,6 +175,22 @@ impl DynamicBuffer {
         self.update_no_clear(verts);
         verts.clear();
     }
+    // pub fn update_from_bytes(&mut self, vertices: &[u8]) {
+    //     assert_eq!(vertices.len() % (4*3),0);
+
+    //     let ctx = &self.0.ctx;
+
+    //     self.0.num_verts = vertices.len()/(4*3);
+
+    //     ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
+
+    //     ctx.buffer_data_with_u8_array(
+    //         WebGl2RenderingContext::ARRAY_BUFFER,
+    //         vertices,
+    //         WebGl2RenderingContext::DYNAMIC_DRAW,
+    //     );
+
+    // }
     pub fn update_no_clear(&mut self, vertices: &[Vertex]) {
         let ctx = &self.0.ctx;
 
@@ -162,9 +212,10 @@ impl DynamicBuffer {
 
 struct Args<'a> {
     pub verts: &'a Buffer,
+    pub indexes:Option<&'a IndexBuffer>,
     pub primitive: u32,
     //pub game_dim: [f32; 2],
-    pub as_square: bool,
+    //pub as_square: bool,
     pub color: &'a [f32; 4],
     //pub offset: [f32; 2],
     pub matrix:&'a [f32;16],
@@ -278,25 +329,25 @@ impl From<axgeom::Rect<f32>> for Rect {
 /// A simple shader program that allows the user to draw simple primitives.
 ///
 pub struct ShaderSystem {
-    circle_program: GlProgram,
+    //circle_program: GlProgram,
     square_program: GlProgram,
     ctx: WebGl2RenderingContext
 }
 
 impl Drop for ShaderSystem {
     fn drop(&mut self) {
-        self.ctx.delete_program(Some(&self.circle_program.program));
+        //self.ctx.delete_program(Some(&self.circle_program.program));
         self.ctx.delete_program(Some(&self.square_program.program));
     }
 }
 
 impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
-        let circle_program = GlProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
+        //let circle_program = GlProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
         let square_program = GlProgram::new(ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
 
         Ok(ShaderSystem {
-            circle_program,
+            //circle_program,
             square_program,
             ctx: ctx.clone()
         })
@@ -307,7 +358,7 @@ impl ShaderSystem {
             verts,
             primitive,
             matrix,
-            as_square,
+            indexes,
             color,
             point_size,
         } = args;
@@ -315,13 +366,13 @@ impl ShaderSystem {
         assert_eq!(verts.ctx, self.ctx);
 
 
-        if as_square {
+        //if as_square {
             self.square_program
-                .draw(verts, primitive, &matrix, point_size, color);
-        } else {
-            self.circle_program
-                .draw(verts, primitive, &matrix, point_size, color);
-        };
+                .draw(indexes,verts, primitive, &matrix, point_size, color);
+        // } else {
+        //     self.circle_program
+        //         .draw(verts, primitive, &matrix, point_size, color);
+        // };
     }
 
     ///
@@ -347,37 +398,36 @@ pub struct View<'a> {
     // dim: [f32; 2],
 }
 impl View<'_> {
-    pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
-        self.sys.draw(Args {
-            verts,
-            primitive: WebGl2RenderingContext::POINTS,
-            matrix:self.matrix,
-            as_square: true,
-            color,
-            point_size,
-        })
-    }
-    pub fn draw_triangles(&mut self, verts: &Buffer, color: &[f32; 4]) {
+    // pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
+    //     self.sys.draw(Args {
+    //         verts,
+    //         primitive: WebGl2RenderingContext::POINTS,
+    //         matrix:self.matrix,
+    //         color,
+    //         point_size,
+    //     })
+    // }
+    pub fn draw_triangles(&mut self, verts: &Buffer,indexes:Option<&IndexBuffer>, color: &[f32; 4]) {
         self.sys.draw(Args {
             verts,
             primitive: WebGl2RenderingContext::TRIANGLES,
             matrix: self.matrix,
-            as_square: true,
+            indexes,
             color,
             point_size: 0.0,
         })
     }
 
-    pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
-        self.sys.draw(Args {
-            verts,
-            primitive: WebGl2RenderingContext::POINTS,
-            matrix:self.matrix,
-            as_square: false,
-            color,
-            point_size,
-        })
-    }
+    // pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
+    //     self.sys.draw(Args {
+    //         verts,
+    //         primitive: WebGl2RenderingContext::POINTS,
+    //         matrix:self.matrix,
+    //         as_square: false,
+    //         color,
+    //         point_size,
+    //     })
+    // }
 }
 
 pub fn shapes(a: &mut Vec<Vertex>) -> ShapeBuilder {

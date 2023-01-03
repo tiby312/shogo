@@ -2,6 +2,8 @@ use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
+use super::IndexBuffer;
+
 ///
 /// A webgl2 buffer that automatically deletes itself when dropped.
 ///
@@ -29,6 +31,7 @@ impl Drop for Buffer {
 impl GlProgram {
     pub fn draw(
         &self,
+        indexes:Option<&IndexBuffer>,
         buffer: &Buffer,
         primitive: u32,
         mmatrix: &[f32; 16],
@@ -60,7 +63,12 @@ impl GlProgram {
         );
         context.enable_vertex_attrib_array(0);
 
-        context.draw_arrays(primitive, 0, buffer.num_verts as i32);
+        if let Some(indexes)=indexes{
+            context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
+            context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
+        }else{
+            context.draw_arrays(primitive, 0, buffer.num_verts as i32)
+        }
     }
 
     pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
