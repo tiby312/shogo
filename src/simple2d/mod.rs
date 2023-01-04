@@ -510,7 +510,7 @@ impl<'a> ShapeBuilder<'a> {
         self
     }
 
-    pub fn rect(&mut self, rect: impl Into<Rect>) -> &mut Self {
+    pub fn rect(&mut self, rect: impl Into<Rect>,depth:f32) -> &mut Self {
         use axgeom::vec2;
         let rect: Rect = rect.into();
 
@@ -519,20 +519,20 @@ impl<'a> ShapeBuilder<'a> {
         let dim = vec2(rect.w, rect.h);
 
         let arr: [Vertex; 6] = [
-            to_vertex(start),
-            to_vertex(start + vec2(dim.x, 0.0)),
-            to_vertex(start + vec2(0.0, dim.y)),
-            to_vertex(start + vec2(dim.x, 0.0)),
-            to_vertex(start + dim),
-            to_vertex(start + vec2(0.0, dim.y)),
+            to_vertex(start,depth),
+            to_vertex(start + vec2(dim.x, 0.0),depth),
+            to_vertex(start + vec2(0.0, dim.y),depth),
+            to_vertex(start + vec2(dim.x, 0.0),depth),
+            to_vertex(start + dim,depth),
+            to_vertex(start + vec2(0.0, dim.y),depth),
         ];
 
         buffer.extend(arr);
         self
     }
 }
-fn to_vertex(a:axgeom::Vec2<f32>)->Vertex{
-    [a.x,a.y,0.0]
+fn to_vertex(a:axgeom::Vec2<f32>,depth:f32)->Vertex{
+    [a.x,a.y,depth]
 }
 
 
