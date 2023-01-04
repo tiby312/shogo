@@ -262,7 +262,7 @@ impl CtxWrap {
     /// Sets up alpha blending and disables depth testing.
     ///
     pub fn setup_alpha(&self) {
-        self.disable(WebGl2RenderingContext::DEPTH_TEST);
+        self.enable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
         self.blend_func(
             WebGl2RenderingContext::SRC_ALPHA,
@@ -300,7 +300,7 @@ impl CtxWrap {
         let [a, b, c, d] = color;
         self.ctx.clear_color(a, b, c, d);
         self.ctx
-            .clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT);
+            .clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT | web_sys::WebGl2RenderingContext::DEPTH_BUFFER_BIT);
     }
 }
 
