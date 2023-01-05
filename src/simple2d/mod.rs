@@ -17,40 +17,49 @@ pub use shader::Buffer;
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
-uniform vec4 bg;
+//uniform vec4 bg;
+in vec2 v_texcoord;
+ 
+// The texture.
+uniform sampler2D u_texture;
 
 void main() {
     //coord is between -0.5 and 0.5
-    vec2 coord = gl_PointCoord - vec2(0.5,0.5);         
-    out_color = bg;
+    //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
+    out_color = texture(u_texture, v_texcoord);       
+    //out_color = bg;
 }
 "#;
 
-const CIRCLE_FRAG_SHADER_STR: &str = r#"#version 300 es
-precision mediump float;
-out vec4 out_color;
-uniform vec4 bg;
+// const CIRCLE_FRAG_SHADER_STR: &str = r#"#version 300 es
+// precision mediump float;
+// out vec4 out_color;
+// uniform vec4 bg;
 
-void main() {
-    //coord is between -0.5 and 0.5
-    vec2 coord = gl_PointCoord - vec2(0.5,0.5);
-    float dissqr=dot(coord,coord);
-    if(dissqr > 0.25){
-        discard;
-    }
-    out_color = bg;    
-}
-"#;
+// void main() {
+//     //coord is between -0.5 and 0.5
+//     vec2 coord = gl_PointCoord - vec2(0.5,0.5);
+//     float dissqr=dot(coord,coord);
+//     if(dissqr > 0.25){
+//         discard;
+//     }
+//     out_color = bg;    
+// }
+// "#;
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
+in vec2 a_texcoord;
+
 uniform mat4 mmatrix;
 uniform float point_size;
+out vec2 v_texcoord;
 void main() {
     gl_PointSize = point_size;
     vec4 pp=vec4(position,1.0);
     vec4 j = mmatrix*pp;
     gl_Position = j;
+    v_texcoord=a_texcoord;
 }
 "#;
 
@@ -110,6 +119,126 @@ impl StaticBuffer {
     }
 }
 
+pub struct TextureBuffer{
+    pub(crate) texture: web_sys::WebGlTexture,
+    pub(crate) ctx: WebGl2RenderingContext,
+}
+impl Drop for TextureBuffer{
+    fn drop(&mut self){
+        self.ctx.delete_texture(Some(&self.texture));
+    }
+}
+impl TextureBuffer{
+    pub fn new(ctx:&WebGl2RenderingContext)->TextureBuffer{
+        let texture = ctx.create_texture().unwrap_throw();
+        ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
+        
+        // Fill the texture with a 1x1 blue pixel.
+        ctx.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RGBA as i32,
+            1, //width
+            1, //height
+            0, //border
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+            Some(&[0, 0, 255, 255])).unwrap_throw();
+
+        Self{
+            ctx:ctx.clone(),
+            texture
+        }   
+    }
+    pub fn update(&mut self,width:usize,height:usize,image:&[u8]){
+        //log!(format!("image bytes:{:?}",image.len()));
+        self.ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
+        // self.ctx.compressed_tex_image_2d_with_u8_array(
+        //     WebGl2RenderingContext::TEXTURE_2D,
+        //     0,
+        //     WebGl2RenderingContext::RGBA,
+        //     width as i32,
+        //     height as i32,
+        //     0,
+        //     image
+        // );
+
+        //log!("attemptying to make image!!!");
+        // let arr=js_sys::Uint8ClampedArray::new_with_length(image.len() as u32);
+        // arr.copy_from(image);
+
+       
+        //TODO leverage javascript to load png instead to avoid image dependancy??
+
+        let image = image::load_from_memory_with_format(&image, image::ImageFormat::Png).unwrap();
+        let rgba_image = image.to_rgba8();
+        
+        //https://stackoverflow.com/questions/70309403/updating-html-canvas-imagedata-using-rust-webassembly
+        let clamped_buf: Clamped<&[u8]> = Clamped(rgba_image.as_raw());
+        let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(clamped_buf,width as u32,height as u32).map_err(|e|log!(e)).unwrap_throw();
+        //let image=web_sys::ImageData::new_with_u8_clamped_array_and_sh(arr,32,32).unwrap_throw();
+        //log!(format!("image width height:{:?}",(image.width(),image.height())));
+        self.ctx.tex_image_2d_with_u32_and_u32_and_image_data(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::RGBA as i32,
+            WebGl2RenderingContext::RGBA,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+            &image
+        ).unwrap_throw();
+
+        //self.ctx.generate_mipmap(WebGl2RenderingContext::TEXTURE_2D);
+        //self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
+
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+
+        //log!("send111");
+
+        // self.ctx.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        //     WebGl2RenderingContext::TEXTURE_2D,
+        //     0,
+        //     WebGl2RenderingContext::RGBA as i32,
+        //     width as i32, //width
+        //     height as i32, //height
+        //     0, //border
+        //     WebGl2RenderingContext::RGBA,
+        //     WebGl2RenderingContext::UNSIGNED_BYTE,
+        //     Some(image)).unwrap_throw();
+        
+    }
+}
+
+
+pub struct TextureCoordBuffer(Buffer);
+impl TextureCoordBuffer{
+    pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
+    {
+        Ok(TextureCoordBuffer(Buffer::new(ctx)?))
+    }
+    
+    pub fn update(&mut self, vertices: &[[f32;2]])
+    {
+        // Now that the image has loaded make copy it to the texture.
+        let ctx = &self.0.ctx;
+
+        self.0.num_verts = vertices.len();
+
+        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
+
+        let n_bytes = vertices.len() * std::mem::size_of::<[f32;2]>();
+
+        let points_buf: &[u8] =
+            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+
+        ctx.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
+        );
+    }
+}
 
 pub struct IndexBuffer(Buffer);
 impl IndexBuffer{
@@ -214,6 +343,8 @@ struct Args<'a> {
     pub verts: &'a Buffer,
     pub indexes:Option<&'a IndexBuffer>,
     pub primitive: u32,
+    pub texture:&'a TextureBuffer,
+    pub texture_coords:&'a TextureCoordBuffer,
     //pub game_dim: [f32; 2],
     //pub as_square: bool,
     pub color: &'a [f32; 4],
@@ -231,7 +362,7 @@ struct Args<'a> {
 //     }
 // }
 
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{prelude::*, Clamped};
 
 pub fn ctx_wrap(a: &WebGl2RenderingContext) -> CtxWrap {
     CtxWrap::new(a)
@@ -357,6 +488,8 @@ impl ShaderSystem {
         let Args {
             verts,
             primitive,
+            texture,
+            texture_coords,
             matrix,
             indexes,
             color,
@@ -368,7 +501,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(indexes,verts, primitive, &matrix, point_size, color);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size, color);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -407,8 +540,10 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw_triangles(&mut self, verts: &Buffer,indexes:Option<&IndexBuffer>, color: &[f32; 4]) {
+    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>, color: &[f32; 4]) {
         self.sys.draw(Args {
+            texture,
+            texture_coords,
             verts,
             primitive: WebGl2RenderingContext::TRIANGLES,
             matrix: self.matrix,

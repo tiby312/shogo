@@ -3,6 +3,8 @@ use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 use super::IndexBuffer;
+use super::TextureBuffer;
+use super::TextureCoordBuffer;
 
 ///
 /// A webgl2 buffer that automatically deletes itself when dropped.
@@ -31,6 +33,8 @@ impl Drop for Buffer {
 impl GlProgram {
     pub fn draw(
         &self,
+        texture:&TextureBuffer,
+        texture_coords:&TextureCoordBuffer,
         indexes:Option<&IndexBuffer>,
         buffer: &Buffer,
         primitive: u32,
@@ -46,11 +50,27 @@ impl GlProgram {
 
         context.use_program(Some(&self.program));
 
-        context.uniform1f(Some(&self.point_size), point_size);
-        context.uniform4fv_with_f32_array(Some(&self.bg), color);
+        
+        // context.uniform1f(Some(&self.point_size), point_size);
+        // context.uniform4fv_with_f32_array(Some(&self.bg), color);
+        //context.enable_vertex_attrib_array(texture_coords.0.buffer);
+        // We'll supply texcoords as floats.
 
-        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+        context.enable_vertex_attrib_array(self.texcoord);
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&texture_coords.0.buffer));
+        context.vertex_attrib_pointer_with_i32(
+            self.texcoord as u32,
+            2,
+            WebGl2RenderingContext::FLOAT,
+            false,
+            0,
+            0,
+        ); 
+        
 
+        
+
+        context.enable_vertex_attrib_array(self.position);
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
 
         context.vertex_attrib_pointer_with_i32(
@@ -61,7 +81,13 @@ impl GlProgram {
             0,
             0,
         );
-        context.enable_vertex_attrib_array(0);
+        
+
+        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+
+        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
+        
+        
 
         if let Some(indexes)=indexes{
             context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
@@ -82,24 +108,31 @@ impl GlProgram {
         let mmatrix = context
             .get_uniform_location(&program, "mmatrix")
             .ok_or_else(|| "uniform err".to_string())?;
+
+
         let point_size = context
             .get_uniform_location(&program, "point_size")
             .ok_or_else(|| "uniform err".to_string())?;
-        let bg = context
-            .get_uniform_location(&program, "bg")
-            .ok_or_else(|| "uniform err".to_string())?;
+
+        // let bg = context
+        //     .get_uniform_location(&program, "bg")
+        //     .ok_or_else(|| "uniform err".to_string())?;
         let position = context.get_attrib_location(&program, "position");
+
+        let texcoord = context.get_attrib_location(&program, "a_texcoord");
+
         if position < 0 {
             return Err("attribute err".to_string());
         }
         let position = position as u32;
-
+        let texcoord=texcoord as u32;
         Ok(GlProgram {
             program,
             mmatrix,
             point_size,
-            bg,
+            //bg,
             position,
+            texcoord
         })
     }
 }
@@ -108,8 +141,9 @@ pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
-    bg: WebGlUniformLocation,
+    //bg: WebGlUniformLocation,
     position: u32,
+    texcoord:u32
 }
 
 fn compile_shader(
