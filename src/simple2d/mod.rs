@@ -347,7 +347,6 @@ struct Args<'a> {
     pub texture_coords:&'a TextureCoordBuffer,
     //pub game_dim: [f32; 2],
     //pub as_square: bool,
-    pub color: &'a [f32; 4],
     //pub offset: [f32; 2],
     pub matrix:&'a [f32;16],
     pub point_size: f32,
@@ -492,7 +491,6 @@ impl ShaderSystem {
             texture_coords,
             matrix,
             indexes,
-            color,
             point_size,
         } = args;
 
@@ -501,7 +499,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size, color);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -540,7 +538,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>, color: &[f32; 4]) {
+    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -548,7 +546,6 @@ impl View<'_> {
             primitive: WebGl2RenderingContext::TRIANGLES,
             matrix: self.matrix,
             indexes,
-            color,
             point_size: 0.0,
         })
     }

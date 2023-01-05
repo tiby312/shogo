@@ -40,7 +40,6 @@ impl GlProgram {
         primitive: u32,
         mmatrix: &[f32; 16],
         point_size: f32,
-        color: &[f32; 4],
     ) {
         if buffer.num_verts == 0 {
             return;
