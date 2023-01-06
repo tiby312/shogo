@@ -170,11 +170,11 @@ impl TextureBuffer{
        
         //TODO leverage javascript to load png instead to avoid image dependancy??
 
-        let image = image::load_from_memory_with_format(&image, image::ImageFormat::Png).unwrap();
-        let rgba_image = image.to_rgba8();
+        //let image = image::load_from_memory_with_format(&image, image::ImageFormat::Png).unwrap();
+        //let rgba_image = image.to_rgba8();
         
         //https://stackoverflow.com/questions/70309403/updating-html-canvas-imagedata-using-rust-webassembly
-        let clamped_buf: Clamped<&[u8]> = Clamped(rgba_image.as_raw());
+        let clamped_buf: Clamped<&[u8]> = Clamped(image);
         let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(clamped_buf,width as u32,height as u32).map_err(|e|log!(e)).unwrap_throw();
         //let image=web_sys::ImageData::new_with_u8_clamped_array_and_sh(arr,32,32).unwrap_throw();
         //log!(format!("image width height:{:?}",(image.width(),image.height())));
