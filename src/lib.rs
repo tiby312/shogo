@@ -45,8 +45,12 @@ pub mod utils {
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {
+
+
+        let mut options=web_sys::WebGlContextAttributes::new();
+        options.antialias(false);
         canvas
-            .get_context("webgl2")
+            .get_context_with_context_options("webgl2",&*options)
             .unwrap_throw()
             .unwrap_throw()
             .dyn_into()

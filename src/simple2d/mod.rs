@@ -4,8 +4,6 @@
 //! The data sent to the gpu is minimized by only sending the positions of the vertex.
 //! The color can also be changed for all vertices in a buffer.
 //!
-//!
-//!
 use gloo::console::log;
 use web_sys::WebGl2RenderingContext;
 mod shader;
@@ -26,7 +24,11 @@ uniform sampler2D u_texture;
 void main() {
     //coord is between -0.5 and 0.5
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
-    out_color = texture(u_texture, v_texcoord);       
+    vec4 o =texture(u_texture, v_texcoord);
+    if (o[3]<=0.05){
+        discard;
+    }
+    out_color = o ;       
     //out_color = bg;
 }
 "#;
@@ -176,8 +178,7 @@ impl TextureBuffer{
         //https://stackoverflow.com/questions/70309403/updating-html-canvas-imagedata-using-rust-webassembly
         let clamped_buf: Clamped<&[u8]> = Clamped(image);
         let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(clamped_buf,width as u32,height as u32).map_err(|e|log!(e)).unwrap_throw();
-        //let image=web_sys::ImageData::new_with_u8_clamped_array_and_sh(arr,32,32).unwrap_throw();
-        //log!(format!("image width height:{:?}",(image.width(),image.height())));
+        
         self.ctx.tex_image_2d_with_u32_and_u32_and_image_data(
             WebGl2RenderingContext::TEXTURE_2D,
             0,
@@ -187,12 +188,12 @@ impl TextureBuffer{
             &image
         ).unwrap_throw();
 
-        //self.ctx.generate_mipmap(WebGl2RenderingContext::TEXTURE_2D);
-        //self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
-        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-
         self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
+        
+
 
         //log!("send111");
 
@@ -392,8 +393,12 @@ impl CtxWrap {
     /// Sets up alpha blending and disables depth testing.
     ///
     pub fn setup_alpha(&self) {
+        
+        //Material { alpha_cutoff: Some(AlphaCutoff(0.05)), alpha_mode: Valid(Mask), double_sided: true, name: None, pbr_metallic_roughness: PbrMetallicRoughness { base_color_factor: PbrBaseColorFactor([1.0, 1.0, 1.0, 1.0]), base_color_texture: Some(Info { index: 0, tex_coord: 0, extensions: None, extras: {} }), metallic_factor: StrengthFactor(0.0), roughness_factor: StrengthFactor(1.0), metallic_roughness_texture: None, extensions: None, extras: {} }, normal_texture: None, occlusion_texture: None, emissive_texture: None, emissive_factor: EmissiveFactor([0.0, 0.0, 0.0]), extensions: None, extras: {} }],
+
         self.enable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
+
         self.blend_func(
             WebGl2RenderingContext::SRC_ALPHA,
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
