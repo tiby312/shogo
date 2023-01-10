@@ -48,7 +48,8 @@ pub mod utils {
 
 
         let mut options=web_sys::WebGlContextAttributes::new();
-        options.antialias(false);
+        options.antialias(true);
+        options.alpha(true);
         canvas
             .get_context_with_context_options("webgl2",&*options)
             .unwrap_throw()
@@ -238,7 +239,7 @@ mod main {
         ///
         pub fn register_event(
             &mut self,
-            elem: &web_sys::HtmlElement,
+            elem: &web_sys::EventTarget,
             event_type: &'static str,
             mut func: impl FnMut(EventData) -> MW + 'static,
         ) -> gloo::events::EventListener {
@@ -279,7 +280,7 @@ mod main {
 /// construct the data to be passed to the worker thread.
 ///
 pub struct EventData<'a> {
-    pub elem: &'a web_sys::HtmlElement,
+    pub elem: &'a web_sys::EventTarget,
     pub event: &'a web_sys::Event,
     pub event_type: &'static str,
 }

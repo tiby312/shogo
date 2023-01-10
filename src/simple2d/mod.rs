@@ -124,6 +124,8 @@ impl StaticBuffer {
 pub struct TextureBuffer{
     pub(crate) texture: web_sys::WebGlTexture,
     pub(crate) ctx: WebGl2RenderingContext,
+     width:i32,
+    height:i32
 }
 impl Drop for TextureBuffer{
     fn drop(&mut self){
@@ -131,17 +133,28 @@ impl Drop for TextureBuffer{
     }
 }
 impl TextureBuffer{
+    pub fn texture(&self)->&web_sys::WebGlTexture{
+        &self.texture
+    }
+    pub fn width(&self)->i32{
+        self.width
+    }
+    pub fn height(&self)->i32{
+        self.height
+    }
     pub fn new(ctx:&WebGl2RenderingContext)->TextureBuffer{
         let texture = ctx.create_texture().unwrap_throw();
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
         
+        let width=1;
+        let height=1;
         // Fill the texture with a 1x1 blue pixel.
         ctx.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             WebGl2RenderingContext::TEXTURE_2D,
             0,
             WebGl2RenderingContext::RGBA as i32,
-            1, //width
-            1, //height
+            width, //width
+            height, //height
             0, //border
             WebGl2RenderingContext::RGBA,
             WebGl2RenderingContext::UNSIGNED_BYTE,
@@ -149,7 +162,9 @@ impl TextureBuffer{
 
         Self{
             ctx:ctx.clone(),
-            texture
+            texture,
+            width,
+            height
         }   
     }
     pub fn update(&mut self,width:usize,height:usize,image:&[u8]){
@@ -178,7 +193,8 @@ impl TextureBuffer{
         //https://stackoverflow.com/questions/70309403/updating-html-canvas-imagedata-using-rust-webassembly
         let clamped_buf: Clamped<&[u8]> = Clamped(image);
         let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(clamped_buf,width as u32,height as u32).map_err(|e|log!(e)).unwrap_throw();
-        
+        self.width=width as i32;
+        self.height=height as i32;
         self.ctx.tex_image_2d_with_u32_and_u32_and_image_data(
             WebGl2RenderingContext::TEXTURE_2D,
             0,
@@ -551,7 +567,7 @@ impl View<'_> {
             primitive: WebGl2RenderingContext::TRIANGLES,
             matrix: self.matrix,
             indexes,
-            point_size: 0.0,
+            point_size: 1.0,
         })
     }
 

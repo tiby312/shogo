@@ -50,7 +50,7 @@ impl GlProgram {
         context.use_program(Some(&self.program));
 
         
-        // context.uniform1f(Some(&self.point_size), point_size);
+        context.uniform1f(Some(&self.point_size), point_size);
         // context.uniform4fv_with_f32_array(Some(&self.bg), color);
         //context.enable_vertex_attrib_array(texture_coords.0.buffer);
         // We'll supply texcoords as floats.
