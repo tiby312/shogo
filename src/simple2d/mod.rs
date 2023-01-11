@@ -414,7 +414,7 @@ impl CtxWrap {
 
         self.enable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::BLEND);
-
+        self.enable(WebGl2RenderingContext::CULL_FACE);
         self.blend_func(
             WebGl2RenderingContext::SRC_ALPHA,
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
@@ -673,11 +673,12 @@ impl<'a> ShapeBuilder<'a> {
 
         let arr: [Vertex; 6] = [
             to_vertex(start,depth),
-            to_vertex(start + vec2(dim.x, 0.0),depth),
             to_vertex(start + vec2(0.0, dim.y),depth),
             to_vertex(start + vec2(dim.x, 0.0),depth),
+            to_vertex(start + vec2(dim.x, 0.0),depth),
+            to_vertex(start + vec2(0.0, dim.y),depth),
             to_vertex(start + dim,depth),
-            to_vertex(start + vec2(0.0, dim.y),depth),
+            
         ];
 
         buffer.extend(arr);
