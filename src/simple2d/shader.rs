@@ -41,7 +41,7 @@ impl GlProgram {
         mmatrix: &[f32; 16],
         point_size: f32,
         normals:&Buffer,
-        world_inverse_transpose:&[f32;16]
+        //world_inverse_transpose:&[f32;16]
     ) {
         if buffer.num_verts == 0 {
             return;
@@ -97,7 +97,7 @@ impl GlProgram {
         );
 
 
-        context.uniform_matrix4fv_with_f32_array(Some(&self.world_inverse_transpose), false, world_inverse_transpose);
+       // context.uniform_matrix4fv_with_f32_array(Some(&self.world_inverse_transpose), false, world_inverse_transpose);
         
 
         context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
@@ -145,9 +145,9 @@ impl GlProgram {
             return Err("attribute err".to_string());
         }
 
-        let world_inverse_transpose = context
-        .get_uniform_location(&program, "u_worldInverseTranspose")
-        .ok_or_else(|| "inv uniform err".to_string())?;
+        // let world_inverse_transpose = context
+        // .get_uniform_location(&program, "u_worldInverseTranspose")
+        // .ok_or_else(|| "inv uniform err".to_string())?;
 
         
 
@@ -155,7 +155,7 @@ impl GlProgram {
         let normal=normal as u32;
         let texcoord=texcoord as u32;
         Ok(GlProgram {
-            world_inverse_transpose,
+            //world_inverse_transpose,
             program,
             mmatrix,
             point_size,
@@ -171,7 +171,7 @@ pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
-    world_inverse_transpose:WebGlUniformLocation,
+    //world_inverse_transpose:WebGlUniformLocation,
     //bg: WebGlUniformLocation,
     position: u32,
     texcoord:u32,

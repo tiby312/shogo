@@ -27,7 +27,7 @@ void main() {
     // will make it a unit vector again
     vec3 normal = normalize(f_normal);
   
-    float light = dot(normal, normalize(vec3(3.0,1.0,3.0))); //1.0,0.8,4.0
+    float light = dot(normal, normalize(vec3(3.0,1.0,3.0)));
 
 
     //coord is between -0.5 and 0.5
@@ -67,7 +67,7 @@ in vec3 v_normal;
 uniform mat4 mmatrix;
 uniform float point_size;
 out vec3 f_normal;
-uniform mat4 u_worldInverseTranspose;
+//uniform mat4 u_worldInverseTranspose;
 out vec2 v_texcoord;
 void main() {
     gl_PointSize = point_size;
@@ -76,10 +76,10 @@ void main() {
     gl_Position = j;
     v_texcoord=a_texcoord;
     f_normal=v_normal;
-    if(point_size<-100.0){
+    //if(point_size<-100.0){
     
-        f_normal = mat3(u_worldInverseTranspose) * v_normal;
-    }
+    //f_normal = mat3(u_worldInverseTranspose) * v_normal;
+    //}
     
 }
 "#;
@@ -385,7 +385,7 @@ struct Args<'a> {
     //pub as_square: bool,
     //pub offset: [f32; 2],
     pub matrix:&'a [f32;16],
-    pub world_inverse_transpose:&'a [f32;16],
+    // pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
     pub normals:&'a Buffer,
 }
@@ -535,7 +535,7 @@ impl ShaderSystem {
             indexes,
             point_size,
             normals,
-            world_inverse_transpose
+            //world_inverse_transpose
         } = args;
 
         assert_eq!(verts.ctx, self.ctx);
@@ -543,7 +543,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,world_inverse_transpose);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -555,11 +555,10 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16],world_inverse_transpose:&'a [f32;16]) -> View<'a> {
+    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
         View {
             sys: self,
-            matrix,
-            world_inverse_transpose
+            matrix
         }
     }
 }
@@ -570,7 +569,7 @@ impl ShaderSystem {
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
     matrix:&'a [f32;16],
-    world_inverse_transpose:&'a [f32;16],
+    // world_inverse_transpose:&'a [f32;16],
     // offset: [f32; 2],
     // dim: [f32; 2],
 }
@@ -593,7 +592,7 @@ impl View<'_> {
             matrix: self.matrix,
             indexes,
             normals,
-            world_inverse_transpose:self.world_inverse_transpose,
+            // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
         })
     }
