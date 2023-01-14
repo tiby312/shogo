@@ -17,19 +17,30 @@ precision mediump float;
 out vec4 out_color;
 //uniform vec4 bg;
 in vec2 v_texcoord;
- 
+in vec3 f_normal;
 // The texture.
 uniform sampler2D u_texture;
 
 void main() {
+    // because v_normal is a varying it's interpolated
+    // so it will not be a unit vector. Normalizing it
+    // will make it a unit vector again
+    vec3 normal = normalize(f_normal);
+  
+    float light = dot(normal, normalize(vec3(0.0,-100.0,70.0)))+0.5;
+
+
     //coord is between -0.5 and 0.5
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
     vec4 o =texture(u_texture, v_texcoord);
-    if (o[3]<=0.05){
-        discard;
-    }
+    // if (o[3]<=0.05){
+    //     discard;
+    // }
     out_color = o ;       
-    //out_color = bg;
+    
+    // Lets multiply just the color portion (not the alpha)
+    // by the light
+    out_color.rgb *= light;
 }
 "#;
 
@@ -52,9 +63,11 @@ void main() {
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
 in vec2 a_texcoord;
-
+in vec3 v_normal;
 uniform mat4 mmatrix;
 uniform float point_size;
+out vec3 f_normal;
+uniform mat4 u_worldInverseTranspose;
 out vec2 v_texcoord;
 void main() {
     gl_PointSize = point_size;
@@ -62,6 +75,7 @@ void main() {
     vec4 j = mmatrix*pp;
     gl_Position = j;
     v_texcoord=a_texcoord;
+    f_normal = mat3(u_worldInverseTranspose) * v_normal;
 }
 "#;
 
@@ -366,7 +380,9 @@ struct Args<'a> {
     //pub as_square: bool,
     //pub offset: [f32; 2],
     pub matrix:&'a [f32;16],
+    pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
+    pub normals:&'a Buffer,
 }
 
 // pub struct CpuBuffer<T> {
@@ -513,6 +529,8 @@ impl ShaderSystem {
             matrix,
             indexes,
             point_size,
+            normals,
+            world_inverse_transpose
         } = args;
 
         assert_eq!(verts.ctx, self.ctx);
@@ -520,7 +538,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,world_inverse_transpose);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -532,10 +550,11 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
+    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16],world_inverse_transpose:&'a [f32;16]) -> View<'a> {
         View {
             sys: self,
-            matrix
+            matrix,
+            world_inverse_transpose
         }
     }
 }
@@ -546,6 +565,7 @@ impl ShaderSystem {
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
     matrix:&'a [f32;16],
+    world_inverse_transpose:&'a [f32;16],
     // offset: [f32; 2],
     // dim: [f32; 2],
 }
@@ -559,7 +579,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>) {
+    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -567,6 +587,8 @@ impl View<'_> {
             primitive: WebGl2RenderingContext::TRIANGLES,
             matrix: self.matrix,
             indexes,
+            normals,
+            world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
         })
     }
