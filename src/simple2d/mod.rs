@@ -28,7 +28,7 @@ void main() {
     vec3 normal = normalize(f_normal);
   
     float light = dot(normal, normalize(vec3(3.0,1.0,3.0)));
-
+    light=min(1.0,light+0.4);
 
     //coord is between -0.5 and 0.5
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
