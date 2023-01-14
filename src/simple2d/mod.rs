@@ -673,11 +673,13 @@ impl<'a> ShapeBuilder<'a> {
 
         let arr: [Vertex; 6] = [
             to_vertex(start,depth),
+            to_vertex(start + vec2(dim.x, 0.0),depth),
+            
             to_vertex(start + vec2(0.0, dim.y),depth),
             to_vertex(start + vec2(dim.x, 0.0),depth),
-            to_vertex(start + vec2(dim.x, 0.0),depth),
-            to_vertex(start + vec2(0.0, dim.y),depth),
             to_vertex(start + dim,depth),
+            
+            to_vertex(start + vec2(0.0, dim.y),depth),
             
         ];
 
