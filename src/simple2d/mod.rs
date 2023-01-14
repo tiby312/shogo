@@ -27,7 +27,7 @@ void main() {
     // will make it a unit vector again
     vec3 normal = normalize(f_normal);
   
-    float light = dot(normal, normalize(vec3(0.0,-100.0,70.0)))+0.5;
+    float light = dot(normal, normalize(vec3(3.0,1.0,3.0))); //1.0,0.8,4.0
 
 
     //coord is between -0.5 and 0.5
@@ -75,7 +75,12 @@ void main() {
     vec4 j = mmatrix*pp;
     gl_Position = j;
     v_texcoord=a_texcoord;
-    f_normal = mat3(u_worldInverseTranspose) * v_normal;
+    f_normal=v_normal;
+    if(point_size<-100.0){
+    
+        f_normal = mat3(u_worldInverseTranspose) * v_normal;
+    }
+    
 }
 "#;
 

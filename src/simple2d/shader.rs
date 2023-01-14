@@ -147,7 +147,7 @@ impl GlProgram {
 
         let world_inverse_transpose = context
         .get_uniform_location(&program, "u_worldInverseTranspose")
-        .ok_or_else(|| "uniform err".to_string())?;
+        .ok_or_else(|| "inv uniform err".to_string())?;
 
         
 
