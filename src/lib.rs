@@ -241,7 +241,7 @@ mod main {
             &mut self,
             elem: &web_sys::EventTarget,
             event_type: &'static str,
-            mut func: impl FnMut(EventData) -> MW + 'static,
+            mut func: impl FnMut(EventData) -> Option<MW> + 'static,
         ) -> gloo::events::EventListener {
             let w = self.worker.clone();
 
@@ -262,14 +262,15 @@ mod main {
                     event_type,
                 };
 
-                let val = func(e);
-                let a = JsValue::from_serde(&val).unwrap_throw();
+                if let Some(val) = func(e){
+                    let a = JsValue::from_serde(&val).unwrap_throw();
 
-                let data = js_sys::Array::new();
-                data.set(0, JsValue::null());
-                data.set(1, a);
-
-                w.borrow().post_message(&data).unwrap_throw();
+                    let data = js_sys::Array::new();
+                    data.set(0, JsValue::null());
+                    data.set(1, a);
+    
+                    w.borrow().post_message(&data).unwrap_throw();
+                }
             })
         }
     }
