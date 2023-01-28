@@ -41,6 +41,7 @@ impl GlProgram {
         mmatrix: &[f32; 16],
         point_size: f32,
         normals:&Buffer,
+        grayscale:bool
         //world_inverse_transpose:&[f32;16]
     ) {
         if buffer.num_verts == 0 {
@@ -52,6 +53,9 @@ impl GlProgram {
         context.use_program(Some(&self.program));
 
         
+        let kk:i32=if grayscale{1}else{0};
+        context.uniform1i(Some(&self.grayscale), kk);
+
         context.uniform1f(Some(&self.point_size), point_size);
         // context.uniform4fv_with_f32_array(Some(&self.bg), color);
         //context.enable_vertex_attrib_array(texture_coords.0.buffer);
@@ -122,6 +126,9 @@ impl GlProgram {
         context.delete_shader(Some(&vert_shader));
         context.delete_shader(Some(&frag_shader));
 
+        let grayscale=context.get_uniform_location(&program, "grayscale")
+        .ok_or_else(|| "uniform err".to_string())?;
+        
         let mmatrix = context
             .get_uniform_location(&program, "mmatrix")
             .ok_or_else(|| "uniform err".to_string())?;
@@ -162,7 +169,8 @@ impl GlProgram {
             normal,
             //bg,
             position,
-            texcoord
+            texcoord,
+            grayscale
         })
     }
 }
@@ -171,6 +179,7 @@ pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
+    grayscale:WebGlUniformLocation,
     //world_inverse_transpose:WebGlUniformLocation,
     //bg: WebGlUniformLocation,
     position: u32,

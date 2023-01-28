@@ -20,6 +20,7 @@ in vec2 v_texcoord;
 in vec3 f_normal;
 // The texture.
 uniform sampler2D u_texture;
+uniform int grayscale;
 
 void main() {
     // because v_normal is a varying it's interpolated
@@ -33,14 +34,21 @@ void main() {
     //coord is between -0.5 and 0.5
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
     vec4 o =texture(u_texture, v_texcoord);
-    // if (o[3]<=0.05){
-    //     discard;
-    // }
-    out_color = o ;       
-    
+
+    out_color = o ; 
+
     // Lets multiply just the color portion (not the alpha)
     // by the light
     out_color.rgb *= light;
+
+    if(grayscale==1){
+        // grayscale
+        // https://stackoverflow.com/questions/31729326/glsl-grayscale-shader-removes-transparency
+        float coll =  0.299 * out_color.r + 0.587 * out_color.g + 0.114 * out_color.b;
+        out_color.r=coll;
+        out_color.g=coll;
+        out_color.b=coll;       
+    }
 }
 "#;
 
@@ -67,7 +75,6 @@ in vec3 v_normal;
 uniform mat4 mmatrix;
 uniform float point_size;
 out vec3 f_normal;
-//uniform mat4 u_worldInverseTranspose;
 out vec2 v_texcoord;
 void main() {
     gl_PointSize = point_size;
@@ -76,11 +83,6 @@ void main() {
     gl_Position = j;
     v_texcoord=a_texcoord;
     f_normal=v_normal;
-    //if(point_size<-100.0){
-    
-    //f_normal = mat3(u_worldInverseTranspose) * v_normal;
-    //}
-    
 }
 "#;
 
@@ -381,6 +383,7 @@ struct Args<'a> {
     pub primitive: u32,
     pub texture:&'a TextureBuffer,
     pub texture_coords:&'a TextureCoordBuffer,
+    pub grayscale:bool,
     //pub game_dim: [f32; 2],
     //pub as_square: bool,
     //pub offset: [f32; 2],
@@ -537,6 +540,7 @@ impl ShaderSystem {
             indexes,
             point_size,
             normals,
+            grayscale,
             //world_inverse_transpose
         } = args;
 
@@ -545,7 +549,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -585,7 +589,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer) {
+    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -596,6 +600,7 @@ impl View<'_> {
             normals,
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
+            grayscale
         })
     }
 
