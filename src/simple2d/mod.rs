@@ -21,6 +21,7 @@ in vec3 f_normal;
 // The texture.
 uniform sampler2D u_texture;
 uniform int grayscale;
+uniform int text;
 
 void main() {
     // because v_normal is a varying it's interpolated
@@ -35,11 +36,14 @@ void main() {
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
     vec4 o =texture(u_texture, v_texcoord);
 
-    out_color = o ; 
-
-    // Lets multiply just the color portion (not the alpha)
-    // by the light
-    out_color.rgb *= light;
+    if(text==1){
+        out_color=vec4(1.0,1.0,1.0,o.r);
+    }else{
+        out_color = o ; 
+        // Lets multiply just the color portion (not the alpha)
+        // by the light
+        out_color.rgb *= light;
+    }
 
     if(grayscale==1){
         // grayscale
@@ -391,6 +395,7 @@ struct Args<'a> {
     // pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
     pub normals:&'a Buffer,
+    pub text:bool,
 }
 
 // pub struct CpuBuffer<T> {
@@ -541,6 +546,7 @@ impl ShaderSystem {
             point_size,
             normals,
             grayscale,
+            text,
             //world_inverse_transpose
         } = args;
 
@@ -549,7 +555,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -589,7 +595,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool) {
+    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -600,7 +606,8 @@ impl View<'_> {
             normals,
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
-            grayscale
+            grayscale,
+            text
         })
     }
 
