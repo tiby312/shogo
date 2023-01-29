@@ -37,7 +37,7 @@ void main() {
     vec4 o =texture(u_texture, v_texcoord);
 
     if(text==1){
-        out_color=vec4(1.0,1.0,1.0,o.r);
+        out_color=vec4(1.0,1.0,1.0,o.g);
     }else{
         out_color = o ; 
         // Lets multiply just the color portion (not the alpha)
