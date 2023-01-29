@@ -589,12 +589,12 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw_triangles(&mut self,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool) {
+    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
             verts,
-            primitive: WebGl2RenderingContext::TRIANGLES,
+            primitive,
             matrix: self.matrix,
             indexes,
             normals,
