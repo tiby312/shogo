@@ -439,11 +439,13 @@ impl CtxWrap {
     ///
     pub fn setup_alpha(&self) {
         
-        //Material { alpha_cutoff: Some(AlphaCutoff(0.05)), alpha_mode: Valid(Mask), double_sided: true, name: None, pbr_metallic_roughness: PbrMetallicRoughness { base_color_factor: PbrBaseColorFactor([1.0, 1.0, 1.0, 1.0]), base_color_texture: Some(Info { index: 0, tex_coord: 0, extensions: None, extras: {} }), metallic_factor: StrengthFactor(0.0), roughness_factor: StrengthFactor(1.0), metallic_roughness_texture: None, extensions: None, extras: {} }, normal_texture: None, occlusion_texture: None, emissive_texture: None, emissive_factor: EmissiveFactor([0.0, 0.0, 0.0]), extensions: None, extras: {} }],
+        //https://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
+        self.pixel_storei(WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL,1);
         self.enable(WebGl2RenderingContext::BLEND);
         
         self.blend_func(
-            WebGl2RenderingContext::SRC_ALPHA,
+            //WebGl2RenderingContext::SRC_ALPHA,
+            WebGl2RenderingContext::ONE,    
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
 
