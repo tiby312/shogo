@@ -229,8 +229,8 @@ impl TextureBuffer{
             &image
         ).unwrap_throw();
 
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
+        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
         self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
         self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
         
@@ -395,8 +395,7 @@ struct Args<'a> {
     // pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
     pub normals:&'a Buffer,
-    pub text:bool,
-    pub linear:bool,
+    pub text:bool
 }
 
 // pub struct CpuBuffer<T> {
@@ -547,8 +546,7 @@ impl ShaderSystem {
             point_size,
             normals,
             grayscale,
-            text,
-            linear
+            text
             //world_inverse_transpose
         } = args;
 
@@ -557,7 +555,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text,linear);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -609,8 +607,7 @@ impl View<'_> {
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
             grayscale,
-            text,
-            linear
+            text
         })
     }
 

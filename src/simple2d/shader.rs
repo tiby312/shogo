@@ -43,7 +43,6 @@ impl GlProgram {
         normals:&Buffer,
         grayscale:bool,
         text:bool,
-        linear:bool
         //world_inverse_transpose:&[f32;16]
     ) {
         if buffer.num_verts == 0 {
@@ -113,10 +112,10 @@ impl GlProgram {
 
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
         
-        if linear{
-            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
-            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
-        }
+        // if linear{
+        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
+        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
+        // }
         
 
         if let Some(indexes)=indexes{
@@ -126,10 +125,10 @@ impl GlProgram {
             context.draw_arrays(primitive, 0, buffer.num_verts as i32)
         }
 
-        if linear{
-            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        }
+        // if linear{
+        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
+        // }
     }
 
     pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
