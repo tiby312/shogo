@@ -42,7 +42,8 @@ impl GlProgram {
         point_size: f32,
         normals:&Buffer,
         grayscale:bool,
-        text:bool
+        text:bool,
+        linear:bool
         //world_inverse_transpose:&[f32;16]
     ) {
         if buffer.num_verts == 0 {
@@ -112,6 +113,10 @@ impl GlProgram {
 
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
         
+        if linear{
+            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
+            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
+        }
         
 
         if let Some(indexes)=indexes{
@@ -119,6 +124,11 @@ impl GlProgram {
             context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
             context.draw_arrays(primitive, 0, buffer.num_verts as i32)
+        }
+
+        if linear{
+            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
+            context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
         }
     }
 

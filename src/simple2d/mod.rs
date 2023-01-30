@@ -396,6 +396,7 @@ struct Args<'a> {
     pub point_size: f32,
     pub normals:&'a Buffer,
     pub text:bool,
+    pub linear:bool,
 }
 
 // pub struct CpuBuffer<T> {
@@ -547,6 +548,7 @@ impl ShaderSystem {
             normals,
             grayscale,
             text,
+            linear
             //world_inverse_transpose
         } = args;
 
@@ -555,7 +557,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text,linear);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -595,7 +597,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool) {
+    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool,linear:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -607,7 +609,8 @@ impl View<'_> {
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
             grayscale,
-            text
+            text,
+            linear
         })
     }
 
