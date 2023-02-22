@@ -16,6 +16,8 @@ pub use shader::Buffer;
 //https://github.com/mattdesl/glsl-fxaa
 //https://www.shadertoy.com/view/ls3GWS
 
+// https://github.com/mrdoob/three.js/blob/dev/examples/jsm/shaders/FXAAShader.js
+
 const FXAA:&str=r#"
 
 #define FXAA_SPAN_MAX 8.0
