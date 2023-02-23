@@ -26,13 +26,6 @@ uniform int grayscale;
 uniform int text;
 
 void main() {
-    // because v_normal is a varying it's interpolated
-    // so it will not be a unit vector. Normalizing it
-    // will make it a unit vector again
-    vec3 normal = normalize(f_normal);
-  
-    float light = dot(normal, normalize(vec3(-1.0,1.0,1.0)));
-    light=min(1.0,light+0.9);
 
     //coord is between -0.5 and 0.5
     //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
@@ -40,8 +33,19 @@ void main() {
 
     if(text==1){
         out_color=vec4(1.0,1.0,1.0,o.g);
+    }else if (text==2){
+        out_color = o ;
     }else{
         out_color = o ; 
+
+        // because v_normal is a varying it's interpolated
+        // so it will not be a unit vector. Normalizing it
+        // will make it a unit vector again
+        vec3 normal = normalize(f_normal);
+      
+        float light = dot(normal, normalize(vec3(-1.0,1.0,1.0)));
+        light=min(1.0,light+0.9);
+    
         // Lets multiply just the color portion (not the alpha)
         // by the light
         out_color.rgb *= light;
@@ -397,7 +401,8 @@ struct Args<'a> {
     // pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
     pub normals:&'a Buffer,
-    pub text:bool
+    pub text:bool,
+    pub lighting:bool
 }
 
 // pub struct CpuBuffer<T> {
@@ -550,7 +555,8 @@ impl ShaderSystem {
             point_size,
             normals,
             grayscale,
-            text
+            text,
+            lighting
             //world_inverse_transpose
         } = args;
 
@@ -559,7 +565,7 @@ impl ShaderSystem {
 
         //if as_square {
             self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text);
+                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text,lighting);
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -599,7 +605,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool,linear:bool) {
+    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool,linear:bool,lighting:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -611,7 +617,8 @@ impl View<'_> {
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
             grayscale,
-            text
+            text,
+            lighting
         })
     }
 

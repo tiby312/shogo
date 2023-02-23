@@ -43,6 +43,7 @@ impl GlProgram {
         normals:&Buffer,
         grayscale:bool,
         text:bool,
+        lighting:bool
         //world_inverse_transpose:&[f32;16]
     ) {
         if buffer.num_verts == 0 {
@@ -57,7 +58,15 @@ impl GlProgram {
         let kk:i32=if grayscale{1}else{0};
         context.uniform1i(Some(&self.grayscale), kk);
 
-        let kk:i32=if text{1}else{0};
+        let kk:i32=if text  {
+            1
+        }else if !lighting {
+            2
+        }else{
+            0
+        };
+
+        //let kk:i32=if text{1}else{0};
         context.uniform1i(Some(&self.text), kk);
 
         context.uniform1f(Some(&self.point_size), point_size);
