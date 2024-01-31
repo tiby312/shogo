@@ -577,7 +577,11 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
+    pub fn view<'a>(&'a mut self, matrix:&'a cgmath::Matrix4<f32>) -> View<'a> {
+        self.view2(matrix.as_ref())
+    }
+
+    pub fn view2<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
         View {
             sys: self,
             matrix
@@ -585,9 +589,22 @@ impl ShaderSystem {
     }
 }
 
+
+pub trait Drawable{
+    fn draw(&self, view: &mut View);
+    fn draw_ext(
+        &self,
+        view: &mut View,
+        grayscale: bool,
+        text: bool,
+        _linear: bool,
+        lighting: bool,
+    );
+}
 ///
 /// A view to draw in. See [`ShaderSystem::view`]
 ///
+#[must_use]
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
     matrix:&'a [f32;16],
@@ -596,6 +613,15 @@ pub struct View<'a> {
     // dim: [f32; 2],
 }
 impl View<'_> {
+    pub fn draw_a_thing(&mut self,f:&impl Drawable){
+        f.draw(self);
+    }
+    pub fn draw_a_thing_ext(&mut self,f:&impl Drawable,grayscale: bool,
+        text: bool,
+        _linear: bool,
+        lighting: bool){
+        f.draw_ext(self,grayscale,text,_linear,lighting);
+    }
     // pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
     //     self.sys.draw(Args {
     //         verts,

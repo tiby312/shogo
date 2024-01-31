@@ -22,6 +22,7 @@ futures = "0.3"
 axgeom = "1.9"
 serde = { version = "1.0", features = ["derive"] }
 image = "*"
+cgmath = "0.18.0"
 
 [dependencies.gloo]
 version = "0.8"
