@@ -160,6 +160,12 @@ impl<T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:Bu
             0,
         );
     }
+
+    //TODO use
+    pub fn attrib_divisor_of_one<K:ProgramAttrib<NumComponent=T>>(&self,att:K,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+        ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
+
+    }
     pub fn bind(&self,ctx:&WebGl2RenderingContext){
         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
     }
