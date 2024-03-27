@@ -5,6 +5,7 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 use super::IndexBuffer;
 use super::TextureBuffer;
 use super::TextureCoordBuffer;
+use super::Vert3Buffer;
 
 ///
 /// A webgl2 buffer that automatically deletes itself when dropped.
@@ -36,21 +37,21 @@ impl GlProgram {
         texture:&TextureBuffer,
         texture_coords:&TextureCoordBuffer,
         indexes:Option<&IndexBuffer>,
-        position: &Buffer,
+        position: &Vert3Buffer,
         primitive: u32,
         mmatrix: &[f32; 16],
         point_size: f32,
-        normals:&Buffer,
+        normals:&Vert3Buffer,
         grayscale:bool,
         text:bool,
         lighting:bool
         //world_inverse_transpose:&[f32;16]
     ) {
-        if position.num_verts == 0 {
+        if position.0.num_verts == 0 {
             return;
         }
 
-        let context = &position.ctx;
+        let context = &position.0.ctx;
 
         context.use_program(Some(&self.program));
 
@@ -86,7 +87,9 @@ impl GlProgram {
         
 
         //TODO buffers should do this themselves
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
+        //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
+        position.bind(context);
+
         //position.bind(context);
 
         context.vertex_attrib_pointer_with_i32(
@@ -99,7 +102,8 @@ impl GlProgram {
         );
 
         
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
+        //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
+        normals.bind(context);
 
         context.vertex_attrib_pointer_with_i32(
             self.normal as u32,
@@ -130,7 +134,7 @@ impl GlProgram {
             //context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
             context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
-            context.draw_arrays(primitive, 0, position.num_verts as i32)
+            context.draw_arrays(primitive, 0, position.0.num_verts as i32)
         }
 
         // if linear{

@@ -284,7 +284,7 @@ impl BufferDyn for StaticKind{
 
 
 struct Args<'a> {
-    pub verts: &'a Buffer,
+    pub verts: &'a Vert3Buffer,
     pub indexes:Option<&'a IndexBuffer>,
     pub primitive: u32,
     pub texture:&'a TextureBuffer,
@@ -292,7 +292,7 @@ struct Args<'a> {
     pub grayscale:bool,
     pub matrix:&'a [f32;16],
     pub point_size: f32,
-    pub normals:&'a Buffer,
+    pub normals:&'a Vert3Buffer,
     pub text:bool,
     pub lighting:bool
 }
@@ -445,7 +445,7 @@ impl ShaderSystem {
             //world_inverse_transpose
         } = args;
 
-        assert_eq!(verts.ctx, self.ctx);
+        assert_eq!(verts.0.ctx, self.ctx);
 
 
         //if as_square {
@@ -516,7 +516,7 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Buffer,indexes:Option<&IndexBuffer>,normals:&Buffer,grayscale:bool,text:bool,linear:bool,lighting:bool) {
+    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Vert3Buffer,indexes:Option<&IndexBuffer>,normals:&Vert3Buffer,grayscale:bool,text:bool,linear:bool,lighting:bool) {
         self.sys.draw(Args {
             texture,
             texture_coords,
