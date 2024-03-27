@@ -229,6 +229,8 @@ impl<T,L,J> Drop for GenericBuffer<T,L,J> {
 }
 
 
+
+
 pub struct GenericBuffer<T,L,J>{
     buffer: web_sys::WebGlBuffer,
     num_verts:usize,
@@ -273,21 +275,44 @@ impl<T:byte_slice_cast::ToByteSlice+NumComponent,L:BufferKind,J:BufferDyn> Gener
     }
 }
 
+
+pub trait ComponentType{
+    fn component_type()->u32;
+}
+
+impl ComponentType for [f32;2]{
+    fn component_type()->u32{
+        WebGl2RenderingContext::FLOAT
+    }
+}
+
+impl ComponentType for [f32;3]{
+    fn component_type()->u32{
+        WebGl2RenderingContext::FLOAT
+    }
+}
+
+impl ComponentType for u16{
+    fn component_type()->u32{
+        WebGl2RenderingContext::UNSIGNED_SHORT
+    }
+}
+
 pub trait NumComponent{
-    fn num()->u32;
+    fn num()->i32;
 }
 impl NumComponent for [f32;2]{
-    fn num()->u32{
+    fn num()->i32{
         2
     }
 }
 impl NumComponent for [f32;3]{
-    fn num()->u32{
+    fn num()->i32{
         3
     }
 }
 impl NumComponent for u16{
-    fn num()->u32{
+    fn num()->i32{
         1
     }
 }
@@ -298,6 +323,7 @@ impl NumComponent for u16{
 pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind,StaticKind>;
 pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind,StaticKind>;
 pub type IndexBuffer=GenericBuffer<u16,ElementKind,StaticKind>;
+
 
 
 pub trait BufferKind:Default{

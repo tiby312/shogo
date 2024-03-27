@@ -2,11 +2,13 @@ use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
+use super::BufferDyn;
+use super::BufferKind;
 use super::IndexBuffer;
 use super::TextureBuffer;
 use super::TextureCoordBuffer;
 use super::Vert3Buffer;
-
+use super::*;
 
 impl GlProgram {
     pub fn draw(
@@ -53,14 +55,16 @@ impl GlProgram {
         // We'll supply texcoords as floats.
 
         texture_coords.bind(context);
-        context.vertex_attrib_pointer_with_i32(
-            self.texcoord as u32,
-            2,
-            WebGl2RenderingContext::FLOAT,
-            false,
-            0,
-            0,
-        ); 
+        setup_attrib(TexCoord,texture_coords,context,self);
+
+        // context.vertex_attrib_pointer_with_i32(
+        //     self.texcoord as u32,
+        //     2,
+        //     WebGl2RenderingContext::FLOAT,
+        //     false,
+        //     0,
+        //     0,
+        // ); 
         
 
         //TODO buffers should do this themselves
@@ -194,41 +198,53 @@ pub struct TexCoord;
 pub struct Normal;
 
 pub trait ProgramAttrib{
-    type BufferKind;
+    type NumComponent;
     fn get_attrib(&self,a:&GlProgram)->u32;
 }
 impl ProgramAttrib for Position3{
-    type BufferKind=Vert3Buffer;
+    type NumComponent=[f32;3];
 
     fn get_attrib(&self,a:&GlProgram)->u32{
         a.position
     }
 }
 impl ProgramAttrib for TexCoord{
-    type BufferKind=TextureCoordBuffer;
+    type NumComponent=[f32;2];
     
     fn get_attrib(&self,a:&GlProgram)->u32{
         a.texcoord
     }
 }
 impl ProgramAttrib for Normal{
-    type BufferKind=Vert3Buffer;
+    type NumComponent=[f32;3];
 
     fn get_attrib(&self,a:&GlProgram)->u32{
         a.normal
     }
 }
 
-// fn setup_attrib<K:ProgramAttrib,T,L,J>(att:K,buffer:GenericBuffer<T,L,J>,ctx:&WebGl2RenderingContext,prog:&GlProgram){
-//     ctx.vertex_attrib_pointer_with_i32(
-//         att.get_attrib(prog) as u32,
-//         3,
-//         WebGl2RenderingContext::FLOAT,
-//         false,
-//         0,
-//         0,
-//     );
-// }
+fn setup_attrib<K:ProgramAttrib<NumComponent=T>,T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:BufferDyn>(att:K,buffer:&GenericBuffer<T,L,J>,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+    ctx.vertex_attrib_pointer_with_i32(
+        att.get_attrib(prog) as u32,
+        T::num(),
+        T::component_type(),
+        false,
+        0,
+        0,
+    );
+}
+
+
+pub struct CurrentContext<K>{
+    buffer:K
+}
+
+impl<T> CurrentContext<T>{
+    pub fn bind<K>(self,buffer:K)->CurrentContext<K>{
+        CurrentContext{buffer}
+    }
+}
+
 
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
