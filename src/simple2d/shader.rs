@@ -34,7 +34,10 @@ impl GlProgram {
 
         context.use_program(Some(&self.program));
 
-        
+
+        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+
+
         let kk:i32=if grayscale{1}else{0};
         context.uniform1i(Some(&self.grayscale), kk);
 
@@ -58,13 +61,10 @@ impl GlProgram {
         normals.bind(context);
         normals.setup_attrib(Normal,context,self);
 
-        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
-
         texture.bind(context);       
     
         if let Some(indexes)=indexes{
             indexes.bind(context);
-            //context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
             context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
             context.draw_arrays(primitive, 0, position.num_verts as i32)
@@ -94,9 +94,6 @@ impl GlProgram {
             .get_uniform_location(&program, "point_size")
             .ok_or_else(|| "uniform err".to_string())?;
 
-        // let bg = context
-        //     .get_uniform_location(&program, "bg")
-        //     .ok_or_else(|| "uniform err".to_string())?;
         let position = context.get_attrib_location(&program, "position");
 
         let normal = context.get_attrib_location(&program, "v_normal");
@@ -108,11 +105,6 @@ impl GlProgram {
             return Err("attribute err".to_string());
         }
 
-        // let world_inverse_transpose = context
-        // .get_uniform_location(&program, "u_worldInverseTranspose")
-        // .ok_or_else(|| "inv uniform err".to_string())?;
-
-       
 
         let position = position as u32;
         let normal=normal as u32;
@@ -125,12 +117,10 @@ impl GlProgram {
         context.enable_vertex_attrib_array(normal);
         
         Ok(GlProgram {
-            //world_inverse_transpose,
             program,
             mmatrix,
             point_size,
             normal,
-            //bg,
             position,
             texcoord,
             grayscale,
