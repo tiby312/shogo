@@ -133,7 +133,9 @@ impl GlProgram {
     
         if let Some(indexes)=indexes{
             indexes.bind(context);
-            context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
+            context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
+            // let instance_count=0;
+            // context.draw_elements_instanced_with_i32(primitive, indexes.num_verts as i32, WebGl2RenderingContext::UNSIGNED_SHORT,0, instance_count)
         }else{
             context.draw_arrays(primitive, 0, position.num_verts as i32)
         }
