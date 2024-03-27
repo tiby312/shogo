@@ -110,6 +110,10 @@ impl TextureBuffer{
     pub fn height(&self)->i32{
         self.height
     }
+    pub fn bind(&self,ctx:&WebGl2RenderingContext){
+        ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
+    }
+
     pub fn new(ctx:&WebGl2RenderingContext)->TextureBuffer{
         let texture = ctx.create_texture().unwrap_throw();
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));

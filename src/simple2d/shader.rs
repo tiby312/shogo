@@ -116,7 +116,8 @@ impl GlProgram {
 
         context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
 
-        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
+        texture.bind(context);
+        //context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
         
         // if linear{
         //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
