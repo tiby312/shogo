@@ -55,7 +55,7 @@ impl GlProgram {
         // We'll supply texcoords as floats.
 
         texture_coords.bind(context);
-        setup_attrib(TexCoord,texture_coords,context,self);
+        texture_coords.setup_attrib(TexCoord,context,self);
 
         // context.vertex_attrib_pointer_with_i32(
         //     self.texcoord as u32,
@@ -70,30 +70,31 @@ impl GlProgram {
         //TODO buffers should do this themselves
         //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
         position.bind(context);
-
+        position.setup_attrib(Position3,context,self);
         //position.bind(context);
 
-        context.vertex_attrib_pointer_with_i32(
-            self.position as u32,
-            3,
-            WebGl2RenderingContext::FLOAT,
-            false,
-            0,
-            0,
-        );
+        // context.vertex_attrib_pointer_with_i32(
+        //     self.position as u32,
+        //     3,
+        //     WebGl2RenderingContext::FLOAT,
+        //     false,
+        //     0,
+        //     0,
+        // );
 
         
         //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
         normals.bind(context);
+        normals.setup_attrib(Normal,context,self);
 
-        context.vertex_attrib_pointer_with_i32(
-            self.normal as u32,
-            3,
-            WebGl2RenderingContext::FLOAT,
-            false,
-            0,
-            0,
-        );
+        // context.vertex_attrib_pointer_with_i32(
+        //     self.normal as u32,
+        //     3,
+        //     WebGl2RenderingContext::FLOAT,
+        //     false,
+        //     0,
+        //     0,
+        // );
 
 
        // context.uniform_matrix4fv_with_f32_array(Some(&self.world_inverse_transpose), false, world_inverse_transpose);
@@ -223,27 +224,21 @@ impl ProgramAttrib for Normal{
     }
 }
 
-fn setup_attrib<K:ProgramAttrib<NumComponent=T>,T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:BufferDyn>(att:K,buffer:&GenericBuffer<T,L,J>,ctx:&WebGl2RenderingContext,prog:&GlProgram){
-    ctx.vertex_attrib_pointer_with_i32(
-        att.get_attrib(prog) as u32,
-        T::num(),
-        T::component_type(),
-        false,
-        0,
-        0,
-    );
-}
 
 
-pub struct CurrentContext<K>{
-    buffer:K
-}
 
-impl<T> CurrentContext<T>{
-    pub fn bind<K>(self,buffer:K)->CurrentContext<K>{
-        CurrentContext{buffer}
-    }
-}
+// pub struct CurrentContext<A,E,T>{
+//     array:A,
+//     element:E,
+//     texture:T
+// }
+
+
+// impl<A,E,T> CurrentContext<A,E,T>{
+//     pub fn bind_array<A2>(self,array2:A2)->CurrentContext<A2,E,T>{
+//         CurrentContext{array:array2,element:self.element,texture:self.texture}
+//     }
+// }
 
 
 pub struct GlProgram {

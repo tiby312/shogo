@@ -115,6 +115,7 @@ impl TextureBuffer{
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
     }
 
+
     pub fn new(ctx:&WebGl2RenderingContext)->TextureBuffer{
         let texture = ctx.create_texture().unwrap_throw();
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
@@ -242,7 +243,7 @@ pub struct GenericBuffer<T,L,J>{
 
 
 
-impl<T:byte_slice_cast::ToByteSlice+NumComponent,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
+impl<T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
     pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
     {
         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
@@ -250,6 +251,17 @@ impl<T:byte_slice_cast::ToByteSlice+NumComponent,L:BufferKind,J:BufferDyn> Gener
         Ok(GenericBuffer{buffer,_p:std::marker::PhantomData,kind:L::default(),dynamic:J::default(),num_verts:0,ctx:ctx.clone()})
     }
 
+
+    pub fn setup_attrib<K:ProgramAttrib<NumComponent=T>>(&self,att:K,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+        ctx.vertex_attrib_pointer_with_i32(
+            att.get_attrib(prog) as u32,
+            T::num(),
+            T::component_type(),
+            false,
+            0,
+            0,
+        );
+    }
     pub fn bind(&self,ctx:&WebGl2RenderingContext){
         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
     }
