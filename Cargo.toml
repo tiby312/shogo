@@ -23,6 +23,7 @@ axgeom = "1.9"
 serde = { version = "1.0", features = ["derive"] }
 image = "*"
 cgmath = "0.18.0"
+byte-slice-cast = "1.2.2"
 
 [dependencies.gloo]
 version = "0.8"

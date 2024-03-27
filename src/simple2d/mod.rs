@@ -113,20 +113,6 @@ impl std::ops::Deref for StaticBuffer {
     }
 }
 
-// impl StaticBuffer<[f32; 2]> {
-//     fn new2<K>(
-//         ctx: &WebGl2RenderingContext,
-//         vec: &mut CpuBuffer<[f32; 2]>,
-//         func: impl FnOnce(&mut ShapeBuilder)->K,
-//     ) -> Result<(Self,K), String> {
-//         vec.inner.clear();
-//         let mut k = ShapeBuilder {
-//             inner: &mut vec.inner,
-//         };
-//         let j=func(&mut k);
-//         Self::new(ctx, &vec.inner).map(|a|(a,j))
-//     }
-// }
 
 pub type Vertex = [f32; 3];
 
@@ -259,133 +245,70 @@ impl TextureBuffer{
 }
 
 
-pub struct TextureCoordBuffer(Buffer);
-impl TextureCoordBuffer{
+
+pub struct GenericBuffer<T,L>(
+    pub Buffer,
+    std::marker::PhantomData<T>,
+    L
+);
+
+impl<T:byte_slice_cast::ToByteSlice,L:BufferKind> GenericBuffer<T,L>{
     pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
     {
-        Ok(TextureCoordBuffer(Buffer::new(ctx)?))
+        Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::new()))
     }
-    
-    pub fn update(&mut self, vertices: &[[f32;2]])
+
+    pub fn update(&mut self, vertices: &[T])
     {
         // Now that the image has loaded make copy it to the texture.
         let ctx = &self.0.ctx;
 
         self.0.num_verts = vertices.len();
 
-        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
+        ctx.bind_buffer(self.2.get(), Some(&self.0.buffer));
 
-        let n_bytes = vertices.len() * std::mem::size_of::<[f32;2]>();
+        use byte_slice_cast::*;
 
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
+        let points_buf=vertices.as_byte_slice();
 
         ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ARRAY_BUFFER,
+            self.2.get(),
             points_buf,
             WebGl2RenderingContext::DYNAMIC_DRAW,
         );
     }
 }
 
-pub struct IndexBuffer(Buffer);
-impl IndexBuffer{
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        Ok(IndexBuffer(Buffer::new(ctx)?))
+pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind>;
+pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind>;
+
+
+pub type IndexBuffer=GenericBuffer<u16,ElementKind>;
+
+pub trait BufferKind{
+    fn get(&self)->u32;
+    fn new()->Self;
+}
+
+pub struct ElementKind;
+impl BufferKind for ElementKind{
+    fn get(&self)->u32{
+        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
     }
-    pub fn update(&mut self, vertices: &[u16]) {
-        let ctx = &self.0.ctx;
-
-        self.0.num_verts = vertices.len();
-
-        ctx.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&self.0.buffer));
-
-        
-        let n_bytes = vertices.len() * 2;
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
-
-
-        ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-            points_buf,
-            WebGl2RenderingContext::DYNAMIC_DRAW,
-        );
+    fn new()->Self{
+        ElementKind
+    }
+}
+pub struct ArrayKind;
+impl BufferKind for ArrayKind{
+    fn get(&self)->u32{
+        WebGl2RenderingContext::ARRAY_BUFFER
+    }
+    fn new()->Self{
+        ArrayKind
     }
 }
 
-
-///
-/// A buffer make with [`WebGl2RenderingContext::DYNAMIC_DRAW`].
-///
-pub struct DynamicBuffer(Buffer);
-
-impl std::ops::Deref for DynamicBuffer {
-    type Target = Buffer;
-    fn deref(&self) -> &Buffer {
-        &self.0
-    }
-}
-
-// impl DynamicBuffer<[f32; 2]> {
-//     pub fn push_verts<K>(
-//         &mut self,
-//         vec: &mut CpuBuffer<[f32; 2]>,
-//         func: impl FnOnce(&mut ShapeBuilder)->K,
-//     ) ->K{
-//         vec.inner.clear();
-//         let mut k = ShapeBuilder {
-//             inner: &mut vec.inner,
-//         };
-//         let j=func(&mut k);
-//         self.update(&vec.inner);
-//         j
-//     }
-// }
-
-impl DynamicBuffer {
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        Ok(DynamicBuffer(Buffer::new(ctx)?))
-    }
-
-    pub fn update_clear(&mut self, verts: &mut Vec<Vertex>) {
-        self.update_no_clear(verts);
-        verts.clear();
-    }
-    // pub fn update_from_bytes(&mut self, vertices: &[u8]) {
-    //     assert_eq!(vertices.len() % (4*3),0);
-
-    //     let ctx = &self.0.ctx;
-
-    //     self.0.num_verts = vertices.len()/(4*3);
-
-    //     ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
-
-    //     ctx.buffer_data_with_u8_array(
-    //         WebGl2RenderingContext::ARRAY_BUFFER,
-    //         vertices,
-    //         WebGl2RenderingContext::DYNAMIC_DRAW,
-    //     );
-
-    // }
-    pub fn update_no_clear(&mut self, vertices: &[Vertex]) {
-        let ctx = &self.0.ctx;
-
-        self.0.num_verts = vertices.len();
-
-        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&self.0.buffer));
-
-        let n_bytes = vertices.len() * std::mem::size_of::<Vertex>();
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(vertices.as_ptr() as *const u8, n_bytes) };
-
-        ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            points_buf,
-            WebGl2RenderingContext::DYNAMIC_DRAW,
-        );
-    }
-}
 
 struct Args<'a> {
     pub verts: &'a Buffer,
@@ -394,25 +317,13 @@ struct Args<'a> {
     pub texture:&'a TextureBuffer,
     pub texture_coords:&'a TextureCoordBuffer,
     pub grayscale:bool,
-    //pub game_dim: [f32; 2],
-    //pub as_square: bool,
-    //pub offset: [f32; 2],
     pub matrix:&'a [f32;16],
-    // pub world_inverse_transpose:&'a [f32;16],
     pub point_size: f32,
     pub normals:&'a Buffer,
     pub text:bool,
     pub lighting:bool
 }
 
-// pub struct CpuBuffer<T> {
-//     inner: Vec<T>,
-// }
-// impl<T> CpuBuffer<T> {
-//     pub fn new() -> Self {
-//         CpuBuffer { inner: vec![] }
-//     }
-// }
 
 use wasm_bindgen::{prelude::*, Clamped};
 
@@ -460,9 +371,9 @@ impl CtxWrap {
         self.enable(WebGl2RenderingContext::CULL_FACE);
         
     }
-    pub fn buffer_dynamic(&self) -> DynamicBuffer {
-        DynamicBuffer::new(self).unwrap_throw()
-    }
+    // pub fn buffer_dynamic(&self) -> DynamicBuffer {
+    //     DynamicBuffer::new(self).unwrap_throw()
+    // }
 
     pub fn buffer_static_clear(&self, a: &mut Vec<Vertex>) -> StaticBuffer {
         let b = self.buffer_static_no_clear(a);
