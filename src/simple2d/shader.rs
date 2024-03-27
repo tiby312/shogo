@@ -46,71 +46,22 @@ impl GlProgram {
             0
         };
 
-        //let kk:i32=if text{1}else{0};
         context.uniform1i(Some(&self.text), kk);
-
         context.uniform1f(Some(&self.point_size), point_size);
-        // context.uniform4fv_with_f32_array(Some(&self.bg), color);
-        //context.enable_vertex_attrib_array(texture_coords.0.buffer);
-        // We'll supply texcoords as floats.
 
         texture_coords.bind(context);
         texture_coords.setup_attrib(TexCoord,context,self);
 
-        // context.vertex_attrib_pointer_with_i32(
-        //     self.texcoord as u32,
-        //     2,
-        //     WebGl2RenderingContext::FLOAT,
-        //     false,
-        //     0,
-        //     0,
-        // ); 
-        
-
-        //TODO buffers should do this themselves
-        //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
         position.bind(context);
         position.setup_attrib(Position3,context,self);
-        //position.bind(context);
-
-        // context.vertex_attrib_pointer_with_i32(
-        //     self.position as u32,
-        //     3,
-        //     WebGl2RenderingContext::FLOAT,
-        //     false,
-        //     0,
-        //     0,
-        // );
-
         
-        //context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
         normals.bind(context);
         normals.setup_attrib(Normal,context,self);
 
-        // context.vertex_attrib_pointer_with_i32(
-        //     self.normal as u32,
-        //     3,
-        //     WebGl2RenderingContext::FLOAT,
-        //     false,
-        //     0,
-        //     0,
-        // );
-
-
-       // context.uniform_matrix4fv_with_f32_array(Some(&self.world_inverse_transpose), false, world_inverse_transpose);
-        
-
         context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
 
-        texture.bind(context);
-        //context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture.texture));
-        
-        // if linear{
-        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
-        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
-        // }
-        
-
+        texture.bind(context);       
+    
         if let Some(indexes)=indexes{
             indexes.bind(context);
             //context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
@@ -118,11 +69,6 @@ impl GlProgram {
         }else{
             context.draw_arrays(primitive, 0, position.num_verts as i32)
         }
-
-        // if linear{
-        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        //     context.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::NEAREST as i32);
-        // }
     }
 
     pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
