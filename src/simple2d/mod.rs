@@ -296,7 +296,6 @@ pub fn ctx_wrap(a: &WebGl2RenderingContext) -> CtxWrap {
     CtxWrap::new(a)
 }
 
-
 ///
 /// Wrapper around a webgl2 context with convenience functions. Derefs to [`WebGl2RenderingContext`].
 ///

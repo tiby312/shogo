@@ -36,7 +36,7 @@ impl GlProgram {
         texture:&TextureBuffer,
         texture_coords:&TextureCoordBuffer,
         indexes:Option<&IndexBuffer>,
-        buffer: &Buffer,
+        position: &Buffer,
         primitive: u32,
         mmatrix: &[f32; 16],
         point_size: f32,
@@ -46,11 +46,11 @@ impl GlProgram {
         lighting:bool
         //world_inverse_transpose:&[f32;16]
     ) {
-        if buffer.num_verts == 0 {
+        if position.num_verts == 0 {
             return;
         }
 
-        let context = &buffer.ctx;
+        let context = &position.ctx;
 
         context.use_program(Some(&self.program));
 
@@ -74,7 +74,6 @@ impl GlProgram {
         //context.enable_vertex_attrib_array(texture_coords.0.buffer);
         // We'll supply texcoords as floats.
 
-        context.enable_vertex_attrib_array(self.texcoord);
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&texture_coords.0.buffer));
         context.vertex_attrib_pointer_with_i32(
             self.texcoord as u32,
@@ -87,9 +86,7 @@ impl GlProgram {
         
 
         
-
-        context.enable_vertex_attrib_array(self.position);
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.buffer));
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
 
         context.vertex_attrib_pointer_with_i32(
             self.position as u32,
@@ -100,8 +97,6 @@ impl GlProgram {
             0,
         );
 
-
-        context.enable_vertex_attrib_array(self.normal);
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
 
         context.vertex_attrib_pointer_with_i32(
@@ -131,7 +126,7 @@ impl GlProgram {
             context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
             context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
-            context.draw_arrays(primitive, 0, buffer.num_verts as i32)
+            context.draw_arrays(primitive, 0, position.num_verts as i32)
         }
 
         // if linear{
@@ -181,11 +176,18 @@ impl GlProgram {
         // .get_uniform_location(&program, "u_worldInverseTranspose")
         // .ok_or_else(|| "inv uniform err".to_string())?;
 
-        
+       
 
         let position = position as u32;
         let normal=normal as u32;
         let texcoord=texcoord as u32;
+
+        context.enable_vertex_attrib_array(texcoord);
+        
+        context.enable_vertex_attrib_array(position);
+        
+        context.enable_vertex_attrib_array(normal);
+        
         Ok(GlProgram {
             //world_inverse_transpose,
             program,
