@@ -10,12 +10,6 @@ mod shader;
 
 use shader::*;
 
-//pub use shader::Buffer;
-
-
-
-
-
 
 pub type Vertex = [f32; 3];
 
@@ -134,32 +128,6 @@ impl TextureBuffer{
 
 
 
-///
-/// A webgl2 buffer that automatically deletes itself when dropped.
-///
-pub struct Buffer {
-    pub(crate) buffer: web_sys::WebGlBuffer,
-    pub(crate) num_verts: usize,
-    pub(crate) ctx: WebGl2RenderingContext,
-}
-impl Buffer {
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-        Ok(Buffer {
-            buffer,
-            num_verts: 0,
-            ctx: ctx.clone(),
-        })
-    }
-}
-
-impl<T,L,J> Drop for GenericBuffer<T,L,J> {
-    fn drop(&mut self) {
-        self.ctx.delete_buffer(Some(&self.buffer));
-    }
-}
-
-
 
 
 pub struct GenericBuffer<T,L,J>{
@@ -253,6 +221,12 @@ impl NumComponent for [f32;3]{
         3
     }
 }
+
+impl NumComponent for [f32;16]{
+    fn num()->i32{
+        16
+    }
+}
 impl NumComponent for u16{
     fn num()->i32{
         1
@@ -261,6 +235,8 @@ impl NumComponent for u16{
 
 
 
+//TODO use this
+pub type Mat4Buffer = GenericBuffer<[f32;16],ArrayKind,DynamicKind>;
 
 pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind,StaticKind>;
 pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind,StaticKind>;

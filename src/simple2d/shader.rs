@@ -96,7 +96,6 @@ impl GlProgram {
         grayscale:bool,
         text:bool,
         lighting:bool
-        //world_inverse_transpose:&[f32;16]
     ) {
         if position.num_verts == 0 {
             return;
