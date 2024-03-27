@@ -10,7 +10,7 @@ mod shader;
 
 use shader::*;
 
-pub use shader::Buffer;
+//pub use shader::Buffer;
 
 
 
@@ -202,44 +202,73 @@ impl TextureBuffer{
 
 
 
-pub struct GenericBuffer<T,L,J>(
-    pub Buffer,
-    std::marker::PhantomData<T>,
-    L,
-    J
-);
+
+///
+/// A webgl2 buffer that automatically deletes itself when dropped.
+///
+pub struct Buffer {
+    pub(crate) buffer: web_sys::WebGlBuffer,
+    pub(crate) num_verts: usize,
+    pub(crate) ctx: WebGl2RenderingContext,
+}
+impl Buffer {
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+        Ok(Buffer {
+            buffer,
+            num_verts: 0,
+            ctx: ctx.clone(),
+        })
+    }
+}
+
+impl<T,L,J> Drop for GenericBuffer<T,L,J> {
+    fn drop(&mut self) {
+        self.ctx.delete_buffer(Some(&self.buffer));
+    }
+}
+
+
+pub struct GenericBuffer<T,L,J>{
+    buffer: web_sys::WebGlBuffer,
+    num_verts:usize,
+    ctx: WebGl2RenderingContext,
+    _p:std::marker::PhantomData<T>,
+    kind:L,
+    dynamic:J
+}
 
 
 
 impl<T:byte_slice_cast::ToByteSlice+NumComponent,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
     pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
     {
-        Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::default(),J::default()))
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+        
+        Ok(GenericBuffer{buffer,_p:std::marker::PhantomData,kind:L::default(),dynamic:J::default(),num_verts:0,ctx:ctx.clone()})
     }
 
     pub fn bind(&self,ctx:&WebGl2RenderingContext){
-        ctx.bind_buffer(self.2.get(), Some(&self.0.buffer));
+        ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
     }
-
-    
 
     pub fn update(&mut self, vertices: &[T])
     {
         // Now that the image has loaded make copy it to the texture.
-        let ctx = &self.0.ctx;
+        let ctx = &self.ctx;
 
-        self.0.num_verts = vertices.len();
+        self.num_verts = vertices.len();
 
-        ctx.bind_buffer(self.2.get(), Some(&self.0.buffer));
+        ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
 
         use byte_slice_cast::*;
 
         let points_buf=vertices.as_byte_slice();
 
         ctx.buffer_data_with_u8_array(
-            self.2.get(),
+            self.kind.get(),
             points_buf,
-            WebGl2RenderingContext::DYNAMIC_DRAW,
+            self.dynamic.get()
         );
     }
 }
@@ -472,7 +501,7 @@ impl ShaderSystem {
             //world_inverse_transpose
         } = args;
 
-        assert_eq!(verts.0.ctx, self.ctx);
+        assert_eq!(verts.ctx, self.ctx);
 
 
         //if as_square {

@@ -7,29 +7,6 @@ use super::TextureBuffer;
 use super::TextureCoordBuffer;
 use super::Vert3Buffer;
 
-///
-/// A webgl2 buffer that automatically deletes itself when dropped.
-///
-pub struct Buffer {
-    pub(crate) buffer: web_sys::WebGlBuffer,
-    pub(crate) num_verts: usize,
-    pub(crate) ctx: WebGl2RenderingContext,
-}
-impl Buffer {
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-        Ok(Buffer {
-            buffer,
-            num_verts: 0,
-            ctx: ctx.clone(),
-        })
-    }
-}
-impl Drop for Buffer {
-    fn drop(&mut self) {
-        self.ctx.delete_buffer(Some(&self.buffer));
-    }
-}
 
 impl GlProgram {
     pub fn draw(
@@ -47,11 +24,11 @@ impl GlProgram {
         lighting:bool
         //world_inverse_transpose:&[f32;16]
     ) {
-        if position.0.num_verts == 0 {
+        if position.num_verts == 0 {
             return;
         }
 
-        let context = &position.0.ctx;
+        let context = &position.ctx;
 
         context.use_program(Some(&self.program));
 
@@ -132,9 +109,9 @@ impl GlProgram {
         if let Some(indexes)=indexes{
             indexes.bind(context);
             //context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
-            context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
+            context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
-            context.draw_arrays(primitive, 0, position.0.num_verts as i32)
+            context.draw_arrays(primitive, 0, position.num_verts as i32)
         }
 
         // if linear{
