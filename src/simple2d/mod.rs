@@ -62,21 +62,6 @@ void main() {
 }
 "#;
 
-// const CIRCLE_FRAG_SHADER_STR: &str = r#"#version 300 es
-// precision mediump float;
-// out vec4 out_color;
-// uniform vec4 bg;
-
-// void main() {
-//     //coord is between -0.5 and 0.5
-//     vec2 coord = gl_PointCoord - vec2(0.5,0.5);
-//     float dissqr=dot(coord,coord);
-//     if(dissqr > 0.25){
-//         discard;
-//     }
-//     out_color = bg;    
-// }
-// "#;
 
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
@@ -99,44 +84,10 @@ void main() {
 
 
 
-///
-/// A buffer make with [`WebGl2RenderingContext::STATIC_DRAW`].
-///
-pub struct StaticBuffer(Buffer);
-
-
-//TODO why needed?
-impl std::ops::Deref for StaticBuffer {
-    type Target = Buffer;
-    fn deref(&self) -> &Buffer {
-        &self.0
-    }
-}
 
 
 pub type Vertex = [f32; 3];
 
-impl StaticBuffer {
-    pub fn new(ctx: &WebGl2RenderingContext, verts: &[Vertex]) -> Result<Self, String> {
-        let mut buffer = StaticBuffer(Buffer::new(ctx)?);
-
-        buffer.0.num_verts = verts.len();
-
-        ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.0.buffer));
-
-        let n_bytes = verts.len() * std::mem::size_of::<Vertex>();
-        let points_buf: &[u8] =
-            unsafe { std::slice::from_raw_parts(verts.as_ptr() as *const u8, n_bytes) };
-
-        ctx.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            points_buf,
-            WebGl2RenderingContext::STATIC_DRAW,
-        );
-
-        Ok(buffer)
-    }
-}
 
 pub struct TextureBuffer{
     pub(crate) texture: web_sys::WebGlTexture,
@@ -246,16 +197,17 @@ impl TextureBuffer{
 
 
 
-pub struct GenericBuffer<T,L>(
+pub struct GenericBuffer<T,L,J>(
     pub Buffer,
     std::marker::PhantomData<T>,
-    L
+    L,
+    J
 );
 
-impl<T:byte_slice_cast::ToByteSlice,L:BufferKind> GenericBuffer<T,L>{
+impl<T:byte_slice_cast::ToByteSlice,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
     pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
     {
-        Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::new()))
+        Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::default(),J::default()))
     }
 
     pub fn update(&mut self, vertices: &[T])
@@ -279,33 +231,46 @@ impl<T:byte_slice_cast::ToByteSlice,L:BufferKind> GenericBuffer<T,L>{
     }
 }
 
-pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind>;
-pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind>;
+pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind,StaticKind>;
+pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind,StaticKind>;
+pub type IndexBuffer=GenericBuffer<u16,ElementKind,StaticKind>;
 
 
-pub type IndexBuffer=GenericBuffer<u16,ElementKind>;
-
-pub trait BufferKind{
+pub trait BufferKind:Default{
     fn get(&self)->u32;
-    fn new()->Self;
 }
 
+#[derive(Default)]
 pub struct ElementKind;
 impl BufferKind for ElementKind{
     fn get(&self)->u32{
         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
     }
-    fn new()->Self{
-        ElementKind
-    }
 }
+#[derive(Default)]
 pub struct ArrayKind;
 impl BufferKind for ArrayKind{
     fn get(&self)->u32{
         WebGl2RenderingContext::ARRAY_BUFFER
     }
-    fn new()->Self{
-        ArrayKind
+}
+
+pub trait BufferDyn:Default{
+    fn get(&self)->u32;
+}
+
+#[derive(Default)]
+pub struct DynamicKind;
+impl BufferDyn for DynamicKind{
+    fn get(&self)->u32{
+        WebGl2RenderingContext::DYNAMIC_DRAW
+    }
+}
+#[derive(Default)]
+pub struct StaticKind;
+impl BufferDyn for StaticKind{
+    fn get(&self)->u32{
+        WebGl2RenderingContext::STATIC_DRAW
     }
 }
 
@@ -330,6 +295,8 @@ use wasm_bindgen::{prelude::*, Clamped};
 pub fn ctx_wrap(a: &WebGl2RenderingContext) -> CtxWrap {
     CtxWrap::new(a)
 }
+
+
 ///
 /// Wrapper around a webgl2 context with convenience functions. Derefs to [`WebGl2RenderingContext`].
 ///
@@ -375,15 +342,15 @@ impl CtxWrap {
     //     DynamicBuffer::new(self).unwrap_throw()
     // }
 
-    pub fn buffer_static_clear(&self, a: &mut Vec<Vertex>) -> StaticBuffer {
-        let b = self.buffer_static_no_clear(a);
-        a.clear();
-        b
-    }
+    // pub fn buffer_static_clear(&self, a: &mut Vec<Vertex>) -> StaticBuffer {
+    //     let b = self.buffer_static_no_clear(a);
+    //     a.clear();
+    //     b
+    // }
 
-    pub fn buffer_static_no_clear(&self, a: &[Vertex]) -> StaticBuffer {
-        StaticBuffer::new(self, a).unwrap_throw()
-    }
+    // pub fn buffer_static_no_clear(&self, a: &[Vertex]) -> StaticBuffer {
+    //     StaticBuffer::new(self, a).unwrap_throw()
+    // }
 
     pub fn shader_system(&self) -> ShaderSystem {
 
