@@ -63,6 +63,7 @@ void main() {
 "#;
 
 
+
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
 in vec2 a_texcoord;
@@ -208,7 +209,9 @@ pub struct GenericBuffer<T,L,J>(
     J
 );
 
-impl<T:byte_slice_cast::ToByteSlice,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
+
+
+impl<T:byte_slice_cast::ToByteSlice+NumComponent,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
     pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
     {
         Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::default(),J::default()))
@@ -217,6 +220,8 @@ impl<T:byte_slice_cast::ToByteSlice,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,
     pub fn bind(&self,ctx:&WebGl2RenderingContext){
         ctx.bind_buffer(self.2.get(), Some(&self.0.buffer));
     }
+
+    
 
     pub fn update(&mut self, vertices: &[T])
     {
@@ -238,6 +243,28 @@ impl<T:byte_slice_cast::ToByteSlice,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,
         );
     }
 }
+
+pub trait NumComponent{
+    fn num()->u32;
+}
+impl NumComponent for [f32;2]{
+    fn num()->u32{
+        2
+    }
+}
+impl NumComponent for [f32;3]{
+    fn num()->u32{
+        3
+    }
+}
+impl NumComponent for u16{
+    fn num()->u32{
+        1
+    }
+}
+
+
+
 
 pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind,StaticKind>;
 pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind,StaticKind>;

@@ -211,6 +211,48 @@ impl GlProgram {
     }
 }
 
+
+pub struct Position3;
+pub struct TexCoord;
+pub struct Normal;
+
+pub trait ProgramAttrib{
+    type BufferKind;
+    fn get_attrib(&self,a:&GlProgram)->u32;
+}
+impl ProgramAttrib for Position3{
+    type BufferKind=Vert3Buffer;
+
+    fn get_attrib(&self,a:&GlProgram)->u32{
+        a.position
+    }
+}
+impl ProgramAttrib for TexCoord{
+    type BufferKind=TextureCoordBuffer;
+    
+    fn get_attrib(&self,a:&GlProgram)->u32{
+        a.texcoord
+    }
+}
+impl ProgramAttrib for Normal{
+    type BufferKind=Vert3Buffer;
+
+    fn get_attrib(&self,a:&GlProgram)->u32{
+        a.normal
+    }
+}
+
+// fn setup_attrib<K:ProgramAttrib,T,L,J>(att:K,buffer:GenericBuffer<T,L,J>,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+//     ctx.vertex_attrib_pointer_with_i32(
+//         att.get_attrib(prog) as u32,
+//         3,
+//         WebGl2RenderingContext::FLOAT,
+//         false,
+//         0,
+//         0,
+//     );
+// }
+
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
