@@ -7,7 +7,6 @@ use super::TextureBuffer;
 use super::TextureCoordBuffer;
 use super::Vert3Buffer;
 
-
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
 out vec4 out_color;
@@ -56,8 +55,6 @@ void main() {
 }
 "#;
 
-
-
 const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
 in vec2 a_texcoord;
@@ -76,23 +73,20 @@ void main() {
 }
 "#;
 
-
-
-
 impl GlProgram {
     pub fn draw(
         &self,
-        texture:&TextureBuffer,
-        texture_coords:&TextureCoordBuffer,
-        indexes:Option<&IndexBuffer>,
+        texture: &TextureBuffer,
+        texture_coords: &TextureCoordBuffer,
+        indexes: Option<&IndexBuffer>,
         position: &Vert3Buffer,
         primitive: u32,
         mmatrix: &[f32; 16],
         point_size: f32,
-        normals:&Vert3Buffer,
-        grayscale:bool,
-        text:bool,
-        lighting:bool
+        normals: &Vert3Buffer,
+        grayscale: bool,
+        text: bool,
+        lighting: bool,
     ) {
         if position.num_verts == 0 {
             return;
@@ -102,18 +96,16 @@ impl GlProgram {
 
         context.use_program(Some(&self.program));
 
-
         context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
 
-
-        let kk:i32=if grayscale{1}else{0};
+        let kk: i32 = if grayscale { 1 } else { 0 };
         context.uniform1i(Some(&self.grayscale), kk);
 
-        let kk:i32=if text  {
+        let kk: i32 = if text {
             1
-        }else if !lighting {
+        } else if !lighting {
             2
-        }else{
+        } else {
             0
         };
 
@@ -121,30 +113,36 @@ impl GlProgram {
         context.uniform1f(Some(&self.point_size), point_size);
 
         texture_coords.bind(context);
-        texture_coords.setup_attrib(TexCoord,context,self);
+        texture_coords.setup_attrib(TexCoord, context, self);
 
         position.bind(context);
-        position.setup_attrib(Position3,context,self);
-        
-        normals.bind(context);
-        normals.setup_attrib(Normal,context,self);
+        position.setup_attrib(Position3, context, self);
 
-        texture.bind(context);       
-    
-        if let Some(indexes)=indexes{
+        normals.bind(context);
+        normals.setup_attrib(Normal, context, self);
+
+        texture.bind(context);
+
+        if let Some(indexes) = indexes {
             indexes.bind(context);
             //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
-            let instance_count=1;
-            context.draw_elements_instanced_with_i32(primitive, indexes.num_verts as i32, WebGl2RenderingContext::UNSIGNED_SHORT,0, instance_count)
-        }else{
+            let instance_count = 1;
+            context.draw_elements_instanced_with_i32(
+                primitive,
+                indexes.num_verts as i32,
+                WebGl2RenderingContext::UNSIGNED_SHORT,
+                0,
+                instance_count,
+            )
+        } else {
             context.draw_arrays(primitive, 0, position.num_verts as i32)
         }
     }
 
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, String> {
-        let vs=VERT_SHADER_STR;
-        let fs=SQUARE_FRAG_SHADER_STR;
-        
+        let vs = VERT_SHADER_STR;
+        let fs = SQUARE_FRAG_SHADER_STR;
+
         let vert_shader = compile_shader(context, WebGl2RenderingContext::VERTEX_SHADER, vs)?;
         let frag_shader = compile_shader(context, WebGl2RenderingContext::FRAGMENT_SHADER, fs)?;
         let program = link_program(context, &vert_shader, &frag_shader)?;
@@ -152,16 +150,17 @@ impl GlProgram {
         context.delete_shader(Some(&vert_shader));
         context.delete_shader(Some(&frag_shader));
 
-        let grayscale=context.get_uniform_location(&program, "grayscale")
-        .ok_or_else(|| "uniform err".to_string())?;
-        
-        let text=context.get_uniform_location(&program, "text")
-        .ok_or_else(|| "uniform err".to_string())?;
-        
+        let grayscale = context
+            .get_uniform_location(&program, "grayscale")
+            .ok_or_else(|| "uniform err".to_string())?;
+
+        let text = context
+            .get_uniform_location(&program, "text")
+            .ok_or_else(|| "uniform err".to_string())?;
+
         let mmatrix = context
             .get_uniform_location(&program, "mmatrix")
             .ok_or_else(|| "uniform err".to_string())?;
-
 
         let point_size = context
             .get_uniform_location(&program, "point_size")
@@ -171,24 +170,22 @@ impl GlProgram {
 
         let normal = context.get_attrib_location(&program, "v_normal");
 
-
         let texcoord = context.get_attrib_location(&program, "a_texcoord");
 
         if position < 0 {
             return Err("attribute err".to_string());
         }
 
-
         let position = position as u32;
-        let normal=normal as u32;
-        let texcoord=texcoord as u32;
+        let normal = normal as u32;
+        let texcoord = texcoord as u32;
 
         context.enable_vertex_attrib_array(texcoord);
-        
+
         context.enable_vertex_attrib_array(position);
-        
+
         context.enable_vertex_attrib_array(normal);
-        
+
         Ok(GlProgram {
             program,
             mmatrix,
@@ -197,53 +194,50 @@ impl GlProgram {
             position,
             texcoord,
             grayscale,
-            text
+            text,
         })
     }
 }
-
 
 struct Position3;
 struct TexCoord;
 struct Normal;
 
-pub trait ProgramAttrib{
+pub trait ProgramAttrib {
     type NumComponent;
-    fn get_attrib(&self,a:&GlProgram)->u32;
+    fn get_attrib(&self, a: &GlProgram) -> u32;
 }
-impl ProgramAttrib for Position3{
-    type NumComponent=[f32;3];
+impl ProgramAttrib for Position3 {
+    type NumComponent = [f32; 3];
 
-    fn get_attrib(&self,a:&GlProgram)->u32{
+    fn get_attrib(&self, a: &GlProgram) -> u32 {
         a.position
     }
 }
-impl ProgramAttrib for TexCoord{
-    type NumComponent=[f32;2];
-    
-    fn get_attrib(&self,a:&GlProgram)->u32{
+impl ProgramAttrib for TexCoord {
+    type NumComponent = [f32; 2];
+
+    fn get_attrib(&self, a: &GlProgram) -> u32 {
         a.texcoord
     }
 }
-impl ProgramAttrib for Normal{
-    type NumComponent=[f32;3];
+impl ProgramAttrib for Normal {
+    type NumComponent = [f32; 3];
 
-    fn get_attrib(&self,a:&GlProgram)->u32{
+    fn get_attrib(&self, a: &GlProgram) -> u32 {
         a.normal
     }
 }
-
-
 
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
-    grayscale:WebGlUniformLocation,
+    grayscale: WebGlUniformLocation,
     position: u32,
-    texcoord:u32,
-    normal:u32,
-    text:WebGlUniformLocation
+    texcoord: u32,
+    normal: u32,
+    text: WebGlUniformLocation,
 }
 
 fn compile_shader(

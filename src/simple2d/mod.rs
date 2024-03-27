@@ -10,64 +10,64 @@ mod shader;
 
 use shader::*;
 
-
 pub type Vertex = [f32; 3];
 
-
-pub struct TextureBuffer{
+pub struct TextureBuffer {
     pub(crate) texture: web_sys::WebGlTexture,
     pub(crate) ctx: WebGl2RenderingContext,
-     width:i32,
-    height:i32
+    width: i32,
+    height: i32,
 }
-impl Drop for TextureBuffer{
-    fn drop(&mut self){
+impl Drop for TextureBuffer {
+    fn drop(&mut self) {
         self.ctx.delete_texture(Some(&self.texture));
     }
 }
-impl TextureBuffer{
-    pub fn texture(&self)->&web_sys::WebGlTexture{
+impl TextureBuffer {
+    pub fn texture(&self) -> &web_sys::WebGlTexture {
         &self.texture
     }
-    pub fn width(&self)->i32{
+    pub fn width(&self) -> i32 {
         self.width
     }
-    pub fn height(&self)->i32{
+    pub fn height(&self) -> i32 {
         self.height
     }
-    pub fn bind(&self,ctx:&WebGl2RenderingContext){
+    pub fn bind(&self, ctx: &WebGl2RenderingContext) {
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
     }
 
-
-    pub fn new(ctx:&WebGl2RenderingContext)->TextureBuffer{
+    pub fn new(ctx: &WebGl2RenderingContext) -> TextureBuffer {
         let texture = ctx.create_texture().unwrap_throw();
         ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
-        
-        let width=1;
-        let height=1;
+
+        let width = 1;
+        let height = 1;
         // Fill the texture with a 1x1 blue pixel.
         ctx.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             WebGl2RenderingContext::TEXTURE_2D,
             0,
             WebGl2RenderingContext::RGBA as i32,
-            width, //width
+            width,  //width
             height, //height
-            0, //border
+            0,      //border
             WebGl2RenderingContext::RGBA,
             WebGl2RenderingContext::UNSIGNED_BYTE,
-            Some(&[0, 0, 255, 255])).unwrap_throw();
+            Some(&[0, 0, 255, 255]),
+        )
+        .unwrap_throw();
 
-        Self{
-            ctx:ctx.clone(),
+        Self {
+            ctx: ctx.clone(),
             texture,
             width,
-            height
-        }   
+            height,
+        }
     }
-    pub fn update(&mut self,width:usize,height:usize,image:&[u8]){
+    pub fn update(&mut self, width: usize, height: usize, image: &[u8]) {
         //log!(format!("image bytes:{:?}",image.len()));
-        self.ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
+        self.ctx
+            .bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
         // self.ctx.compressed_tex_image_2d_with_u8_array(
         //     WebGl2RenderingContext::TEXTURE_2D,
         //     0,
@@ -82,32 +82,53 @@ impl TextureBuffer{
         // let arr=js_sys::Uint8ClampedArray::new_with_length(image.len() as u32);
         // arr.copy_from(image);
 
-       
         //TODO leverage javascript to load png instead to avoid image dependancy??
 
         //let image = image::load_from_memory_with_format(&image, image::ImageFormat::Png).unwrap();
         //let rgba_image = image.to_rgba8();
-        
+
         //https://stackoverflow.com/questions/70309403/updating-html-canvas-imagedata-using-rust-webassembly
         let clamped_buf: Clamped<&[u8]> = Clamped(image);
-        let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(clamped_buf,width as u32,height as u32).map_err(|e|log!(e)).unwrap_throw();
-        self.width=width as i32;
-        self.height=height as i32;
-        self.ctx.tex_image_2d_with_u32_and_u32_and_image_data(
+        let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
+            clamped_buf,
+            width as u32,
+            height as u32,
+        )
+        .map_err(|e| log!(e))
+        .unwrap_throw();
+        self.width = width as i32;
+        self.height = height as i32;
+        self.ctx
+            .tex_image_2d_with_u32_and_u32_and_image_data(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::RGBA as i32,
+                WebGl2RenderingContext::RGBA,
+                WebGl2RenderingContext::UNSIGNED_BYTE,
+                &image,
+            )
+            .unwrap_throw();
+
+        self.ctx.tex_parameteri(
             WebGl2RenderingContext::TEXTURE_2D,
-            0,
-            WebGl2RenderingContext::RGBA as i32,
-            WebGl2RenderingContext::RGBA,
-            WebGl2RenderingContext::UNSIGNED_BYTE,
-            &image
-        ).unwrap_throw();
-
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, WebGl2RenderingContext::LINEAR as i32);
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, WebGl2RenderingContext::LINEAR as i32);
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_S, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
-        self.ctx.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_WRAP_T, WebGl2RenderingContext::CLAMP_TO_EDGE as i32);
-        
-
+            WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+            WebGl2RenderingContext::LINEAR as i32,
+        );
+        self.ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+            WebGl2RenderingContext::LINEAR as i32,
+        );
+        self.ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_S,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        self.ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_T,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
 
         //log!("send111");
 
@@ -121,36 +142,43 @@ impl TextureBuffer{
         //     WebGl2RenderingContext::RGBA,
         //     WebGl2RenderingContext::UNSIGNED_BYTE,
         //     Some(image)).unwrap_throw();
-        
     }
 }
 
-
-
-
-
-
-pub struct GenericBuffer<T,L,J>{
+pub struct GenericBuffer<T, L, J> {
     buffer: web_sys::WebGlBuffer,
-    num_verts:usize,
+    num_verts: usize,
     ctx: WebGl2RenderingContext,
-    _p:std::marker::PhantomData<T>,
-    kind:L,
-    dynamic:J
+    _p: std::marker::PhantomData<T>,
+    kind: L,
+    dynamic: J,
 }
 
-
-
-impl<T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,J>{
-    pub fn new(ctx:&WebGl2RenderingContext)->Result<Self,String>
-    {
+impl<
+        T: byte_slice_cast::ToByteSlice + NumComponent + ComponentType,
+        L: BufferKind,
+        J: BufferDyn,
+    > GenericBuffer<T, L, J>
+{
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-        
-        Ok(GenericBuffer{buffer,_p:std::marker::PhantomData,kind:L::default(),dynamic:J::default(),num_verts:0,ctx:ctx.clone()})
+
+        Ok(GenericBuffer {
+            buffer,
+            _p: std::marker::PhantomData,
+            kind: L::default(),
+            dynamic: J::default(),
+            num_verts: 0,
+            ctx: ctx.clone(),
+        })
     }
 
-
-    pub fn setup_attrib<K:ProgramAttrib<NumComponent=T>>(&self,att:K,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+    pub fn setup_attrib<K: ProgramAttrib<NumComponent = T>>(
+        &self,
+        att: K,
+        ctx: &WebGl2RenderingContext,
+        prog: &GlProgram,
+    ) {
         ctx.vertex_attrib_pointer_with_i32(
             att.get_attrib(prog) as u32,
             T::num(),
@@ -162,16 +190,19 @@ impl<T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:Bu
     }
 
     //TODO use
-    pub fn attrib_divisor_of_one<K:ProgramAttrib<NumComponent=T>>(&self,att:K,ctx:&WebGl2RenderingContext,prog:&GlProgram){
+    pub fn attrib_divisor_of_one<K: ProgramAttrib<NumComponent = T>>(
+        &self,
+        att: K,
+        ctx: &WebGl2RenderingContext,
+        prog: &GlProgram,
+    ) {
         ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
-
     }
-    pub fn bind(&self,ctx:&WebGl2RenderingContext){
+    pub fn bind(&self, ctx: &WebGl2RenderingContext) {
         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
     }
 
-    pub fn update(&mut self, vertices: &[T])
-    {
+    pub fn update(&mut self, vertices: &[T]) {
         // Now that the image has loaded make copy it to the texture.
         let ctx = &self.ctx;
 
@@ -181,128 +212,117 @@ impl<T:byte_slice_cast::ToByteSlice+NumComponent+ComponentType,L:BufferKind,J:Bu
 
         use byte_slice_cast::*;
 
-        let points_buf=vertices.as_byte_slice();
+        let points_buf = vertices.as_byte_slice();
 
-        ctx.buffer_data_with_u8_array(
-            self.kind.get(),
-            points_buf,
-            self.dynamic.get()
-        );
+        ctx.buffer_data_with_u8_array(self.kind.get(), points_buf, self.dynamic.get());
     }
 }
 
-
-pub trait ComponentType{
-    fn component_type()->u32;
+pub trait ComponentType {
+    fn component_type() -> u32;
 }
 
-impl ComponentType for [f32;2]{
-    fn component_type()->u32{
+impl ComponentType for [f32; 2] {
+    fn component_type() -> u32 {
         WebGl2RenderingContext::FLOAT
     }
 }
 
-impl ComponentType for [f32;3]{
-    fn component_type()->u32{
+impl ComponentType for [f32; 3] {
+    fn component_type() -> u32 {
         WebGl2RenderingContext::FLOAT
     }
 }
 
-impl ComponentType for u16{
-    fn component_type()->u32{
+impl ComponentType for u16 {
+    fn component_type() -> u32 {
         WebGl2RenderingContext::UNSIGNED_SHORT
     }
 }
 
-pub trait NumComponent{
-    fn num()->i32;
+pub trait NumComponent {
+    fn num() -> i32;
 }
-impl NumComponent for [f32;2]{
-    fn num()->i32{
+impl NumComponent for [f32; 2] {
+    fn num() -> i32 {
         2
     }
 }
-impl NumComponent for [f32;3]{
-    fn num()->i32{
+impl NumComponent for [f32; 3] {
+    fn num() -> i32 {
         3
     }
 }
 
-impl NumComponent for [f32;16]{
-    fn num()->i32{
+impl NumComponent for [f32; 16] {
+    fn num() -> i32 {
         16
     }
 }
-impl NumComponent for u16{
-    fn num()->i32{
+impl NumComponent for u16 {
+    fn num() -> i32 {
         1
     }
 }
 
-
-
 //TODO use this
-pub type Mat4Buffer = GenericBuffer<[f32;16],ArrayKind,DynamicKind>;
+pub type Mat4Buffer = GenericBuffer<[f32; 16], ArrayKind, DynamicKind>;
 
-pub type TextureCoordBuffer = GenericBuffer<[f32;2],ArrayKind,StaticKind>;
-pub type Vert3Buffer = GenericBuffer<[f32;3],ArrayKind,StaticKind>;
-pub type IndexBuffer=GenericBuffer<u16,ElementKind,StaticKind>;
+pub type TextureCoordBuffer = GenericBuffer<[f32; 2], ArrayKind, StaticKind>;
+pub type Vert3Buffer = GenericBuffer<[f32; 3], ArrayKind, StaticKind>;
+pub type IndexBuffer = GenericBuffer<u16, ElementKind, StaticKind>;
 
-
-
-pub trait BufferKind:Default{
-    fn get(&self)->u32;
+pub trait BufferKind: Default {
+    fn get(&self) -> u32;
 }
 
 #[derive(Default)]
 pub struct ElementKind;
-impl BufferKind for ElementKind{
-    fn get(&self)->u32{
+impl BufferKind for ElementKind {
+    fn get(&self) -> u32 {
         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
     }
 }
 #[derive(Default)]
 pub struct ArrayKind;
-impl BufferKind for ArrayKind{
-    fn get(&self)->u32{
+impl BufferKind for ArrayKind {
+    fn get(&self) -> u32 {
         WebGl2RenderingContext::ARRAY_BUFFER
     }
 }
 
-pub trait BufferDyn:Default{
-    fn get(&self)->u32;
+pub trait BufferDyn: Default {
+    fn get(&self) -> u32;
 }
 
 #[derive(Default)]
 pub struct DynamicKind;
-impl BufferDyn for DynamicKind{
-    fn get(&self)->u32{
+impl BufferDyn for DynamicKind {
+    fn get(&self) -> u32 {
         WebGl2RenderingContext::DYNAMIC_DRAW
     }
 }
 #[derive(Default)]
 pub struct StaticKind;
-impl BufferDyn for StaticKind{
-    fn get(&self)->u32{
+impl BufferDyn for StaticKind {
+    fn get(&self) -> u32 {
         WebGl2RenderingContext::STATIC_DRAW
     }
 }
 
-
 struct Args<'a> {
     pub verts: &'a Vert3Buffer,
-    pub indexes:Option<&'a IndexBuffer>,
+    pub indexes: Option<&'a IndexBuffer>,
     pub primitive: u32,
-    pub texture:&'a TextureBuffer,
-    pub texture_coords:&'a TextureCoordBuffer,
-    pub grayscale:bool,
-    pub matrix:&'a [f32;16],
+    pub texture: &'a TextureBuffer,
+    pub texture_coords: &'a TextureCoordBuffer,
+    pub grayscale: bool,
+    pub matrix: &'a [f32; 16],
     pub point_size: f32,
-    pub normals:&'a Vert3Buffer,
-    pub text:bool,
-    pub lighting:bool
+    pub normals: &'a Vert3Buffer,
+    pub text: bool,
+    pub lighting: bool,
 }
-
 
 use wasm_bindgen::{prelude::*, Clamped};
 
@@ -336,20 +356,18 @@ impl CtxWrap {
     /// Sets up alpha blending and disables depth testing.
     ///
     pub fn setup_alpha(&self) {
-        
         //https://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
-        self.pixel_storei(WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL,1);
+        self.pixel_storei(WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
         self.enable(WebGl2RenderingContext::BLEND);
-        
+
         self.blend_func(
             //WebGl2RenderingContext::SRC_ALPHA,
-            WebGl2RenderingContext::ONE,    
+            WebGl2RenderingContext::ONE,
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
 
         self.enable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::CULL_FACE);
-        
     }
     // pub fn buffer_dynamic(&self) -> DynamicBuffer {
     //     DynamicBuffer::new(self).unwrap_throw()
@@ -366,11 +384,12 @@ impl CtxWrap {
     // }
 
     pub fn shader_system(&self) -> ShaderSystem {
-
-        ShaderSystem::new(self).map_err(|e|{
-            log!(format!("{:?}",e));
-            e
-        }).unwrap_throw()
+        ShaderSystem::new(self)
+            .map_err(|e| {
+                log!(format!("{:?}", e));
+                e
+            })
+            .unwrap_throw()
     }
     // pub fn draw_all(&self, color: [f32; 4], func: impl FnOnce()) {
     //     self.draw_clear(color);
@@ -381,8 +400,10 @@ impl CtxWrap {
     pub fn draw_clear(&self, color: [f32; 4]) {
         let [a, b, c, d] = color;
         self.ctx.clear_color(a, b, c, d);
-        self.ctx
-            .clear(web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT | web_sys::WebGl2RenderingContext::DEPTH_BUFFER_BIT);
+        self.ctx.clear(
+            web_sys::WebGl2RenderingContext::COLOR_BUFFER_BIT
+                | web_sys::WebGl2RenderingContext::DEPTH_BUFFER_BIT,
+        );
     }
 }
 
@@ -412,7 +433,7 @@ impl From<axgeom::Rect<f32>> for Rect {
 ///
 pub struct ShaderSystem {
     square_program: GlProgram,
-    ctx: WebGl2RenderingContext
+    ctx: WebGl2RenderingContext,
 }
 
 impl Drop for ShaderSystem {
@@ -427,7 +448,7 @@ impl ShaderSystem {
 
         Ok(ShaderSystem {
             square_program,
-            ctx: ctx.clone()
+            ctx: ctx.clone(),
         })
     }
 
@@ -443,16 +464,25 @@ impl ShaderSystem {
             normals,
             grayscale,
             text,
-            lighting
-            //world_inverse_transpose
+            lighting, //world_inverse_transpose
         } = args;
 
         assert_eq!(verts.ctx, self.ctx);
 
-
         //if as_square {
-            self.square_program
-                .draw(texture,texture_coords,indexes,verts, primitive, &matrix, point_size,normals,grayscale,text,lighting);
+        self.square_program.draw(
+            texture,
+            texture_coords,
+            indexes,
+            verts,
+            primitive,
+            &matrix,
+            point_size,
+            normals,
+            grayscale,
+            text,
+            lighting,
+        );
         // } else {
         //     self.circle_program
         //         .draw(verts, primitive, &matrix, point_size, color);
@@ -464,29 +494,18 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view<'a>(&'a mut self, matrix:&'a cgmath::Matrix4<f32>) -> View<'a> {
+    pub fn view<'a>(&'a mut self, matrix: &'a cgmath::Matrix4<f32>) -> View<'a> {
         self.view2(matrix.as_ref())
     }
 
-    pub fn view2<'a>(&'a mut self, matrix:&'a [f32;16]) -> View<'a> {
-        View {
-            sys: self,
-            matrix
-        }
+    pub fn view2<'a>(&'a mut self, matrix: &'a [f32; 16]) -> View<'a> {
+        View { sys: self, matrix }
     }
 }
 
-
-pub trait Drawable{
+pub trait Drawable {
     fn draw(&self, view: &mut View);
-    fn draw_ext(
-        &self,
-        view: &mut View,
-        grayscale: bool,
-        text: bool,
-        _linear: bool,
-        lighting: bool,
-    );
+    fn draw_ext(&self, view: &mut View, grayscale: bool, text: bool, _linear: bool, lighting: bool);
 }
 ///
 /// A view to draw in. See [`ShaderSystem::view`]
@@ -494,20 +513,24 @@ pub trait Drawable{
 #[must_use]
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
-    matrix:&'a [f32;16],
+    matrix: &'a [f32; 16],
     // world_inverse_transpose:&'a [f32;16],
     // offset: [f32; 2],
     // dim: [f32; 2],
 }
 impl View<'_> {
-    pub fn draw_a_thing(&mut self,f:&impl Drawable){
+    pub fn draw_a_thing(&mut self, f: &impl Drawable) {
         f.draw(self);
     }
-    pub fn draw_a_thing_ext(&mut self,f:&impl Drawable,grayscale: bool,
+    pub fn draw_a_thing_ext(
+        &mut self,
+        f: &impl Drawable,
+        grayscale: bool,
         text: bool,
         _linear: bool,
-        lighting: bool){
-        f.draw_ext(self,grayscale,text,_linear,lighting);
+        lighting: bool,
+    ) {
+        f.draw_ext(self, grayscale, text, _linear, lighting);
     }
     // pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
     //     self.sys.draw(Args {
@@ -518,7 +541,19 @@ impl View<'_> {
     //         point_size,
     //     })
     // }
-    pub fn draw(&mut self,primitive:u32,texture:&TextureBuffer,texture_coords:&TextureCoordBuffer, verts: &Vert3Buffer,indexes:Option<&IndexBuffer>,normals:&Vert3Buffer,grayscale:bool,text:bool,linear:bool,lighting:bool) {
+    pub fn draw(
+        &mut self,
+        primitive: u32,
+        texture: &TextureBuffer,
+        texture_coords: &TextureCoordBuffer,
+        verts: &Vert3Buffer,
+        indexes: Option<&IndexBuffer>,
+        normals: &Vert3Buffer,
+        grayscale: bool,
+        text: bool,
+        linear: bool,
+        lighting: bool,
+    ) {
         self.sys.draw(Args {
             texture,
             texture_coords,
@@ -531,7 +566,7 @@ impl View<'_> {
             point_size: 1.0,
             grayscale,
             text,
-            lighting
+            lighting,
         })
     }
 
@@ -590,7 +625,7 @@ impl<'a> ShapeBuilder<'a> {
 
         for i in 0..num {
             let pos = start + norm * (i as f32) * radius;
-            buffer.push([pos.x,pos.y,0.0]);
+            buffer.push([pos.x, pos.y, 0.0]);
         }
         self
     }
@@ -615,19 +650,19 @@ impl<'a> ShapeBuilder<'a> {
         let end2 = end - k * radius;
 
         let arr: [Vertex; 6] = [
-            [start1.x,start1.y,0.0],
-            [start2.x,start2.y,0.0],
-            [end1.x,end1.y,0.0],
-            [start2.x,start2.y,0.0],
-            [end1.x,end1.y,0.0],
-            [end2.x,end2.y,0.0],
+            [start1.x, start1.y, 0.0],
+            [start2.x, start2.y, 0.0],
+            [end1.x, end1.y, 0.0],
+            [start2.x, start2.y, 0.0],
+            [end1.x, end1.y, 0.0],
+            [end2.x, end2.y, 0.0],
         ];
 
         buffer.extend(arr);
         self
     }
 
-    pub fn rect(&mut self, rect: impl Into<Rect>,depth:f32) -> &mut Self {
+    pub fn rect(&mut self, rect: impl Into<Rect>, depth: f32) -> &mut Self {
         use axgeom::vec2;
         let rect: Rect = rect.into();
 
@@ -636,25 +671,21 @@ impl<'a> ShapeBuilder<'a> {
         let dim = vec2(rect.w, rect.h);
 
         let arr: [Vertex; 6] = [
-            to_vertex(start,depth),
-            to_vertex(start + vec2(dim.x, 0.0),depth),
-            
-            to_vertex(start + vec2(0.0, dim.y),depth),
-            to_vertex(start + vec2(dim.x, 0.0),depth),
-            to_vertex(start + dim,depth),
-            
-            to_vertex(start + vec2(0.0, dim.y),depth),
-            
+            to_vertex(start, depth),
+            to_vertex(start + vec2(dim.x, 0.0), depth),
+            to_vertex(start + vec2(0.0, dim.y), depth),
+            to_vertex(start + vec2(dim.x, 0.0), depth),
+            to_vertex(start + dim, depth),
+            to_vertex(start + vec2(0.0, dim.y), depth),
         ];
 
         buffer.extend(arr);
         self
     }
 }
-fn to_vertex(a:axgeom::Vec2<f32>,depth:f32)->Vertex{
-    [a.x,a.y,depth]
+fn to_vertex(a: axgeom::Vec2<f32>, depth: f32) -> Vertex {
+    [a.x, a.y, depth]
 }
-
 
 ///
 /// Convert a mouse event to a coordinate for simple2d.

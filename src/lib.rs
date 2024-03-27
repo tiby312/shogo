@@ -45,13 +45,11 @@ pub mod utils {
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {
-
-
-        let mut options=web_sys::WebGlContextAttributes::new();
+        let mut options = web_sys::WebGlContextAttributes::new();
         options.antialias(true);
         options.alpha(true);
         canvas
-            .get_context_with_context_options("webgl2",&*options)
+            .get_context_with_context_options("webgl2", &*options)
             .unwrap_throw()
             .unwrap_throw()
             .dyn_into()
@@ -247,28 +245,27 @@ mod main {
 
             let e = elem.clone();
 
-
             use gloo::events::EventListenerOptions;
             use gloo::events::EventListenerPhase;
-            let options=EventListenerOptions {
+            let options = EventListenerOptions {
                 phase: EventListenerPhase::Bubble,
                 passive: false,
             };
 
-            gloo::events::EventListener::new_with_options(elem, event_type,options, move |event| {
+            gloo::events::EventListener::new_with_options(elem, event_type, options, move |event| {
                 let e = EventData {
                     elem: &e,
                     event,
                     event_type,
                 };
 
-                if let Some(val) = func(e){
+                if let Some(val) = func(e) {
                     let a = JsValue::from_serde(&val).unwrap_throw();
 
                     let data = js_sys::Array::new();
                     data.set(0, JsValue::null());
                     data.set(1, a);
-    
+
                     w.borrow().post_message(&data).unwrap_throw();
                 }
             })
@@ -321,7 +318,6 @@ mod worker {
             let mut fs = Some(fs);
 
             let (bags, bagf) = futures::channel::mpsc::unbounded();
-
 
             let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
                 let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
