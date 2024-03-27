@@ -74,7 +74,7 @@ impl GlProgram {
         //context.enable_vertex_attrib_array(texture_coords.0.buffer);
         // We'll supply texcoords as floats.
 
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&texture_coords.0.buffer));
+        texture_coords.bind(context);
         context.vertex_attrib_pointer_with_i32(
             self.texcoord as u32,
             2,
@@ -85,8 +85,9 @@ impl GlProgram {
         ); 
         
 
-        
+        //TODO buffers should do this themselves
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position.buffer));
+        //position.bind(context);
 
         context.vertex_attrib_pointer_with_i32(
             self.position as u32,
@@ -97,6 +98,7 @@ impl GlProgram {
             0,
         );
 
+        
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&normals.buffer));
 
         context.vertex_attrib_pointer_with_i32(
@@ -123,7 +125,8 @@ impl GlProgram {
         
 
         if let Some(indexes)=indexes{
-            context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
+            indexes.bind(context);
+            //context.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&indexes.0.buffer));
             context.draw_elements_with_i32(primitive, indexes.0.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0)
         }else{
             context.draw_arrays(primitive, 0, position.num_verts as i32)

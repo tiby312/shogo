@@ -210,6 +210,10 @@ impl<T:byte_slice_cast::ToByteSlice,L:BufferKind,J:BufferDyn> GenericBuffer<T,L,
         Ok(GenericBuffer(Buffer::new(ctx)?,std::marker::PhantomData,L::default(),J::default()))
     }
 
+    pub fn bind(&self,ctx:&WebGl2RenderingContext){
+        ctx.bind_buffer(self.2.get(), Some(&self.0.buffer));
+    }
+
     pub fn update(&mut self, vertices: &[T])
     {
         // Now that the image has loaded make copy it to the texture.
