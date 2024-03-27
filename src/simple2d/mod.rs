@@ -218,17 +218,12 @@ impl<
     }
 }
 
+
 pub trait ComponentType {
     fn component_type() -> u32;
 }
 
-impl ComponentType for [f32; 2] {
-    fn component_type() -> u32 {
-        WebGl2RenderingContext::FLOAT
-    }
-}
-
-impl ComponentType for [f32; 3] {
+impl<const K: usize> ComponentType for [f32; K] {
     fn component_type() -> u32 {
         WebGl2RenderingContext::FLOAT
     }
@@ -317,7 +312,7 @@ struct Args<'a> {
     pub texture: &'a TextureBuffer,
     pub texture_coords: &'a TextureCoordBuffer,
     pub grayscale: bool,
-    pub matrix: &'a [f32; 16],
+    pub matrix: &'a [[f32; 16]],
     pub point_size: f32,
     pub normals: &'a Vert3Buffer,
     pub text: bool,
@@ -469,21 +464,19 @@ impl ShaderSystem {
 
         assert_eq!(verts.ctx, self.ctx);
 
-        self.square_program.draw(
-            shader::Argss{
+        self.square_program.draw(shader::Argss {
             texture,
             texture_coords,
             indexes,
-            position:verts,
+            position: verts,
             primitive,
-            mmatrix:&matrix,
+            mmatrix: matrix,
             point_size,
             normals,
             grayscale,
             text,
             lighting,
-            }
-        );
+        });
     }
 
     ///
@@ -491,11 +484,11 @@ impl ShaderSystem {
     /// topleft corner maps to `[0,0]`
     /// borrom right maps to `dim`
     ///
-    pub fn view<'a>(&'a mut self, matrix: &'a cgmath::Matrix4<f32>) -> View<'a> {
-        self.view2(matrix.as_ref())
-    }
+    // pub fn view<'a>(&'a mut self, matrix: &'a cgmath::Matrix4<f32>) -> View<'a> {
+    //     self.view2(matrix.as_ref())
+    // }
 
-    pub fn view2<'a>(&'a mut self, matrix: &'a [f32; 16]) -> View<'a> {
+    pub fn view2<'a>(&'a mut self, matrix: &'a [[f32; 16]]) -> View<'a> {
         View { sys: self, matrix }
     }
 }
@@ -510,7 +503,7 @@ pub trait Drawable {
 #[must_use]
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
-    matrix: &'a [f32; 16],
+    matrix: &'a [[f32; 16]],
     // world_inverse_transpose:&'a [f32;16],
     // offset: [f32; 2],
     // dim: [f32; 2],

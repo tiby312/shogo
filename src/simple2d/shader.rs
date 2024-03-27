@@ -6,6 +6,7 @@ use super::IndexBuffer;
 use super::TextureBuffer;
 use super::TextureCoordBuffer;
 use super::Vert3Buffer;
+use super::*;
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
@@ -59,7 +60,7 @@ const VERT_SHADER_STR: &str = r#"#version 300 es
 in vec3 position;
 in vec2 a_texcoord;
 in vec3 v_normal;
-uniform mat4 mmatrix;
+in mat4 mmatrix;
 uniform float point_size;
 out vec3 f_normal;
 out vec2 v_texcoord;
@@ -73,27 +74,35 @@ void main() {
 }
 "#;
 
-pub struct Argss<'a>{
+pub struct Argss<'a> {
     pub texture: &'a TextureBuffer,
     pub texture_coords: &'a TextureCoordBuffer,
     pub indexes: Option<&'a IndexBuffer>,
     pub position: &'a Vert3Buffer,
     pub normals: &'a Vert3Buffer,
     pub primitive: u32,
-    pub mmatrix: &'a [f32; 16],
+    pub mmatrix: &'a [[f32; 16]],
     pub point_size: f32,
     pub grayscale: bool,
     pub text: bool,
     pub lighting: bool,
 }
 
-
 impl GlProgram {
-    pub fn draw(
-        &self,
-        argss:Argss
-    ) {
-        let Argss { texture, texture_coords, indexes, position, normals, primitive, mmatrix, point_size, grayscale, text, lighting }=argss;
+    pub fn draw(&mut self, argss: Argss) {
+        let Argss {
+            texture,
+            texture_coords,
+            indexes,
+            position,
+            normals,
+            primitive,
+            mmatrix,
+            point_size,
+            grayscale,
+            text,
+            lighting,
+        } = argss;
         if position.num_verts == 0 {
             return;
         }
@@ -102,7 +111,13 @@ impl GlProgram {
 
         context.use_program(Some(&self.program));
 
-        context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+        self.matrix_buffer.update(mmatrix);
+        self.matrix_buffer.bind(context);
+        self.matrix_buffer.setup_attrib_special(context,self);
+        // self.matrix_buffer.setup_attrib(MMatrix,context,self);
+        // self.matrix_buffer.attrib_divisor_of_one(MMatrix, context, self);
+
+        //context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
 
         let kk: i32 = if grayscale { 1 } else { 0 };
         context.uniform1i(Some(&self.grayscale), kk);
@@ -132,7 +147,7 @@ impl GlProgram {
         if let Some(indexes) = indexes {
             indexes.bind(context);
             //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
-            let instance_count = 1;
+            let instance_count = mmatrix.len() as i32;
             context.draw_elements_instanced_with_i32(
                 primitive,
                 indexes.num_verts as i32,
@@ -164,13 +179,16 @@ impl GlProgram {
             .get_uniform_location(&program, "text")
             .ok_or_else(|| "uniform err".to_string())?;
 
-        let mmatrix = context
-            .get_uniform_location(&program, "mmatrix")
-            .ok_or_else(|| "uniform err".to_string())?;
+        // let mmatrix = context
+        //     .get_uniform_location(&program, "mmatrix")
+        //     .ok_or_else(|| "uniform err".to_string())?;
 
         let point_size = context
             .get_uniform_location(&program, "point_size")
             .ok_or_else(|| "uniform err".to_string())?;
+
+        let mmatrix = context.get_attrib_location(&program, "mmatrix");
+
 
         let position = context.get_attrib_location(&program, "position");
 
@@ -178,13 +196,19 @@ impl GlProgram {
 
         let texcoord = context.get_attrib_location(&program, "a_texcoord");
 
-        if position < 0 {
+        if mmatrix < 0 {
             return Err("attribute err".to_string());
         }
 
         let position = position as u32;
         let normal = normal as u32;
         let texcoord = texcoord as u32;
+        let mmatrix = mmatrix as u32;
+        //context.enable_vertex_attrib_array(mmatrix);
+        for i in 0..4{
+            let loc=mmatrix+i;
+            context.enable_vertex_attrib_array(loc);
+        }
 
         context.enable_vertex_attrib_array(texcoord);
 
@@ -201,18 +225,58 @@ impl GlProgram {
             texcoord,
             grayscale,
             text,
+            matrix_buffer: Mat4Buffer::new(context).unwrap(),
         })
     }
 }
+
+
+
+impl Mat4Buffer{
+    pub fn setup_attrib_special(&self,ctx:&WebGl2RenderingContext,program:&GlProgram){
+        let bytesPerMatrix = 4 * 16;
+        let matrixLoc=program.mmatrix;
+        
+
+        for i in 0..4{
+            let loc=matrixLoc+i;
+            
+            let offset = (i*16) as i32;
+            // note the stride and offset
+            
+            ctx.vertex_attrib_pointer_with_i32(
+                loc as u32,
+                4,
+                WebGl2RenderingContext::FLOAT,
+                false,
+                bytesPerMatrix,
+                offset,
+            );
+
+            ctx.vertex_attrib_divisor(loc as u32,1);
+        }
+    }
+}
+
 
 struct Position3;
 struct TexCoord;
 struct Normal;
 
+struct MMatrix;
+
 pub trait ProgramAttrib {
     type NumComponent;
     fn get_attrib(&self, a: &GlProgram) -> u32;
 }
+impl ProgramAttrib for MMatrix {
+    type NumComponent = [f32; 16];
+
+    fn get_attrib(&self, a: &GlProgram) -> u32 {
+        a.mmatrix
+    }
+}
+
 impl ProgramAttrib for Position3 {
     type NumComponent = [f32; 3];
 
@@ -237,13 +301,14 @@ impl ProgramAttrib for Normal {
 
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
-    mmatrix: WebGlUniformLocation,
+    mmatrix: u32,
     point_size: WebGlUniformLocation,
     grayscale: WebGlUniformLocation,
     position: u32,
     texcoord: u32,
     normal: u32,
     text: WebGlUniformLocation,
+    matrix_buffer: Mat4Buffer,
 }
 
 fn compile_shader(
