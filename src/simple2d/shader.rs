@@ -2,13 +2,10 @@ use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
-use super::BufferDyn;
-use super::BufferKind;
 use super::IndexBuffer;
 use super::TextureBuffer;
 use super::TextureCoordBuffer;
 use super::Vert3Buffer;
-use super::*;
 
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
@@ -204,9 +201,9 @@ impl GlProgram {
 }
 
 
-pub struct Position3;
-pub struct TexCoord;
-pub struct Normal;
+struct Position3;
+struct TexCoord;
+struct Normal;
 
 pub trait ProgramAttrib{
     type NumComponent;
