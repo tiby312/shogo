@@ -73,21 +73,27 @@ void main() {
 }
 "#;
 
+pub struct Argss<'a>{
+    pub texture: &'a TextureBuffer,
+    pub texture_coords: &'a TextureCoordBuffer,
+    pub indexes: Option<&'a IndexBuffer>,
+    pub position: &'a Vert3Buffer,
+    pub normals: &'a Vert3Buffer,
+    pub primitive: u32,
+    pub mmatrix: &'a [f32; 16],
+    pub point_size: f32,
+    pub grayscale: bool,
+    pub text: bool,
+    pub lighting: bool,
+}
+
+
 impl GlProgram {
     pub fn draw(
         &self,
-        texture: &TextureBuffer,
-        texture_coords: &TextureCoordBuffer,
-        indexes: Option<&IndexBuffer>,
-        position: &Vert3Buffer,
-        primitive: u32,
-        mmatrix: &[f32; 16],
-        point_size: f32,
-        normals: &Vert3Buffer,
-        grayscale: bool,
-        text: bool,
-        lighting: bool,
+        argss:Argss
     ) {
+        let Argss { texture, texture_coords, indexes, position, normals, primitive, mmatrix, point_size, grayscale, text, lighting }=argss;
         if position.num_verts == 0 {
             return;
         }

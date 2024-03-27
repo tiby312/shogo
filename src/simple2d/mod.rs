@@ -469,24 +469,21 @@ impl ShaderSystem {
 
         assert_eq!(verts.ctx, self.ctx);
 
-        //if as_square {
         self.square_program.draw(
+            shader::Argss{
             texture,
             texture_coords,
             indexes,
-            verts,
+            position:verts,
             primitive,
-            &matrix,
+            mmatrix:&matrix,
             point_size,
             normals,
             grayscale,
             text,
             lighting,
+            }
         );
-        // } else {
-        //     self.circle_program
-        //         .draw(verts, primitive, &matrix, point_size, color);
-        // };
     }
 
     ///
