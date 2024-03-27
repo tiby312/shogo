@@ -10,6 +10,78 @@ use super::TextureCoordBuffer;
 use super::Vert3Buffer;
 use super::*;
 
+
+const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
+precision mediump float;
+out vec4 out_color;
+//uniform vec4 bg;
+in vec2 v_texcoord;
+in vec3 f_normal;
+// The texture.
+uniform sampler2D u_texture;
+uniform int grayscale;
+uniform int text;
+
+void main() {
+
+    //coord is between -0.5 and 0.5
+    //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
+    vec4 o =texture(u_texture, v_texcoord);
+
+    if(text==1){
+        out_color=vec4(1.0,1.0,1.0,o.g);
+    }else if (text==2){
+        out_color = o ;
+    }else{
+        out_color = o ; 
+
+        // because v_normal is a varying it's interpolated
+        // so it will not be a unit vector. Normalizing it
+        // will make it a unit vector again
+        vec3 normal = normalize(f_normal);
+      
+        float light = dot(normal, normalize(vec3(-1.0,1.0,1.0)));
+        light=min(1.0,light+0.9);
+    
+        // Lets multiply just the color portion (not the alpha)
+        // by the light
+        out_color.rgb *= light;
+    }
+
+    if(grayscale==1){
+        // grayscale
+        // https://stackoverflow.com/questions/31729326/glsl-grayscale-shader-removes-transparency
+        float coll =  0.299 * out_color.r + 0.587 * out_color.g + 0.114 * out_color.b;
+        out_color.r=coll;
+        out_color.g=coll;
+        out_color.b=coll;       
+    }
+}
+"#;
+
+
+
+const VERT_SHADER_STR: &str = r#"#version 300 es
+in vec3 position;
+in vec2 a_texcoord;
+in vec3 v_normal;
+uniform mat4 mmatrix;
+uniform float point_size;
+out vec3 f_normal;
+out vec2 v_texcoord;
+void main() {
+    gl_PointSize = point_size;
+    vec4 pp=vec4(position,1.0);
+    vec4 j = mmatrix*pp;
+    gl_Position = j;
+    v_texcoord=a_texcoord;
+    f_normal=v_normal;
+}
+"#;
+
+
+
+
 impl GlProgram {
     pub fn draw(
         &self,
@@ -71,7 +143,10 @@ impl GlProgram {
         }
     }
 
-    pub fn new(context: &WebGl2RenderingContext, vs: &str, fs: &str) -> Result<Self, String> {
+    pub fn new(context: &WebGl2RenderingContext) -> Result<Self, String> {
+        let vs=VERT_SHADER_STR;
+        let fs=SQUARE_FRAG_SHADER_STR;
+        
         let vert_shader = compile_shader(context, WebGl2RenderingContext::VERTEX_SHADER, vs)?;
         let frag_shader = compile_shader(context, WebGl2RenderingContext::FRAGMENT_SHADER, fs)?;
         let program = link_program(context, &vert_shader, &frag_shader)?;
@@ -162,28 +237,11 @@ impl ProgramAttrib for Normal{
 
 
 
-
-// pub struct CurrentContext<A,E,T>{
-//     array:A,
-//     element:E,
-//     texture:T
-// }
-
-
-// impl<A,E,T> CurrentContext<A,E,T>{
-//     pub fn bind_array<A2>(self,array2:A2)->CurrentContext<A2,E,T>{
-//         CurrentContext{array:array2,element:self.element,texture:self.texture}
-//     }
-// }
-
-
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
     mmatrix: WebGlUniformLocation,
     point_size: WebGlUniformLocation,
     grayscale:WebGlUniformLocation,
-    //world_inverse_transpose:WebGlUniformLocation,
-    //bg: WebGlUniformLocation,
     position: u32,
     texcoord:u32,
     normal:u32,

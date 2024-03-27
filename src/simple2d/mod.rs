@@ -14,76 +14,6 @@ use shader::*;
 
 
 
-const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
-precision mediump float;
-out vec4 out_color;
-//uniform vec4 bg;
-in vec2 v_texcoord;
-in vec3 f_normal;
-// The texture.
-uniform sampler2D u_texture;
-uniform int grayscale;
-uniform int text;
-
-void main() {
-
-    //coord is between -0.5 and 0.5
-    //vec2 coord = gl_PointCoord - vec2(0.5,0.5);  
-    vec4 o =texture(u_texture, v_texcoord);
-
-    if(text==1){
-        out_color=vec4(1.0,1.0,1.0,o.g);
-    }else if (text==2){
-        out_color = o ;
-    }else{
-        out_color = o ; 
-
-        // because v_normal is a varying it's interpolated
-        // so it will not be a unit vector. Normalizing it
-        // will make it a unit vector again
-        vec3 normal = normalize(f_normal);
-      
-        float light = dot(normal, normalize(vec3(-1.0,1.0,1.0)));
-        light=min(1.0,light+0.9);
-    
-        // Lets multiply just the color portion (not the alpha)
-        // by the light
-        out_color.rgb *= light;
-    }
-
-    if(grayscale==1){
-        // grayscale
-        // https://stackoverflow.com/questions/31729326/glsl-grayscale-shader-removes-transparency
-        float coll =  0.299 * out_color.r + 0.587 * out_color.g + 0.114 * out_color.b;
-        out_color.r=coll;
-        out_color.g=coll;
-        out_color.b=coll;       
-    }
-}
-"#;
-
-
-
-const VERT_SHADER_STR: &str = r#"#version 300 es
-in vec3 position;
-in vec2 a_texcoord;
-in vec3 v_normal;
-uniform mat4 mmatrix;
-uniform float point_size;
-out vec3 f_normal;
-out vec2 v_texcoord;
-void main() {
-    gl_PointSize = point_size;
-    vec4 pp=vec4(position,1.0);
-    vec4 j = mmatrix*pp;
-    gl_Position = j;
-    v_texcoord=a_texcoord;
-    f_normal=v_normal;
-}
-"#;
-
-
-
 
 
 
@@ -499,25 +429,21 @@ impl From<axgeom::Rect<f32>> for Rect {
 /// A simple shader program that allows the user to draw simple primitives.
 ///
 pub struct ShaderSystem {
-    //circle_program: GlProgram,
     square_program: GlProgram,
     ctx: WebGl2RenderingContext
 }
 
 impl Drop for ShaderSystem {
     fn drop(&mut self) {
-        //self.ctx.delete_program(Some(&self.circle_program.program));
         self.ctx.delete_program(Some(&self.square_program.program));
     }
 }
 
 impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
-        //let circle_program = GlProgram::new(ctx, VERT_SHADER_STR, CIRCLE_FRAG_SHADER_STR)?;
-        let square_program = GlProgram::new(ctx, VERT_SHADER_STR, SQUARE_FRAG_SHADER_STR)?;
+        let square_program = GlProgram::new(ctx)?;
 
         Ok(ShaderSystem {
-            //circle_program,
             square_program,
             ctx: ctx.clone()
         })
