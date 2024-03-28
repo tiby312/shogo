@@ -113,7 +113,7 @@ impl GlProgram {
 
         self.matrix_buffer.update(mmatrix);
         self.matrix_buffer.bind(context);
-        self.matrix_buffer.setup_attrib_special(context,self);
+        self.matrix_buffer.setup_attrib_special(context, self);
         // self.matrix_buffer.setup_attrib(MMatrix,context,self);
         // self.matrix_buffer.attrib_divisor_of_one(MMatrix, context, self);
 
@@ -189,7 +189,6 @@ impl GlProgram {
 
         let mmatrix = context.get_attrib_location(&program, "mmatrix");
 
-
         let position = context.get_attrib_location(&program, "position");
 
         let normal = context.get_attrib_location(&program, "v_normal");
@@ -205,8 +204,8 @@ impl GlProgram {
         let texcoord = texcoord as u32;
         let mmatrix = mmatrix as u32;
         //context.enable_vertex_attrib_array(mmatrix);
-        for i in 0..4{
-            let loc=mmatrix+i;
+        for i in 0..4 {
+            let loc = mmatrix + i;
             context.enable_vertex_attrib_array(loc);
         }
 
@@ -230,20 +229,17 @@ impl GlProgram {
     }
 }
 
-
-
-impl Mat4Buffer{
-    pub fn setup_attrib_special(&self,ctx:&WebGl2RenderingContext,program:&GlProgram){
+impl Mat4Buffer {
+    pub fn setup_attrib_special(&self, ctx: &WebGl2RenderingContext, program: &GlProgram) {
         let bytesPerMatrix = 4 * 16;
-        let matrixLoc=program.mmatrix;
-        
+        let matrixLoc = program.mmatrix;
 
-        for i in 0..4{
-            let loc=matrixLoc+i;
-            
-            let offset = (i*16) as i32;
+        for i in 0..4 {
+            let loc = matrixLoc + i;
+
+            let offset = (i * 16) as i32;
             // note the stride and offset
-            
+
             ctx.vertex_attrib_pointer_with_i32(
                 loc as u32,
                 4,
@@ -253,11 +249,10 @@ impl Mat4Buffer{
                 offset,
             );
 
-            ctx.vertex_attrib_divisor(loc as u32,1);
+            ctx.vertex_attrib_divisor(loc as u32, 1);
         }
     }
 }
-
 
 struct Position3;
 struct TexCoord;
@@ -361,51 +356,20 @@ fn link_program(
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 pub struct AttrMMatrix;
 pub struct AttrMMatrixLoaded;
-impl AttrMMatrix{
-    pub fn load(&self,arr:ArrBound<[f32;16]>,program:&GlProgram)->AttrMMatrixLoaded{
-        let ctx=arr.buffer.ctx;
+impl AttrMMatrix {
+    pub fn load(&self, arr: ArrBound<[f32; 16]>, program: &GlProgram) -> AttrMMatrixLoaded {
+        let ctx = &arr.buffer.ctx;
         let bytesPerMatrix = 4 * 16;
-        let matrixLoc=program.mmatrix;
-        
+        let matrixLoc = program.mmatrix;
 
-        for i in 0..4{
-            let loc=matrixLoc+i;
-            
-            let offset = (i*16) as i32;
+        for i in 0..4 {
+            let loc = matrixLoc + i;
+
+            let offset = (i * 16) as i32;
             // note the stride and offset
-            
+
             ctx.vertex_attrib_pointer_with_i32(
                 loc as u32,
                 4,
@@ -415,18 +379,17 @@ impl AttrMMatrix{
                 offset,
             );
 
-            ctx.vertex_attrib_divisor(loc as u32,1);
+            ctx.vertex_attrib_divisor(loc as u32, 1);
         }
         AttrMMatrixLoaded
     }
 }
 
-
 pub struct AttrPosition;
 #[must_use]
 pub struct AttrPositionLoaded;
-impl AttrPosition{
-    pub fn load(&self,arr:ArrBound<[f32;2]>,prog:&GlProgram)->AttrPositionLoaded{
+impl AttrPosition {
+    pub fn load(&self, arr: ArrBound<[f32; 2]>, prog: &GlProgram) -> AttrPositionLoaded {
         arr.buffer.ctx.vertex_attrib_pointer_with_i32(
             prog.position as u32,
             3,
@@ -441,8 +404,8 @@ impl AttrPosition{
 pub struct AttrNormal;
 pub struct AttrNormalLoaded;
 
-impl AttrNormal{
-    pub fn load(&self,arr:ArrBound<[f32;2]>,prog:&GlProgram)->AttrNormalLoaded{
+impl AttrNormal {
+    pub fn load(&self, arr: ArrBound<[f32; 2]>, prog: &GlProgram) -> AttrNormalLoaded {
         arr.buffer.ctx.vertex_attrib_pointer_with_i32(
             prog.normal as u32,
             3,
@@ -457,8 +420,8 @@ impl AttrNormal{
 
 pub struct AttrTextureCoord;
 pub struct AttrTextureCoordLoaded;
-impl AttrTextureCoord{
-    pub fn load(&self,arr:ArrBound<[f32;2]>,prog:&GlProgram)->AttrTextureCoordLoaded{
+impl AttrTextureCoord {
+    pub fn load(&self, arr: ArrBound<[f32; 2]>, prog: &GlProgram) -> AttrTextureCoordLoaded {
         arr.buffer.ctx.vertex_attrib_pointer_with_i32(
             prog.normal as u32,
             2,
@@ -471,64 +434,91 @@ impl AttrTextureCoord{
     }
 }
 
+fn foo(
+    prog: &GlProgram,
+    b: &mut BindStuff,
+    texture_coord_buffer: &mut Buff<[f32; 2]>,
+    index_buffer: &mut Buff<u16>,
+    tex_buffer: &mut TextureBuffer,
+    position_buffer: &mut Buff<[f32; 2]>,
+    normal_buffer: &mut Buff<[f32; 2]>,
+    mmatrixes: &[[f32; 16]],
+    matrix_buff: &mut Buff<[f32; 16]>,
+) {
+    let ctx=&index_buffer.ctx.clone();
 
-
-
-fn foo(prog:&GlProgram,b:BindStuff,texture_coord_buffer:&mut Buff<[f32;2]>,index_buffer:&mut Buff<u16>,tex_buffer:&mut TextureBuffer,position_buffer:&mut Buff<[f32;2]>,normal_buffer:&mut Buff<[f32;2]>,mmatrixes:&[[f32;16]],matrix_buff:&mut Buff<[f32;16]>){
-    
-
-    let bound_matrix=b.arr.bind(&mut matrix_buff);
+    let mut bound_matrix = b.arr.bind(matrix_buff);
     bound_matrix.update(mmatrixes);
+    let num_instances=mmatrixes.len();
 
-    let matrixes=AttrMMatrix.load(bound_matrix,prog);
+    let matrixes = AttrMMatrix.load(bound_matrix, prog);
 
+    let bound_positions = b.arr.bind(position_buffer);
+    let positions = AttrPosition.load(bound_positions, prog);
 
-    let bound_positions=b.arr.bind(position_buffer);
-    let positions=AttrPosition.load(bound_positions,prog);
-    
-    let bound_normals=b.arr.bind(normal_buffer);
-    let normals=AttrNormal.load(bound_normals,prog);
-    
-    let bound_texcoord=b.arr.bind(texture_coord_buffer);
-    let texcoords=AttrTextureCoord.load(bound_texcoord,prog);
-    
+    let bound_normals = b.arr.bind(normal_buffer);
+    let normals = AttrNormal.load(bound_normals, prog);
 
-    let bound_texture=b.tex.bind(tex_buffer);
-    
-    let loaded_elem=b.elem.bind(index_buffer);
+    let bound_texcoord = b.arr.bind(texture_coord_buffer);
+    let texcoord = AttrTextureCoord.load(bound_texcoord, prog);
 
-    program.draw(Finish{
+    let texture = b.tex.bind(tex_buffer);
+
+    let indexes = b.elem.bind(index_buffer);
+
+    Finish {
         positions,
         normals,
-        texture,
         texcoord,
         matrixes,
-        loaded_elem,
-        bound_texture
-    });
+        indexes,
+        texture,
+        num_instances
+    }.draw(ctx);
 }
 
-pub struct BindStuff{
-    arr:ArrBindPoint,
-    elem:ElemBindPoint,
-    tex:TexBindPoint,
+struct Finish<'a>{
+    positions:AttrPositionLoaded,
+    normals:AttrNormalLoaded,
+    texcoord:AttrTextureCoordLoaded,
+    matrixes:AttrMMatrixLoaded,
+    indexes:ElemBound<'a,u16>,
+    texture:TexBound<'a>,
+    num_instances:usize
+}
+impl<'a> Finish<'a>{
+    fn draw(&self,ctx:&WebGl2RenderingContext){
+        //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
+        let instance_count = self.num_instances as i32;
+        ctx.draw_elements_instanced_with_i32(
+            WebGl2RenderingContext::TRIANGLES,
+            self.indexes.buffer.num_verts as i32,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            0,
+            instance_count,
+        )
+    }
 }
 
-
-
-pub struct Buff<T>{
-    ctx:WebGl2RenderingContext,
-    id:web_sys::WebGlBuffer,
-    _p:std::marker::PhantomData<[T]>,
-    num_verts:usize
+pub struct BindStuff {
+    arr: ArrBindPoint,
+    elem: ElemBindPoint,
+    tex: TexBindPoint,
 }
 
-pub struct ArrBound<'a,T>{
-    a:&'a mut ArrBindPoint,
-    buffer:&'a mut Buff<T>
+pub struct Buff<T> {
+    ctx: WebGl2RenderingContext,
+    id: web_sys::WebGlBuffer,
+    _p: std::marker::PhantomData<[T]>,
+    num_verts: usize,
 }
-impl<'a,T:byte_slice_cast::ToByteSlice> ArrBound<'a,T>{
-    fn update(&mut self,update:&[T]){
+
+pub struct ArrBound<'a, T> {
+    a: &'a mut ArrBindPoint,
+    buffer: &'a mut Buff<T>,
+}
+impl<'a, T: byte_slice_cast::ToByteSlice> ArrBound<'a, T> {
+    fn update(&mut self, update: &[T]) {
         // Now that the image has loaded make copy it to the texture.
         let ctx = &self.buffer.ctx;
 
@@ -538,42 +528,51 @@ impl<'a,T:byte_slice_cast::ToByteSlice> ArrBound<'a,T>{
 
         let points_buf = update.as_byte_slice();
         //TODO allow user to specify static/dynamic
-        ctx.buffer_data_with_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, points_buf, WebGl2RenderingContext::DYNAMIC_DRAW);
+        ctx.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ARRAY_BUFFER,
+            points_buf,
+            WebGl2RenderingContext::DYNAMIC_DRAW,
+        );
     }
 }
 
-pub struct ElemBound<'a,T>{
-    a:&'a mut ElemBindPoint,
-    buffer:&'a mut Buff<T>
+pub struct ElemBound<'a, T> {
+    a: &'a mut ElemBindPoint,
+    buffer: &'a mut Buff<T>,
 }
-pub struct TexBound<'a>{
-    a:&'a mut TexBindPoint,
-    buffer:&'a mut TextureBuffer
+pub struct TexBound<'a> {
+    a: &'a mut TexBindPoint,
+    buffer: &'a mut TextureBuffer,
 }
 pub struct ElemBindPoint;
 pub struct TexBindPoint;
 pub struct ArrBindPoint;
 
-impl ArrBindPoint{
-    fn bind<T>(&mut self,buffer:&mut Buff<T>)->ArrBound<'_,T>{
-        buffer.ctx.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.id));
+impl ArrBindPoint {
+    fn bind<'b,T>(&'b mut self, buffer: &'b mut Buff<T>) -> ArrBound<'b, T> {
+        buffer
+            .ctx
+            .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer.id));
         ArrBound { a: self, buffer }
     }
 }
 
-impl ElemBindPoint{
-    fn bind<T>(&mut self,buffer:&mut Buff<T>)->ElemBound<'_,T>{
-        buffer.ctx.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer.id));
+impl ElemBindPoint {
+    fn bind<'b,T>(&'b mut self, buffer: &'b mut Buff<T>) -> ElemBound<'b, T> {
+        buffer.ctx.bind_buffer(
+            WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+            Some(&buffer.id),
+        );
         ElemBound { a: self, buffer }
     }
 }
 
-
-impl TexBindPoint{
-    fn bind(&mut self,buffer:&mut TextureBuffer)->TexBound<'_>{
-        buffer.ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&buffer.texture));
+impl TexBindPoint {
+    fn bind<'b>(&'b mut self, buffer: &'b mut TextureBuffer) -> TexBound<'b> {
+        buffer
+            .ctx
+            .bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&buffer.texture));
 
         TexBound { a: self, buffer }
     }
 }
-

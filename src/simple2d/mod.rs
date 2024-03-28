@@ -218,7 +218,6 @@ impl<
     }
 }
 
-
 pub trait ComponentType {
     fn component_type() -> u32;
 }
