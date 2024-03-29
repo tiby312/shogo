@@ -361,9 +361,6 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-
-    
-
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self)
             .map_err(|e| {
@@ -372,7 +369,6 @@ impl CtxWrap {
             })
             .unwrap_throw()
     }
-
 
     pub fn draw_clear(&self, color: [f32; 4]) {
         let [a, b, c, d] = color;
@@ -389,13 +385,13 @@ impl CtxWrap {
 /// A simple shader program that allows the user to draw simple primitives.
 ///
 pub struct ShaderSystem {
-    pub square_program: GlProgram,
+    pub program: GlProgram,
     pub ctx: WebGl2RenderingContext,
 }
 
 impl Drop for ShaderSystem {
     fn drop(&mut self) {
-        self.ctx.delete_program(Some(&self.square_program.program));
+        self.ctx.delete_program(Some(&self.program.program));
     }
 }
 
@@ -420,7 +416,7 @@ impl ShaderSystem {
         let square_program = GlProgram::new(ctx)?;
 
         Ok(ShaderSystem {
-            square_program,
+            program: square_program,
             ctx: ctx.clone(),
         })
     }
@@ -467,7 +463,7 @@ impl View<'_> {
         linear: bool,
         lighting: bool,
     ) {
-        self.sys.square_program.draw(shader::Argss {
+        self.sys.program.draw(shader::Argss {
             texture,
             primitive,
             mmatrix: self.matrix,
