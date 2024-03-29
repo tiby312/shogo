@@ -145,6 +145,8 @@ impl TextureBuffer {
     }
 }
 
+
+//TODO remove this. not really needed when using VAO
 pub struct GenericBuffer<T, L, J> {
     buffer: web_sys::WebGlBuffer,
     num_verts: usize,
@@ -199,7 +201,7 @@ impl<
     //     ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
     // }
 
-    
+
     pub fn bind(&self, ctx: &WebGl2RenderingContext) {
         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
     }
