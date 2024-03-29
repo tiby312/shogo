@@ -361,23 +361,7 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-    ///
-    /// Sets up alpha blending and disables depth testing.
-    ///
-    pub fn setup_alpha(&self) {
-        //https://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
-        self.pixel_storei(WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
-        self.enable(WebGl2RenderingContext::BLEND);
 
-        self.blend_func(
-            //WebGl2RenderingContext::SRC_ALPHA,
-            WebGl2RenderingContext::ONE,
-            WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
-        );
-
-        self.enable(WebGl2RenderingContext::DEPTH_TEST);
-        self.enable(WebGl2RenderingContext::CULL_FACE);
-    }
     
 
     pub fn shader_system(&self) -> ShaderSystem {
@@ -417,6 +401,22 @@ impl Drop for ShaderSystem {
 
 impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
+
+        //https://webglfundamentals.org/webgl/lessons/webgl-text-texture.html
+     
+        ctx.pixel_storei(WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+        ctx.enable(WebGl2RenderingContext::BLEND);
+
+        ctx.blend_func(
+            //WebGl2RenderingContext::SRC_ALPHA,
+            WebGl2RenderingContext::ONE,
+            WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
+        );
+
+        ctx.enable(WebGl2RenderingContext::DEPTH_TEST);
+        ctx.enable(WebGl2RenderingContext::CULL_FACE);
+
+
         let square_program = GlProgram::new(ctx)?;
 
         Ok(ShaderSystem {
