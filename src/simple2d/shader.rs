@@ -78,7 +78,6 @@ void main() {
 pub struct Argss<'a> {
     pub texture: &'a TextureBuffer,
     pub res: &'a VaoResult,
-    pub primitive: u32,
     pub mmatrix: &'a [[f32; 16]],
     pub point_size: f32,
     pub grayscale: bool,
@@ -91,7 +90,6 @@ impl GlProgram {
         let Argss {
             texture,
             res,
-            primitive,
             mmatrix,
             point_size,
             grayscale,

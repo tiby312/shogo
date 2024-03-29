@@ -131,8 +131,6 @@ impl TextureBuffer {
             WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
         );
 
-        //log!("send111");
-
         // self.ctx.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
         //     WebGl2RenderingContext::TEXTURE_2D,
         //     0,
@@ -145,81 +143,6 @@ impl TextureBuffer {
         //     Some(image)).unwrap_throw();
     }
 }
-
-// //TODO remove this. not really needed when using VAO
-// pub struct GenericBuffer<T, L, J> {
-//     buffer: web_sys::WebGlBuffer,
-//     num_verts: usize,
-//     ctx: WebGl2RenderingContext,
-//     _p: std::marker::PhantomData<T>,
-//     kind: L,
-//     dynamic: J,
-// }
-
-// impl<
-//         T: byte_slice_cast::ToByteSlice + NumComponent + ComponentType,
-//         L: BufferKind,
-//         J: BufferDyn,
-//     > GenericBuffer<T, L, J>
-// {
-//     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-//         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
-
-//         Ok(GenericBuffer {
-//             buffer,
-//             _p: std::marker::PhantomData,
-//             kind: L::default(),
-//             dynamic: J::default(),
-//             num_verts: 0,
-//             ctx: ctx.clone(),
-//         })
-//     }
-
-//     pub fn setup_attrib<K: ProgramAttrib<NumComponent = T>>(
-//         &self,
-//         att: K,
-//         ctx: &WebGl2RenderingContext,
-//         prog: &GlProgram,
-//     ) {
-//         ctx.vertex_attrib_pointer_with_i32(
-//             att.get_attrib(prog) as u32,
-//             T::num(),
-//             T::component_type(),
-//             false,
-//             0,
-//             0,
-//         );
-//     }
-
-//     // //TODO use
-//     // pub fn attrib_divisor_of_one<K: ProgramAttrib<NumComponent = T>>(
-//     //     &self,
-//     //     att: K,
-//     //     ctx: &WebGl2RenderingContext,
-//     //     prog: &GlProgram,
-//     // ) {
-//     //     ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
-//     // }
-
-//     pub fn bind(&self, ctx: &WebGl2RenderingContext) {
-//         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
-//     }
-
-//     pub fn update(&mut self, vertices: &[T]) {
-//         // Now that the image has loaded make copy it to the texture.
-//         let ctx = &self.ctx;
-
-//         self.num_verts = vertices.len();
-
-//         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
-
-//         use byte_slice_cast::*;
-
-//         let points_buf = vertices.as_byte_slice();
-
-//         ctx.buffer_data_with_u8_array(self.kind.get(), points_buf, self.dynamic.get());
-//     }
-// }
 
 pub trait NumComponent {
     fn num() -> i32;
@@ -278,62 +201,6 @@ impl Mat4Buffer {
 
         ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, points_buf, GL::DYNAMIC_DRAW);
     }
-}
-
-//TODO use this
-//pub type Mat4Buffer = GenericBuffer<[f32; 16], ArrayKind, DynamicKind>;
-
-// pub type TextureCoordBuffer = GenericBuffer<[f32; 2], ArrayKind, StaticKind>;
-// pub type Vert3Buffer = GenericBuffer<[f32; 3], ArrayKind, StaticKind>;
-// pub type IndexBuffer = GenericBuffer<u16, ElementKind, StaticKind>;
-
-// pub trait BufferKind: Default {
-//     fn get(&self) -> u32;
-// }
-
-// #[derive(Default)]
-// pub struct ElementKind;
-// impl BufferKind for ElementKind {
-//     fn get(&self) -> u32 {
-//         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
-//     }
-// }
-// #[derive(Default)]
-// pub struct ArrayKind;
-// impl BufferKind for ArrayKind {
-//     fn get(&self) -> u32 {
-//         WebGl2RenderingContext::ARRAY_BUFFER
-//     }
-// }
-
-// pub trait BufferDyn: Default {
-//     fn get(&self) -> u32;
-// }
-
-// #[derive(Default)]
-// pub struct DynamicKind;
-// impl BufferDyn for DynamicKind {
-//     fn get(&self) -> u32 {
-//         WebGl2RenderingContext::DYNAMIC_DRAW
-//     }
-// }
-// #[derive(Default)]
-// pub struct StaticKind;
-// impl BufferDyn for StaticKind {
-//     fn get(&self) -> u32 {
-//         WebGl2RenderingContext::STATIC_DRAW
-//     }
-// }
-
-struct Args<'a> {
-    pub res: &'a VaoResult,
-    pub primitive: u32,
-    pub texture: &'a TextureBuffer,
-    pub grayscale: bool,
-    pub matrix: &'a [[f32; 16]],
-    pub point_size: f32,
-    pub text: bool,
-    pub lighting: bool,
 }
 
 use wasm_bindgen::{prelude::*, Clamped};
@@ -404,7 +271,6 @@ impl ShaderSystem {
         ctx.enable(WebGl2RenderingContext::BLEND);
 
         ctx.blend_func(
-            //WebGl2RenderingContext::SRC_ALPHA,
             WebGl2RenderingContext::ONE,
             WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
         );
@@ -413,62 +279,19 @@ impl ShaderSystem {
         ctx.enable(WebGl2RenderingContext::CULL_FACE);
 
 
-        let square_program = GlProgram::new(ctx)?;
+        let program = GlProgram::new(ctx)?;
 
         Ok(ShaderSystem {
-            program: square_program,
+            program,
             ctx: ctx.clone(),
         })
     }
 
-    pub fn view2<'a>(&'a mut self, matrix: &'a [[f32; 16]]) -> View<'a> {
-        View { sys: self, matrix }
-    }
-}
-
-pub trait Drawable {
-    fn draw(&self, view: &mut View);
-    fn draw_ext(&self, view: &mut View, grayscale: bool, text: bool, _linear: bool, lighting: bool);
-}
-///
-/// A view to draw in. See [`ShaderSystem::view`]
-///
-#[must_use]
-pub struct View<'a> {
-    sys: &'a mut ShaderSystem,
-    matrix: &'a [[f32; 16]],
-}
-impl View<'_> {
-    pub fn draw_a_thing(&mut self, f: &impl Drawable) {
-        f.draw(self);
-    }
-    pub fn draw_a_thing_ext(
-        &mut self,
-        f: &impl Drawable,
-        grayscale: bool,
-        text: bool,
-        _linear: bool,
-        lighting: bool,
-    ) {
-        f.draw_ext(self, grayscale, text, _linear, lighting);
-    }
-
-    pub fn draw(
-        &mut self,
-        primitive: u32,
-        texture: &TextureBuffer,
-        res: &VaoResult,
-        grayscale: bool,
-        text: bool,
-        linear: bool,
-        lighting: bool,
-    ) {
-        self.sys.program.draw(shader::Argss {
+    pub fn draw(&mut self,res:&VaoResult,texture:&TextureBuffer,mmatrix:&[[f32;16]],grayscale:bool,text:bool,lighting:bool){
+        self.program.draw(shader::Argss {
             texture,
-            primitive,
-            mmatrix: self.matrix,
+            mmatrix,
             res,
-            // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
             grayscale,
             text,
@@ -477,7 +300,6 @@ impl View<'_> {
     }
 
 }
-
 
 
 //TODO why is this here?
