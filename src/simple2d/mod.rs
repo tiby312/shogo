@@ -361,9 +361,6 @@ impl CtxWrap {
         CtxWrap { ctx: a.clone() }
     }
 
-    // pub fn cpu_buffer<T>(&self) -> CpuBuffer<T> {
-    //     CpuBuffer::new()
-    // }
     ///
     /// Sets up alpha blending and disables depth testing.
     ///
@@ -381,19 +378,7 @@ impl CtxWrap {
         self.enable(WebGl2RenderingContext::DEPTH_TEST);
         self.enable(WebGl2RenderingContext::CULL_FACE);
     }
-    // pub fn buffer_dynamic(&self) -> DynamicBuffer {
-    //     DynamicBuffer::new(self).unwrap_throw()
-    // }
-
-    // pub fn buffer_static_clear(&self, a: &mut Vec<Vertex>) -> StaticBuffer {
-    //     let b = self.buffer_static_no_clear(a);
-    //     a.clear();
-    //     b
-    // }
-
-    // pub fn buffer_static_no_clear(&self, a: &[Vertex]) -> StaticBuffer {
-    //     StaticBuffer::new(self, a).unwrap_throw()
-    // }
+    
 
     pub fn shader_system(&self) -> ShaderSystem {
         ShaderSystem::new(self)
@@ -403,11 +388,7 @@ impl CtxWrap {
             })
             .unwrap_throw()
     }
-    // pub fn draw_all(&self, color: [f32; 4], func: impl FnOnce()) {
-    //     self.draw_clear(color);
-    //     func();
-    //     self.flush();
-    // }
+
 
     pub fn draw_clear(&self, color: [f32; 4]) {
         let [a, b, c, d] = color;
@@ -419,26 +400,6 @@ impl CtxWrap {
     }
 }
 
-///
-/// Primitive use to [`ShapeBuilder::rect`]
-///
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
-}
-
-impl From<axgeom::Rect<f32>> for Rect {
-    fn from(a: axgeom::Rect<f32>) -> Rect {
-        Rect {
-            x: a.x.start,
-            y: a.y.start,
-            w: a.x.end - a.x.start,
-            h: a.y.end - a.y.start,
-        }
-    }
-}
 
 ///
 /// A simple shader program that allows the user to draw simple primitives.
@@ -464,41 +425,6 @@ impl ShaderSystem {
         })
     }
 
-    fn draw(&mut self, args: Args) {
-        let Args {
-            primitive,
-            texture,
-            matrix,
-            point_size,
-            res,
-            grayscale,
-            text,
-            lighting, //world_inverse_transpose
-        } = args;
-
-        //assert_eq!(verts.ctx, self.ctx);
-
-        self.square_program.draw(shader::Argss {
-            texture,
-            primitive,
-            mmatrix: matrix,
-            point_size,
-            res,
-            grayscale,
-            text,
-            lighting,
-        });
-    }
-
-    ///
-    /// when using [`View`],
-    /// topleft corner maps to `[0,0]`
-    /// borrom right maps to `dim`
-    ///
-    // pub fn view<'a>(&'a mut self, matrix: &'a cgmath::Matrix4<f32>) -> View<'a> {
-    //     self.view2(matrix.as_ref())
-    // }
-
     pub fn view2<'a>(&'a mut self, matrix: &'a [[f32; 16]]) -> View<'a> {
         View { sys: self, matrix }
     }
@@ -515,9 +441,6 @@ pub trait Drawable {
 pub struct View<'a> {
     sys: &'a mut ShaderSystem,
     matrix: &'a [[f32; 16]],
-    // world_inverse_transpose:&'a [f32;16],
-    // offset: [f32; 2],
-    // dim: [f32; 2],
 }
 impl View<'_> {
     pub fn draw_a_thing(&mut self, f: &impl Drawable) {
@@ -533,15 +456,7 @@ impl View<'_> {
     ) {
         f.draw_ext(self, grayscale, text, _linear, lighting);
     }
-    // pub fn draw_squares(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
-    //     self.sys.draw(Args {
-    //         verts,
-    //         primitive: WebGl2RenderingContext::POINTS,
-    //         matrix:self.matrix,
-    //         color,
-    //         point_size,
-    //     })
-    // }
+
     pub fn draw(
         &mut self,
         primitive: u32,
@@ -552,10 +467,10 @@ impl View<'_> {
         linear: bool,
         lighting: bool,
     ) {
-        self.sys.draw(Args {
+        self.sys.square_program.draw(shader::Argss {
             texture,
             primitive,
-            matrix: self.matrix,
+            mmatrix: self.matrix,
             res,
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
@@ -565,123 +480,11 @@ impl View<'_> {
         })
     }
 
-    // pub fn draw_circles(&mut self, verts: &Buffer, point_size: f32, color: &[f32; 4]) {
-    //     self.sys.draw(Args {
-    //         verts,
-    //         primitive: WebGl2RenderingContext::POINTS,
-    //         matrix:self.matrix,
-    //         as_square: false,
-    //         color,
-    //         point_size,
-    //     })
-    // }
 }
 
-pub fn shapes(a: &mut Vec<Vertex>) -> ShapeBuilder {
-    ShapeBuilder::new(a)
-}
-pub struct ShapeBuilder<'a> {
-    inner: &'a mut Vec<Vertex>,
-}
 
-impl<'a> std::ops::Deref for ShapeBuilder<'a> {
-    type Target = Vec<Vertex>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl<'a> ShapeBuilder<'a> {
-    pub fn clear(&mut self) {
-        self.inner.clear();
-    }
-    pub fn new(inner: &'a mut Vec<Vertex>) -> Self {
-        ShapeBuilder { inner }
-    }
-
-    pub fn dot_line(
-        &mut self,
-        radius: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) -> &mut Self {
-        let buffer = &mut self.inner;
-        use axgeom::*;
-        let start = Vec2::from(start.into());
-        let end = Vec2::from(end.into());
-
-        let offset = end - start;
-        let dis_sqr = offset.magnitude2();
-        let dis = dis_sqr.sqrt();
-
-        let norm = offset / dis;
-
-        let num = (dis / (radius)).floor() as usize;
-
-        for i in 0..num {
-            let pos = start + norm * (i as f32) * radius;
-            buffer.push([pos.x, pos.y, 0.0]);
-        }
-        self
-    }
-
-    pub fn line(
-        &mut self,
-        radius: f32,
-        start: impl Into<[f32; 2]>,
-        end: impl Into<[f32; 2]>,
-    ) -> &mut Self {
-        let buffer = &mut self.inner;
-        use axgeom::*;
-        let start = Vec2::from(start.into());
-        let end = Vec2::from(end.into());
-
-        let offset = end - start;
-        let k = offset.rotate_90deg_right().normalize_to(1.0);
-        let start1 = start + k * radius;
-        let start2 = start - k * radius;
-
-        let end1 = end + k * radius;
-        let end2 = end - k * radius;
-
-        let arr: [Vertex; 6] = [
-            [start1.x, start1.y, 0.0],
-            [start2.x, start2.y, 0.0],
-            [end1.x, end1.y, 0.0],
-            [start2.x, start2.y, 0.0],
-            [end1.x, end1.y, 0.0],
-            [end2.x, end2.y, 0.0],
-        ];
-
-        buffer.extend(arr);
-        self
-    }
-
-    pub fn rect(&mut self, rect: impl Into<Rect>, depth: f32) -> &mut Self {
-        use axgeom::vec2;
-        let rect: Rect = rect.into();
-
-        let buffer = &mut self.inner;
-        let start = vec2(rect.x, rect.y);
-        let dim = vec2(rect.w, rect.h);
-
-        let arr: [Vertex; 6] = [
-            to_vertex(start, depth),
-            to_vertex(start + vec2(dim.x, 0.0), depth),
-            to_vertex(start + vec2(0.0, dim.y), depth),
-            to_vertex(start + vec2(dim.x, 0.0), depth),
-            to_vertex(start + dim, depth),
-            to_vertex(start + vec2(0.0, dim.y), depth),
-        ];
-
-        buffer.extend(arr);
-        self
-    }
-}
-fn to_vertex(a: axgeom::Vec2<f32>, depth: f32) -> Vertex {
-    [a.x, a.y, depth]
-}
-
+//TODO why is this here?
 ///
 /// Convert a mouse event to a coordinate for simple2d.
 ///
