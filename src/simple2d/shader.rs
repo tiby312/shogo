@@ -75,7 +75,7 @@ void main() {
 
 pub struct Argss<'a> {
     pub texture: &'a TextureBuffer,
-    pub res: &'a VaoResult,
+    pub res: &'a VaoData,
     pub mmatrix: &'a [[f32; 16]],
     pub point_size: f32,
     pub grayscale: bool,
@@ -207,8 +207,6 @@ impl Mat4Buffer {
 
         self.num_verts = vertices.len();
 
-        ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
-
         use byte_slice_cast::*;
 
         let points_buf = vertices.as_byte_slice();
@@ -216,11 +214,11 @@ impl Mat4Buffer {
         ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, points_buf, GL::DYNAMIC_DRAW);
     }
     pub fn setup_attrib_special(&self, ctx: &WebGl2RenderingContext, program: &GlProgram) {
-        let bytesPerMatrix = 4 * 16;
-        let matrixLoc = program.mmatrix;
+        let bytes_per_matrix = 4 * 16;
+        let matrix_loc = program.mmatrix;
 
         for i in 0..4 {
-            let loc = matrixLoc + i;
+            let loc = matrix_loc + i;
 
             let offset = (i * 16) as i32;
             // note the stride and offset
@@ -230,7 +228,7 @@ impl Mat4Buffer {
                 4,
                 WebGl2RenderingContext::FLOAT,
                 false,
-                bytesPerMatrix,
+                bytes_per_matrix,
                 offset,
             );
 
@@ -241,7 +239,7 @@ impl Mat4Buffer {
 
 
 //TODO destroy buffers in destructor
-pub struct VaoResult {
+pub struct VaoData {
     num_index: usize,
     num_vertex: usize,
     index: WebGlBuffer,
@@ -251,7 +249,7 @@ pub struct VaoResult {
     vao: web_sys::WebGlVertexArrayObject,
 }
 
-pub fn create_vao2(
+pub fn create_vao(
     ctx: &WebGl2RenderingContext,
     program: &GlProgram,
     tex_coords: &[[f32; 2]],
@@ -259,7 +257,7 @@ pub fn create_vao2(
     normals: &[[f32; 3]],
     indices: &[u16],
     mat: &Mat4Buffer,
-) -> VaoResult {
+) -> VaoData {
     use byte_slice_cast::*;
 
     let vao = ctx.create_vertex_array().unwrap();
@@ -326,7 +324,7 @@ pub fn create_vao2(
 
     ctx.bind_vertex_array(None);
 
-    VaoResult {
+    VaoData {
         num_index: indices.len(),
         num_vertex: positions.len(),
         index,

@@ -230,7 +230,7 @@ impl ShaderSystem {
         })
     }
 
-    pub fn draw(&mut self,res:&VaoResult,texture:&TextureBuffer,mmatrix:&[[f32;16]],grayscale:bool,text:bool,lighting:bool){
+    pub fn draw(&mut self,res:&VaoData,texture:&TextureBuffer,mmatrix:&[[f32;16]],grayscale:bool,text:bool,lighting:bool){
         self.program.draw(shader::Argss {
             texture,
             mmatrix,
