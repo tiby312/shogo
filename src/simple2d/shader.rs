@@ -1,4 +1,3 @@
-use gloo::console::console_dbg;
 use web_sys::WebGlBuffer;
 use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
@@ -7,7 +6,6 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 use WebGl2RenderingContext as GL;
 
 use super::TextureBuffer;
-use super::*;
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
 precision mediump float;
@@ -185,7 +183,38 @@ impl GlProgram {
     }
 }
 
+pub struct Mat4Buffer {
+    buffer: WebGlBuffer,
+    num_verts: usize,
+    ctx: GL,
+}
 impl Mat4Buffer {
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+
+        Ok(Mat4Buffer {
+            buffer,
+            num_verts: 0,
+            ctx: ctx.clone(),
+        })
+    }
+    pub fn bind(&self, ctx: &WebGl2RenderingContext) {
+        ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
+    }
+    pub fn update(&mut self, vertices: &[[f32; 16]]) {
+        // Now that the image has loaded make copy it to the texture.
+        let ctx = &self.ctx;
+
+        self.num_verts = vertices.len();
+
+        ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
+
+        use byte_slice_cast::*;
+
+        let points_buf = vertices.as_byte_slice();
+
+        ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, points_buf, GL::DYNAMIC_DRAW);
+    }
     pub fn setup_attrib_special(&self, ctx: &WebGl2RenderingContext, program: &GlProgram) {
         let bytesPerMatrix = 4 * 16;
         let matrixLoc = program.mmatrix;
@@ -368,5 +397,33 @@ fn link_program(
         Err(context
             .get_program_info_log(&program)
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
+    }
+}
+
+
+
+
+trait NumComponent {
+    fn num() -> i32;
+}
+impl NumComponent for [f32; 2] {
+    fn num() -> i32 {
+        2
+    }
+}
+impl NumComponent for [f32; 3] {
+    fn num() -> i32 {
+        3
+    }
+}
+
+impl NumComponent for [f32; 16] {
+    fn num() -> i32 {
+        16
+    }
+}
+impl NumComponent for u16 {
+    fn num() -> i32 {
+        1
     }
 }
