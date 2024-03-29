@@ -102,7 +102,7 @@ impl GlProgram {
             lighting,
         } = argss;
 
-        let context = &res.tex_coord.ctx;
+        let context = &self.ctx;
 
         context.use_program(Some(&self.program));
 
@@ -178,6 +178,7 @@ impl GlProgram {
         let mmatrix = mmatrix as u32;
         
         Ok(GlProgram {
+            ctx:context.clone(),
             program,
             mmatrix,
             point_size,
@@ -260,7 +261,8 @@ impl ProgramAttrib for Normal {
 pub struct VaoResult {
     index: WebGlBuffer,
     num_index:usize,
-    tex_coord: TextureCoordBuffer,
+    num_vertex:usize,
+    tex_coord: WebGlBuffer,
     //position: Vert3Buffer,
     position:web_sys::WebGlBuffer,
     normal: WebGlBuffer,
@@ -289,11 +291,18 @@ pub fn create_vao2(
         ctx.enable_vertex_attrib_array(loc);
     }
 
-    let mut tex_coord = TextureCoordBuffer::new(ctx).unwrap_throw();
-    tex_coord.update(tex_coords);
-    tex_coord.bind(ctx);
-    tex_coord.setup_attrib(TexCoord, ctx, program);
 
+    let tex_coord = ctx.create_buffer().unwrap();
+    ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&tex_coord));
+    ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, tex_coords.as_byte_slice(), GL::STATIC_DRAW);
+    ctx.vertex_attrib_pointer_with_i32(
+        program.texcoord as u32,
+        <[f32;2]>::num(),
+        GL::FLOAT,
+        false,
+        0,
+        0,
+    );
 
 
     let position = ctx.create_buffer().unwrap();
@@ -335,6 +344,7 @@ pub fn create_vao2(
 
     VaoResult {
         num_index:indices.len(),
+        num_vertex:positions.len(),
         index,
         tex_coord,
         position,
@@ -353,6 +363,7 @@ pub struct GlProgram {
     normal: u32,
     text: WebGlUniformLocation,
     pub matrix_buffer: Mat4Buffer,
+    pub ctx:WebGl2RenderingContext
 }
 
 fn compile_shader(
