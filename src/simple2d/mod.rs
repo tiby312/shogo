@@ -6,7 +6,7 @@
 //!
 use gloo::console::log;
 use web_sys::WebGl2RenderingContext;
-mod shader;
+pub mod shader;
 
 use shader::*;
 
@@ -305,15 +305,12 @@ impl BufferDyn for StaticKind {
 }
 
 struct Args<'a> {
-    pub verts: &'a Vert3Buffer,
-    pub indexes: Option<&'a IndexBuffer>,
+    pub res: &'a VaoResult,
     pub primitive: u32,
     pub texture: &'a TextureBuffer,
-    pub texture_coords: &'a TextureCoordBuffer,
     pub grayscale: bool,
     pub matrix: &'a [[f32; 16]],
     pub point_size: f32,
-    pub normals: &'a Vert3Buffer,
     pub text: bool,
     pub lighting: bool,
 }
@@ -426,8 +423,8 @@ impl From<axgeom::Rect<f32>> for Rect {
 /// A simple shader program that allows the user to draw simple primitives.
 ///
 pub struct ShaderSystem {
-    square_program: GlProgram,
-    ctx: WebGl2RenderingContext,
+    pub square_program: GlProgram,
+    pub ctx: WebGl2RenderingContext,
 }
 
 impl Drop for ShaderSystem {
@@ -440,6 +437,7 @@ impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
         let square_program = GlProgram::new(ctx)?;
 
+        let mats = Mat4Buffer::new(ctx)?;
         Ok(ShaderSystem {
             square_program,
             ctx: ctx.clone(),
@@ -448,30 +446,24 @@ impl ShaderSystem {
 
     fn draw(&mut self, args: Args) {
         let Args {
-            verts,
             primitive,
             texture,
-            texture_coords,
             matrix,
-            indexes,
             point_size,
-            normals,
+            res,
             grayscale,
             text,
             lighting, //world_inverse_transpose
         } = args;
 
-        assert_eq!(verts.ctx, self.ctx);
+        //assert_eq!(verts.ctx, self.ctx);
 
         self.square_program.draw(shader::Argss {
             texture,
-            texture_coords,
-            indexes,
-            position: verts,
             primitive,
             mmatrix: matrix,
             point_size,
-            normals,
+            res,
             grayscale,
             text,
             lighting,
@@ -534,10 +526,7 @@ impl View<'_> {
         &mut self,
         primitive: u32,
         texture: &TextureBuffer,
-        texture_coords: &TextureCoordBuffer,
-        verts: &Vert3Buffer,
-        indexes: Option<&IndexBuffer>,
-        normals: &Vert3Buffer,
+        res: &VaoResult,
         grayscale: bool,
         text: bool,
         linear: bool,
@@ -545,12 +534,9 @@ impl View<'_> {
     ) {
         self.sys.draw(Args {
             texture,
-            texture_coords,
-            verts,
             primitive,
             matrix: self.matrix,
-            indexes,
-            normals,
+            res,
             // world_inverse_transpose:self.world_inverse_transpose,
             point_size: 1.0,
             grayscale,

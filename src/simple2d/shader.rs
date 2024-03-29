@@ -1,3 +1,4 @@
+use gloo::console::console_dbg;
 use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
@@ -76,10 +77,7 @@ void main() {
 
 pub struct Argss<'a> {
     pub texture: &'a TextureBuffer,
-    pub texture_coords: &'a TextureCoordBuffer,
-    pub indexes: Option<&'a IndexBuffer>,
-    pub position: &'a Vert3Buffer,
-    pub normals: &'a Vert3Buffer,
+    pub res: &'a VaoResult,
     pub primitive: u32,
     pub mmatrix: &'a [[f32; 16]],
     pub point_size: f32,
@@ -92,10 +90,7 @@ impl GlProgram {
     pub fn draw(&mut self, argss: Argss) {
         let Argss {
             texture,
-            texture_coords,
-            indexes,
-            position,
-            normals,
+            res,
             primitive,
             mmatrix,
             point_size,
@@ -103,21 +98,23 @@ impl GlProgram {
             text,
             lighting,
         } = argss;
-        if position.num_verts == 0 {
-            return;
-        }
 
-        let context = &position.ctx;
+        let context = &res.position.ctx;
 
         context.use_program(Some(&self.program));
 
         self.matrix_buffer.update(mmatrix);
-        self.matrix_buffer.bind(context);
-        self.matrix_buffer.setup_attrib_special(context, self);
-        // self.matrix_buffer.setup_attrib(MMatrix,context,self);
-        // self.matrix_buffer.attrib_divisor_of_one(MMatrix, context, self);
 
-        //context.uniform_matrix4fv_with_f32_array(Some(&self.mmatrix), false, mmatrix);
+        texture.bind(context);
+
+        context.bind_vertex_array(Some(&res.vao));
+
+        // res.position.bind(context);
+        // res.index.bind(context);
+        // res.tex_coord.bind(context);
+        // res.normal.bind(context);
+
+        //let grayscale=true;
 
         let kk: i32 = if grayscale { 1 } else { 0 };
         context.uniform1i(Some(&self.grayscale), kk);
@@ -133,31 +130,30 @@ impl GlProgram {
         context.uniform1i(Some(&self.text), kk);
         context.uniform1f(Some(&self.point_size), point_size);
 
-        texture_coords.bind(context);
-        texture_coords.setup_attrib(TexCoord, context, self);
+        //console_dbg!("{}    {}",res.position.num_verts,mmatrix.len());
+        //context.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLES, 0, res.index.num_verts as i32, mmatrix.len() as i32);
+        context.draw_elements_instanced_with_i32(
+            WebGl2RenderingContext::TRIANGLES,
+            res.index.num_verts as i32,
+            WebGl2RenderingContext::UNSIGNED_SHORT,
+            0,
+            mmatrix.len() as i32,
+        );
 
-        position.bind(context);
-        position.setup_attrib(Position3, context, self);
-
-        normals.bind(context);
-        normals.setup_attrib(Normal, context, self);
-
-        texture.bind(context);
-
-        if let Some(indexes) = indexes {
-            indexes.bind(context);
-            //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
-            let instance_count = mmatrix.len() as i32;
-            context.draw_elements_instanced_with_i32(
-                primitive,
-                indexes.num_verts as i32,
-                WebGl2RenderingContext::UNSIGNED_SHORT,
-                0,
-                instance_count,
-            )
-        } else {
-            context.draw_arrays(primitive, 0, position.num_verts as i32)
-        }
+        // if let Some(indexes) = indexes {
+        //     indexes.bind(context);
+        //     //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
+        //     let instance_count = mmatrix.len() as i32;
+        //     context.draw_elements_instanced_with_i32(
+        //         primitive,
+        //         indexes.num_verts as i32,
+        //         WebGl2RenderingContext::UNSIGNED_SHORT,
+        //         0,
+        //         instance_count,
+        //     )
+        // } else {
+        //     context.draw_arrays(primitive, 0, position.num_verts as i32)
+        // }
     }
 
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, String> {
@@ -204,16 +200,6 @@ impl GlProgram {
         let texcoord = texcoord as u32;
         let mmatrix = mmatrix as u32;
         //context.enable_vertex_attrib_array(mmatrix);
-        for i in 0..4 {
-            let loc = mmatrix + i;
-            context.enable_vertex_attrib_array(loc);
-        }
-
-        context.enable_vertex_attrib_array(texcoord);
-
-        context.enable_vertex_attrib_array(position);
-
-        context.enable_vertex_attrib_array(normal);
 
         Ok(GlProgram {
             program,
@@ -294,49 +280,69 @@ impl ProgramAttrib for Normal {
     }
 }
 
-
-
-pub struct VaoResult{
+pub struct VaoResult {
     index: IndexBuffer,
     tex_coord: TextureCoordBuffer,
     position: Vert3Buffer,
     normal: Vert3Buffer,
-    vao:web_sys::WebGlVertexArrayObject
+    vao: web_sys::WebGlVertexArrayObject,
 }
 
-pub fn create_vao2(ctx:&WebGl2RenderingContext
-,program:&GlProgram,tex_coords:&[[f32; 2]],positions:&[[f32;3]],normals:&[[f32;3]],indices:&[u16],mat:&Mat4Buffer)->VaoResult{
-
-    let vao=ctx.create_vertex_array().unwrap();
+pub fn create_vao2(
+    ctx: &WebGl2RenderingContext,
+    program: &GlProgram,
+    tex_coords: &[[f32; 2]],
+    positions: &[[f32; 3]],
+    normals: &[[f32; 3]],
+    indices: &[u16],
+    mat: &Mat4Buffer,
+) -> VaoResult {
+    let vao = ctx.create_vertex_array().unwrap();
     ctx.bind_vertex_array(Some(&vao));
+
+    ctx.enable_vertex_attrib_array(program.texcoord);
+
+    ctx.enable_vertex_attrib_array(program.position);
+
+    ctx.enable_vertex_attrib_array(program.normal);
+
+    for i in 0..4 {
+        let loc = program.mmatrix + i;
+        ctx.enable_vertex_attrib_array(loc);
+    }
 
     let mut tex_coord = TextureCoordBuffer::new(ctx).unwrap_throw();
     tex_coord.update(tex_coords);
+    tex_coord.bind(ctx);
     tex_coord.setup_attrib(TexCoord, ctx, program);
-
 
     let mut position = Vert3Buffer::new(ctx).unwrap_throw();
     position.update(&positions);
+    position.bind(ctx);
     position.setup_attrib(Position3, ctx, program);
 
     let mut normal = Vert3Buffer::new(ctx).unwrap_throw();
     normal.update(&normals);
+    normal.bind(ctx);
     normal.setup_attrib(Normal, ctx, program);
-
 
     mat.bind(ctx);
     mat.setup_attrib_special(ctx, program);
-        
-    let mut index=IndexBuffer::new(ctx).unwrap_throw();
+
+    let mut index = IndexBuffer::new(ctx).unwrap_throw();
     index.update(&indices);
     index.bind(ctx);
 
     ctx.bind_vertex_array(None);
 
-    VaoResult { index, tex_coord, position, normal,vao }
+    VaoResult {
+        index,
+        tex_coord,
+        position,
+        normal,
+        vao,
+    }
 }
-
-
 
 pub struct GlProgram {
     pub(crate) program: WebGlProgram,
@@ -347,7 +353,7 @@ pub struct GlProgram {
     texcoord: u32,
     normal: u32,
     text: WebGlUniformLocation,
-    matrix_buffer: Mat4Buffer,
+    pub matrix_buffer: Mat4Buffer,
 }
 
 fn compile_shader(
