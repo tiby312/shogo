@@ -109,12 +109,6 @@ impl GlProgram {
 
         context.bind_vertex_array(Some(&res.vao));
 
-        // res.position.bind(context);
-        // res.index.bind(context);
-        // res.tex_coord.bind(context);
-        // res.normal.bind(context);
-
-        //let grayscale=true;
 
         let kk: i32 = if grayscale { 1 } else { 0 };
         context.uniform1i(Some(&self.grayscale), kk);
@@ -130,8 +124,6 @@ impl GlProgram {
         context.uniform1i(Some(&self.text), kk);
         context.uniform1f(Some(&self.point_size), point_size);
 
-        //console_dbg!("{}    {}",res.position.num_verts,mmatrix.len());
-        //context.draw_arrays_instanced(WebGl2RenderingContext::TRIANGLES, 0, res.index.num_verts as i32, mmatrix.len() as i32);
         context.draw_elements_instanced_with_i32(
             WebGl2RenderingContext::TRIANGLES,
             res.index.num_verts as i32,
@@ -140,20 +132,6 @@ impl GlProgram {
             mmatrix.len() as i32,
         );
 
-        // if let Some(indexes) = indexes {
-        //     indexes.bind(context);
-        //     //context.draw_elements_with_i32(primitive, indexes.num_verts as i32,WebGl2RenderingContext::UNSIGNED_SHORT,0);
-        //     let instance_count = mmatrix.len() as i32;
-        //     context.draw_elements_instanced_with_i32(
-        //         primitive,
-        //         indexes.num_verts as i32,
-        //         WebGl2RenderingContext::UNSIGNED_SHORT,
-        //         0,
-        //         instance_count,
-        //     )
-        // } else {
-        //     context.draw_arrays(primitive, 0, position.num_verts as i32)
-        // }
     }
 
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, String> {
@@ -175,10 +153,6 @@ impl GlProgram {
             .get_uniform_location(&program, "text")
             .ok_or_else(|| "uniform err".to_string())?;
 
-        // let mmatrix = context
-        //     .get_uniform_location(&program, "mmatrix")
-        //     .ok_or_else(|| "uniform err".to_string())?;
-
         let point_size = context
             .get_uniform_location(&program, "point_size")
             .ok_or_else(|| "uniform err".to_string())?;
@@ -199,8 +173,7 @@ impl GlProgram {
         let normal = normal as u32;
         let texcoord = texcoord as u32;
         let mmatrix = mmatrix as u32;
-        //context.enable_vertex_attrib_array(mmatrix);
-
+        
         Ok(GlProgram {
             program,
             mmatrix,
