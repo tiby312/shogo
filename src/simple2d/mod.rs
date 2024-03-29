@@ -5,10 +5,11 @@
 //! The color can also be changed for all vertices in a buffer.
 //!
 use gloo::console::log;
-use web_sys::WebGl2RenderingContext;
+use web_sys::{WebGl2RenderingContext, WebGlBuffer};
 pub mod shader;
 
 use shader::*;
+use WebGl2RenderingContext as GL;
 
 pub type Vertex = [f32; 3];
 
@@ -145,98 +146,80 @@ impl TextureBuffer {
     }
 }
 
+// //TODO remove this. not really needed when using VAO
+// pub struct GenericBuffer<T, L, J> {
+//     buffer: web_sys::WebGlBuffer,
+//     num_verts: usize,
+//     ctx: WebGl2RenderingContext,
+//     _p: std::marker::PhantomData<T>,
+//     kind: L,
+//     dynamic: J,
+// }
 
-//TODO remove this. not really needed when using VAO
-pub struct GenericBuffer<T, L, J> {
-    buffer: web_sys::WebGlBuffer,
-    num_verts: usize,
-    ctx: WebGl2RenderingContext,
-    _p: std::marker::PhantomData<T>,
-    kind: L,
-    dynamic: J,
-}
+// impl<
+//         T: byte_slice_cast::ToByteSlice + NumComponent + ComponentType,
+//         L: BufferKind,
+//         J: BufferDyn,
+//     > GenericBuffer<T, L, J>
+// {
+//     pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+//         let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
 
-impl<
-        T: byte_slice_cast::ToByteSlice + NumComponent + ComponentType,
-        L: BufferKind,
-        J: BufferDyn,
-    > GenericBuffer<T, L, J>
-{
-    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
-        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+//         Ok(GenericBuffer {
+//             buffer,
+//             _p: std::marker::PhantomData,
+//             kind: L::default(),
+//             dynamic: J::default(),
+//             num_verts: 0,
+//             ctx: ctx.clone(),
+//         })
+//     }
 
-        Ok(GenericBuffer {
-            buffer,
-            _p: std::marker::PhantomData,
-            kind: L::default(),
-            dynamic: J::default(),
-            num_verts: 0,
-            ctx: ctx.clone(),
-        })
-    }
+//     pub fn setup_attrib<K: ProgramAttrib<NumComponent = T>>(
+//         &self,
+//         att: K,
+//         ctx: &WebGl2RenderingContext,
+//         prog: &GlProgram,
+//     ) {
+//         ctx.vertex_attrib_pointer_with_i32(
+//             att.get_attrib(prog) as u32,
+//             T::num(),
+//             T::component_type(),
+//             false,
+//             0,
+//             0,
+//         );
+//     }
 
-    pub fn setup_attrib<K: ProgramAttrib<NumComponent = T>>(
-        &self,
-        att: K,
-        ctx: &WebGl2RenderingContext,
-        prog: &GlProgram,
-    ) {
-        ctx.vertex_attrib_pointer_with_i32(
-            att.get_attrib(prog) as u32,
-            T::num(),
-            T::component_type(),
-            false,
-            0,
-            0,
-        );
-    }
+//     // //TODO use
+//     // pub fn attrib_divisor_of_one<K: ProgramAttrib<NumComponent = T>>(
+//     //     &self,
+//     //     att: K,
+//     //     ctx: &WebGl2RenderingContext,
+//     //     prog: &GlProgram,
+//     // ) {
+//     //     ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
+//     // }
 
-    // //TODO use
-    // pub fn attrib_divisor_of_one<K: ProgramAttrib<NumComponent = T>>(
-    //     &self,
-    //     att: K,
-    //     ctx: &WebGl2RenderingContext,
-    //     prog: &GlProgram,
-    // ) {
-    //     ctx.vertex_attrib_divisor(att.get_attrib(prog) as u32, 1)
-    // }
+//     pub fn bind(&self, ctx: &WebGl2RenderingContext) {
+//         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
+//     }
 
+//     pub fn update(&mut self, vertices: &[T]) {
+//         // Now that the image has loaded make copy it to the texture.
+//         let ctx = &self.ctx;
 
-    pub fn bind(&self, ctx: &WebGl2RenderingContext) {
-        ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
-    }
+//         self.num_verts = vertices.len();
 
-    pub fn update(&mut self, vertices: &[T]) {
-        // Now that the image has loaded make copy it to the texture.
-        let ctx = &self.ctx;
+//         ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
 
-        self.num_verts = vertices.len();
+//         use byte_slice_cast::*;
 
-        ctx.bind_buffer(self.kind.get(), Some(&self.buffer));
+//         let points_buf = vertices.as_byte_slice();
 
-        use byte_slice_cast::*;
-
-        let points_buf = vertices.as_byte_slice();
-
-        ctx.buffer_data_with_u8_array(self.kind.get(), points_buf, self.dynamic.get());
-    }
-}
-
-pub trait ComponentType {
-    fn component_type() -> u32;
-}
-
-impl<const K: usize> ComponentType for [f32; K] {
-    fn component_type() -> u32 {
-        WebGl2RenderingContext::FLOAT
-    }
-}
-
-impl ComponentType for u16 {
-    fn component_type() -> u32 {
-        WebGl2RenderingContext::UNSIGNED_SHORT
-    }
-}
+//         ctx.buffer_data_with_u8_array(self.kind.get(), points_buf, self.dynamic.get());
+//     }
+// }
 
 pub trait NumComponent {
     fn num() -> i32;
@@ -263,50 +246,84 @@ impl NumComponent for u16 {
     }
 }
 
+pub struct Mat4Buffer {
+    buffer: WebGlBuffer,
+    num_verts: usize,
+    ctx: GL,
+}
+impl Mat4Buffer {
+    pub fn new(ctx: &WebGl2RenderingContext) -> Result<Self, String> {
+        let buffer = ctx.create_buffer().ok_or("failed to create buffer")?;
+
+        Ok(Mat4Buffer {
+            buffer,
+            num_verts: 0,
+            ctx: ctx.clone(),
+        })
+    }
+    pub fn bind(&self, ctx: &WebGl2RenderingContext) {
+        ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
+    }
+    pub fn update(&mut self, vertices: &[[f32; 16]]) {
+        // Now that the image has loaded make copy it to the texture.
+        let ctx = &self.ctx;
+
+        self.num_verts = vertices.len();
+
+        ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&self.buffer));
+
+        use byte_slice_cast::*;
+
+        let points_buf = vertices.as_byte_slice();
+
+        ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, points_buf, GL::DYNAMIC_DRAW);
+    }
+}
+
 //TODO use this
-pub type Mat4Buffer = GenericBuffer<[f32; 16], ArrayKind, DynamicKind>;
+//pub type Mat4Buffer = GenericBuffer<[f32; 16], ArrayKind, DynamicKind>;
 
-pub type TextureCoordBuffer = GenericBuffer<[f32; 2], ArrayKind, StaticKind>;
-pub type Vert3Buffer = GenericBuffer<[f32; 3], ArrayKind, StaticKind>;
-pub type IndexBuffer = GenericBuffer<u16, ElementKind, StaticKind>;
+// pub type TextureCoordBuffer = GenericBuffer<[f32; 2], ArrayKind, StaticKind>;
+// pub type Vert3Buffer = GenericBuffer<[f32; 3], ArrayKind, StaticKind>;
+// pub type IndexBuffer = GenericBuffer<u16, ElementKind, StaticKind>;
 
-pub trait BufferKind: Default {
-    fn get(&self) -> u32;
-}
+// pub trait BufferKind: Default {
+//     fn get(&self) -> u32;
+// }
 
-#[derive(Default)]
-pub struct ElementKind;
-impl BufferKind for ElementKind {
-    fn get(&self) -> u32 {
-        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
-    }
-}
-#[derive(Default)]
-pub struct ArrayKind;
-impl BufferKind for ArrayKind {
-    fn get(&self) -> u32 {
-        WebGl2RenderingContext::ARRAY_BUFFER
-    }
-}
+// #[derive(Default)]
+// pub struct ElementKind;
+// impl BufferKind for ElementKind {
+//     fn get(&self) -> u32 {
+//         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER
+//     }
+// }
+// #[derive(Default)]
+// pub struct ArrayKind;
+// impl BufferKind for ArrayKind {
+//     fn get(&self) -> u32 {
+//         WebGl2RenderingContext::ARRAY_BUFFER
+//     }
+// }
 
-pub trait BufferDyn: Default {
-    fn get(&self) -> u32;
-}
+// pub trait BufferDyn: Default {
+//     fn get(&self) -> u32;
+// }
 
-#[derive(Default)]
-pub struct DynamicKind;
-impl BufferDyn for DynamicKind {
-    fn get(&self) -> u32 {
-        WebGl2RenderingContext::DYNAMIC_DRAW
-    }
-}
-#[derive(Default)]
-pub struct StaticKind;
-impl BufferDyn for StaticKind {
-    fn get(&self) -> u32 {
-        WebGl2RenderingContext::STATIC_DRAW
-    }
-}
+// #[derive(Default)]
+// pub struct DynamicKind;
+// impl BufferDyn for DynamicKind {
+//     fn get(&self) -> u32 {
+//         WebGl2RenderingContext::DYNAMIC_DRAW
+//     }
+// }
+// #[derive(Default)]
+// pub struct StaticKind;
+// impl BufferDyn for StaticKind {
+//     fn get(&self) -> u32 {
+//         WebGl2RenderingContext::STATIC_DRAW
+//     }
+// }
 
 struct Args<'a> {
     pub res: &'a VaoResult,

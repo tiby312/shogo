@@ -6,10 +6,7 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram};
 
 use WebGl2RenderingContext as GL;
 
-use super::IndexBuffer;
 use super::TextureBuffer;
-use super::TextureCoordBuffer;
-use super::Vert3Buffer;
 use super::*;
 
 const SQUARE_FRAG_SHADER_STR: &str = r#"#version 300 es
@@ -112,7 +109,6 @@ impl GlProgram {
 
         context.bind_vertex_array(Some(&res.vao));
 
-
         let kk: i32 = if grayscale { 1 } else { 0 };
         context.uniform1i(Some(&self.grayscale), kk);
 
@@ -134,7 +130,6 @@ impl GlProgram {
             0,
             mmatrix.len() as i32,
         );
-
     }
 
     pub fn new(context: &WebGl2RenderingContext) -> Result<Self, String> {
@@ -176,9 +171,9 @@ impl GlProgram {
         let normal = normal as u32;
         let texcoord = texcoord as u32;
         let mmatrix = mmatrix as u32;
-        
+
         Ok(GlProgram {
-            ctx:context.clone(),
+            ctx: context.clone(),
             program,
             mmatrix,
             point_size,
@@ -260,11 +255,11 @@ impl ProgramAttrib for Normal {
 //TODO destroy buffers in destructor
 pub struct VaoResult {
     index: WebGlBuffer,
-    num_index:usize,
-    num_vertex:usize,
+    num_index: usize,
+    num_vertex: usize,
     tex_coord: WebGlBuffer,
     //position: Vert3Buffer,
-    position:web_sys::WebGlBuffer,
+    position: web_sys::WebGlBuffer,
     normal: WebGlBuffer,
     vao: web_sys::WebGlVertexArrayObject,
 }
@@ -279,7 +274,7 @@ pub fn create_vao2(
     mat: &Mat4Buffer,
 ) -> VaoResult {
     use byte_slice_cast::*;
-    
+
     let vao = ctx.create_vertex_array().unwrap();
     ctx.bind_vertex_array(Some(&vao));
 
@@ -291,60 +286,62 @@ pub fn create_vao2(
         ctx.enable_vertex_attrib_array(loc);
     }
 
-
     let tex_coord = ctx.create_buffer().unwrap();
     ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&tex_coord));
-    ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, tex_coords.as_byte_slice(), GL::STATIC_DRAW);
+    ctx.buffer_data_with_u8_array(
+        GL::ARRAY_BUFFER,
+        tex_coords.as_byte_slice(),
+        GL::STATIC_DRAW,
+    );
     ctx.vertex_attrib_pointer_with_i32(
         program.texcoord as u32,
-        <[f32;2]>::num(),
+        <[f32; 2]>::num(),
         GL::FLOAT,
         false,
         0,
         0,
     );
-
 
     let position = ctx.create_buffer().unwrap();
     ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&position));
     ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, positions.as_byte_slice(), GL::STATIC_DRAW);
     ctx.vertex_attrib_pointer_with_i32(
         program.position as u32,
-        <[f32;3]>::num(),
+        <[f32; 3]>::num(),
         GL::FLOAT,
         false,
         0,
         0,
     );
-
 
     let normal = ctx.create_buffer().unwrap();
     ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&normal));
     ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, normals.as_byte_slice(), GL::STATIC_DRAW);
     ctx.vertex_attrib_pointer_with_i32(
         program.normal as u32,
-        <[f32;3]>::num(),
+        <[f32; 3]>::num(),
         GL::FLOAT,
         false,
         0,
         0,
     );
 
-
     mat.bind(ctx);
     mat.setup_attrib_special(ctx, program);
 
-    
     let index = ctx.create_buffer().unwrap();
     ctx.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&index));
-    ctx.buffer_data_with_u8_array(GL::ELEMENT_ARRAY_BUFFER, indices.as_byte_slice(), GL::STATIC_DRAW);
-    
+    ctx.buffer_data_with_u8_array(
+        GL::ELEMENT_ARRAY_BUFFER,
+        indices.as_byte_slice(),
+        GL::STATIC_DRAW,
+    );
 
     ctx.bind_vertex_array(None);
 
     VaoResult {
-        num_index:indices.len(),
-        num_vertex:positions.len(),
+        num_index: indices.len(),
+        num_vertex: positions.len(),
         index,
         tex_coord,
         position,
@@ -363,7 +360,7 @@ pub struct GlProgram {
     normal: u32,
     text: WebGlUniformLocation,
     pub matrix_buffer: Mat4Buffer,
-    pub ctx:WebGl2RenderingContext
+    pub ctx: WebGl2RenderingContext,
 }
 
 fn compile_shader(
