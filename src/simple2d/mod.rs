@@ -458,7 +458,6 @@ impl ShaderSystem {
     pub fn new(ctx: &WebGl2RenderingContext) -> Result<ShaderSystem, String> {
         let square_program = GlProgram::new(ctx)?;
 
-        let mats = Mat4Buffer::new(ctx)?;
         Ok(ShaderSystem {
             square_program,
             ctx: ctx.clone(),
