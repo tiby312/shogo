@@ -1,7 +1,10 @@
 use gloo::console::console_dbg;
+use web_sys::WebGlBuffer;
 use web_sys::WebGlShader;
 use web_sys::WebGlUniformLocation;
 use web_sys::{WebGl2RenderingContext, WebGlProgram};
+
+use WebGl2RenderingContext as GL;
 
 use super::IndexBuffer;
 use super::TextureBuffer;
@@ -99,7 +102,7 @@ impl GlProgram {
             lighting,
         } = argss;
 
-        let context = &res.position.ctx;
+        let context = &res.tex_coord.ctx;
 
         context.use_program(Some(&self.program));
 
@@ -126,7 +129,7 @@ impl GlProgram {
 
         context.draw_elements_instanced_with_i32(
             WebGl2RenderingContext::TRIANGLES,
-            res.index.num_verts as i32,
+            res.num_index as i32,
             WebGl2RenderingContext::UNSIGNED_SHORT,
             0,
             mmatrix.len() as i32,
@@ -253,11 +256,14 @@ impl ProgramAttrib for Normal {
     }
 }
 
+//TODO destroy buffers in destructor
 pub struct VaoResult {
-    index: IndexBuffer,
+    index: WebGlBuffer,
+    num_index:usize,
     tex_coord: TextureCoordBuffer,
-    position: Vert3Buffer,
-    normal: Vert3Buffer,
+    //position: Vert3Buffer,
+    position:web_sys::WebGlBuffer,
+    normal: WebGlBuffer,
     vao: web_sys::WebGlVertexArrayObject,
 }
 
@@ -270,15 +276,14 @@ pub fn create_vao2(
     indices: &[u16],
     mat: &Mat4Buffer,
 ) -> VaoResult {
+    use byte_slice_cast::*;
+    
     let vao = ctx.create_vertex_array().unwrap();
     ctx.bind_vertex_array(Some(&vao));
 
     ctx.enable_vertex_attrib_array(program.texcoord);
-
     ctx.enable_vertex_attrib_array(program.position);
-
     ctx.enable_vertex_attrib_array(program.normal);
-
     for i in 0..4 {
         let loc = program.mmatrix + i;
         ctx.enable_vertex_attrib_array(loc);
@@ -289,26 +294,47 @@ pub fn create_vao2(
     tex_coord.bind(ctx);
     tex_coord.setup_attrib(TexCoord, ctx, program);
 
-    let mut position = Vert3Buffer::new(ctx).unwrap_throw();
-    position.update(&positions);
-    position.bind(ctx);
-    position.setup_attrib(Position3, ctx, program);
 
-    let mut normal = Vert3Buffer::new(ctx).unwrap_throw();
-    normal.update(&normals);
-    normal.bind(ctx);
-    normal.setup_attrib(Normal, ctx, program);
+
+    let position = ctx.create_buffer().unwrap();
+    ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&position));
+    ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, positions.as_byte_slice(), GL::STATIC_DRAW);
+    ctx.vertex_attrib_pointer_with_i32(
+        program.position as u32,
+        <[f32;3]>::num(),
+        GL::FLOAT,
+        false,
+        0,
+        0,
+    );
+
+
+    let normal = ctx.create_buffer().unwrap();
+    ctx.bind_buffer(GL::ARRAY_BUFFER, Some(&normal));
+    ctx.buffer_data_with_u8_array(GL::ARRAY_BUFFER, normals.as_byte_slice(), GL::STATIC_DRAW);
+    ctx.vertex_attrib_pointer_with_i32(
+        program.normal as u32,
+        <[f32;3]>::num(),
+        GL::FLOAT,
+        false,
+        0,
+        0,
+    );
+
 
     mat.bind(ctx);
     mat.setup_attrib_special(ctx, program);
 
-    let mut index = IndexBuffer::new(ctx).unwrap_throw();
-    index.update(&indices);
-    index.bind(ctx);
+    
+    let index = ctx.create_buffer().unwrap();
+    ctx.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&index));
+    ctx.buffer_data_with_u8_array(GL::ELEMENT_ARRAY_BUFFER, indices.as_byte_slice(), GL::STATIC_DRAW);
+    
 
     ctx.bind_vertex_array(None);
 
     VaoResult {
+        num_index:indices.len(),
         index,
         tex_coord,
         position,
