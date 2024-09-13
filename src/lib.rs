@@ -45,9 +45,9 @@ pub mod utils {
     pub fn get_context_webgl2_offscreen(
         canvas: &web_sys::OffscreenCanvas,
     ) -> web_sys::WebGl2RenderingContext {
-        let mut options = web_sys::WebGlContextAttributes::new();
-        options.antialias(true);
-        options.alpha(true);
+        let options = web_sys::WebGlContextAttributes::new();
+        options.set_antialias(true);
+        options.set_alpha(true);
         canvas
             .get_context_with_context_options("webgl2", &*options)
             .unwrap_throw()
@@ -64,12 +64,13 @@ pub mod utils {
     }
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[no_mangle]
-    #[used]
-    static performance: web_sys::Performance;
-}
+// #[wasm_bindgen]
+// extern "C" {
+//     #[no_mangle]
+//     #[used]
+//     #[wasm_bindgen(thread_local)]
+//     static performance: web_sys::Performance;
+// }
 
 struct Timer {
     last: f64,
@@ -81,6 +82,10 @@ impl Timer {
 
         assert!(frame_rate > 0);
         //let window = gloo::utils::window();
+        let performance = utils::get_worker_global_context()
+            .performance()
+            .unwrap_throw();
+
         //let performance = window.performance().unwrap_throw();
 
         Timer {
@@ -92,6 +97,9 @@ impl Timer {
     async fn next(&mut self) {
         //let window = gloo::utils::window();
         //let performance = window.performance().unwrap_throw();
+        let performance = utils::get_worker_global_context()
+            .performance()
+            .unwrap_throw();
 
         let tt = performance.now();
         let diff = performance.now() - self.last;
@@ -164,8 +172,8 @@ mod main {
             web_worker_url: &str,
             canvas: web_sys::OffscreenCanvas,
         ) -> (Self, futures::channel::mpsc::UnboundedReceiver<WM>) {
-            let mut options = web_sys::WorkerOptions::new();
-            options.type_(web_sys::WorkerType::Module);
+            let options = web_sys::WorkerOptions::new();
+            options.set_type(web_sys::WorkerType::Module);
             let worker = Rc::new(RefCell::new(
                 web_sys::Worker::new_with_options(web_worker_url, &options).unwrap_throw(),
             ));
