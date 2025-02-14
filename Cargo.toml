@@ -24,6 +24,7 @@ serde = { version = "1.0", features = ["derive"] }
 image = "*"
 cgmath = "0.18.0"
 byte-slice-cast = "1.2.2"
+gloop = {path="../gloop"}
 
 [dependencies.gloo]
 version = "0.8"

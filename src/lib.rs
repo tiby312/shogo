@@ -152,18 +152,50 @@ impl<T, K: Stream<Item = T> + std::marker::Unpin> FrameTimer<T, K> {
 
 pub use main::EngineMain;
 use std::marker::PhantomData;
+use gloop::Listen;
 mod main {
+    use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+
     use super::*;
+
+    pub struct MyListen<WM>{
+        ks:UnboundedSender<WM>,
+        fs:Option<futures::channel::oneshot::Sender<()>>
+    }
+
+    impl<WM: for<'a> Deserialize<'a>> Listen for MyListen<WM>{
+        fn call(&mut self,event:&web_sys::Event) {
+            let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+            let data = event.data();
+
+            let data: js_sys::Array = data.dyn_into().unwrap_throw();
+            let m = data.get(0);
+            let k = data.get(1);
+
+            if !m.is_null() {
+                if let Some(s) = m.as_string() {
+                    if s == "ready" {
+                        if let Some(f) = self.fs.take() {
+                            f.send(()).unwrap_throw();
+                        }
+                    }
+                }
+            } else {
+                let a = k.into_serde().unwrap_throw();
+                self.ks.unbounded_send(a).unwrap_throw();
+            }
+        }
+    }
     ///
     /// The component of the engine that runs on the main thread.
     ///
     pub struct EngineMain<MW, WM> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
-        _handle: gloo::events::EventListener,
+        _handle: gloop::EventListenerWrapper<MyListen<WM>>,
         _p: PhantomData<(MW, WM)>,
     }
 
-    impl<MW: 'static + Serialize, WM: for<'a> Deserialize<'a> + 'static> EngineMain<MW, WM> {
+    impl<MW:  Serialize, WM: for<'a> Deserialize<'a>> EngineMain<MW, WM> {
         ///
         /// Create the engine. Blocks until the worker thread reports that
         /// it is ready to receive the offscreen canvas.
@@ -179,32 +211,43 @@ mod main {
             ));
 
             let (fs, fr) = futures::channel::oneshot::channel();
-            let mut fs = Some(fs);
+            let fs = Some(fs);
 
             let (ks, kr) = futures::channel::mpsc::unbounded();
-            let _handle =
-                gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
-                    //log!("waaa");
-                    let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
-                    let data = event.data();
+            let ks:UnboundedSender<WM>=ks;
+            let kr:UnboundedReceiver<WM>=kr;
 
-                    let data: js_sys::Array = data.dyn_into().unwrap_throw();
-                    let m = data.get(0);
-                    let k = data.get(1);
+            let ml=MyListen{
+                ks,
+                fs
+            };
 
-                    if !m.is_null() {
-                        if let Some(s) = m.as_string() {
-                            if s == "ready" {
-                                if let Some(f) = fs.take() {
-                                    f.send(()).unwrap_throw();
-                                }
-                            }
-                        }
-                    } else {
-                        let a = k.into_serde().unwrap_throw();
-                        ks.unbounded_send(a).unwrap_throw();
-                    }
-                });
+            let _handle = gloop::EventListenerWrapper::new(&worker.borrow(),"message",ml);
+
+            
+            // let _handle =
+            //     gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
+            //         //log!("waaa");
+            //         let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+            //         let data = event.data();
+
+            //         let data: js_sys::Array = data.dyn_into().unwrap_throw();
+            //         let m = data.get(0);
+            //         let k = data.get(1);
+
+            //         if !m.is_null() {
+            //             if let Some(s) = m.as_string() {
+            //                 if s == "ready" {
+            //                     if let Some(f) = fs.take() {
+            //                         f.send(()).unwrap_throw();
+            //                     }
+            //                 }
+            //             }
+            //         } else {
+            //             let a = k.into_serde().unwrap_throw();
+            //             ks.unbounded_send(a).unwrap_throw();
+            //         }
+            //     });
 
             let _ = fr.await.unwrap_throw();
 
@@ -243,43 +286,75 @@ mod main {
         ///
         /// Register a new event that will be packaged and sent to the worker thread.
         ///
-        pub fn register_event(
+        pub fn register_event<F:FnMut(EventData) -> Option<MW>>(
             &mut self,
             elem: &web_sys::EventTarget,
             event_type: &'static str,
-            mut func: impl FnMut(EventData) -> Option<MW> + 'static,
-        ) -> gloo::events::EventListener {
-            let w = self.worker.clone();
+            func: F,
+        ) -> gloop::EventListenerWrapper<MyListen2<F>> {
+            // let w = self.worker.clone();
 
-            let e = elem.clone();
+            // let e = elem.clone();
 
-            use gloo::events::EventListenerOptions;
-            use gloo::events::EventListenerPhase;
-            let options = EventListenerOptions {
-                phase: EventListenerPhase::Bubble,
-                passive: false,
-            };
-
-            gloo::events::EventListener::new_with_options(elem, event_type, options, move |event| {
-                let e = EventData {
-                    elem: &e,
-                    event,
-                    event_type,
-                };
-
-                if let Some(val) = func(e) {
-                    let a = JsValue::from_serde(&val).unwrap_throw();
-
-                    let data = js_sys::Array::new();
-                    data.set(0, JsValue::null());
-                    data.set(1, a);
-
-                    w.borrow().post_message(&data).unwrap_throw();
-                }
+            //use gloo::events::EventListenerOptions;
+            //use gloo::events::EventListenerPhase;
+            
+            gloop::EventListenerWrapper::new(&elem.clone(),event_type,MyListen2{
+                func,
+                e:elem.clone(),
+                event_type,
+                w:self.worker.clone()
             })
+            // gloop::EventListenerWrapper::new(elem, event_type, move |event| {
+            //     let e = EventData {
+            //         elem: &e,
+            //         event,
+            //         event_type,
+            //     };
+
+            //     if let Some(val) = func(e) {
+            //         let a = JsValue::from_serde(&val).unwrap_throw();
+
+            //         let data = js_sys::Array::new();
+            //         data.set(0, JsValue::null());
+            //         data.set(1, a);
+
+            //         w.borrow().post_message(&data).unwrap_throw();
+            //     }
+            // })
         }
     }
 }
+
+
+pub struct MyListen2<F>{
+    func:F,
+    e:web_sys::EventTarget,
+    event_type: &'static str,
+    //TODO dont use reference counting
+    w:Rc<RefCell<web_sys::Worker>>
+}
+impl<'a,MW:Serialize,F:FnMut(EventData)->Option<MW>> gloop::Listen for MyListen2<F>{
+    fn call(&mut self,event:&web_sys::Event){
+        let e = EventData {
+            elem: &self.e,
+            event,
+            event_type:self.event_type,
+        };
+
+        if let Some(val) = (self.func)(e) {
+            let a = JsValue::from_serde(&val).unwrap_throw();
+
+            let data = js_sys::Array::new();
+            data.set(0, JsValue::null());
+            data.set(1, a);
+
+            self.w.borrow().post_message(&data).unwrap_throw();
+        }
+    }
+}
+
+
 
 ///
 /// Data that can be accessed when handling events in the main thread to help
