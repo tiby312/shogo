@@ -191,7 +191,7 @@ mod main {
     ///
     pub struct EngineMain<MW, WM> {
         worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
-        _handle: gloop::EventListenerWrapper<MyListen<WM>>,
+        _handle: gloop::EventListen<MyListen<WM>>,
         _p: PhantomData<(MW, WM)>,
     }
 
@@ -222,32 +222,7 @@ mod main {
                 fs
             };
 
-            let _handle = gloop::EventListenerWrapper::new(&worker.borrow(),"message",ml);
-
-            
-            // let _handle =
-            //     gloo::events::EventListener::new(&worker.borrow(), "message", move |event| {
-            //         //log!("waaa");
-            //         let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
-            //         let data = event.data();
-
-            //         let data: js_sys::Array = data.dyn_into().unwrap_throw();
-            //         let m = data.get(0);
-            //         let k = data.get(1);
-
-            //         if !m.is_null() {
-            //             if let Some(s) = m.as_string() {
-            //                 if s == "ready" {
-            //                     if let Some(f) = fs.take() {
-            //                         f.send(()).unwrap_throw();
-            //                     }
-            //                 }
-            //             }
-            //         } else {
-            //             let a = k.into_serde().unwrap_throw();
-            //             ks.unbounded_send(a).unwrap_throw();
-            //         }
-            //     });
+            let _handle = gloop::EventListen::new(&worker.borrow(),"message",ml);
 
             let _ = fr.await.unwrap_throw();
 
@@ -273,7 +248,7 @@ mod main {
             )
         }
 
-        pub fn post_message(&mut self, val: MW) {
+        pub fn post_message(&self, val: MW) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
             let data = js_sys::Array::new();
@@ -283,46 +258,6 @@ mod main {
             self.worker.borrow().post_message(&data).unwrap_throw();
         }
 
-        ///
-        /// Register a new event that will be packaged and sent to the worker thread.
-        ///
-        pub fn register_event<F:FnMut(EventData) -> Option<MW>>(
-            &mut self,
-            elem: &web_sys::EventTarget,
-            event_type: &'static str,
-            func: F,
-        ) -> gloop::EventListenerWrapper<MyListen2<F>> {
-            // let w = self.worker.clone();
-
-            // let e = elem.clone();
-
-            //use gloo::events::EventListenerOptions;
-            //use gloo::events::EventListenerPhase;
-            
-            gloop::EventListenerWrapper::new(&elem.clone(),event_type,MyListen2{
-                func,
-                e:elem.clone(),
-                event_type,
-                w:self.worker.clone()
-            })
-            // gloop::EventListenerWrapper::new(elem, event_type, move |event| {
-            //     let e = EventData {
-            //         elem: &e,
-            //         event,
-            //         event_type,
-            //     };
-
-            //     if let Some(val) = func(e) {
-            //         let a = JsValue::from_serde(&val).unwrap_throw();
-
-            //         let data = js_sys::Array::new();
-            //         data.set(0, JsValue::null());
-            //         data.set(1, a);
-
-            //         w.borrow().post_message(&data).unwrap_throw();
-            //     }
-            // })
-        }
     }
 }
 
@@ -368,17 +303,19 @@ pub struct EventData<'a> {
 
 pub use worker::EngineWorker;
 mod worker {
+    use web_sys::OffscreenCanvas;
+
     use super::*;
     ///
     /// The component of the engine that runs on the worker thread spawn inside of worker.js.
     ///
     pub struct EngineWorker<MW, WM> {
-        _handle: gloo::events::EventListener,
+        _handle: gloop::EventListen<MyListen3<MW>>,
         canvas: web_sys::OffscreenCanvas,
         _p: PhantomData<(MW, WM)>,
     }
 
-    impl<MW: 'static + for<'a> Deserialize<'a>, WM: Serialize> EngineWorker<MW, WM> {
+    impl<MW: for<'a> Deserialize<'a>, WM: Serialize> EngineWorker<MW, WM> {
         ///
         /// Get the offscreen canvas.
         ///
@@ -397,31 +334,17 @@ mod worker {
         ) {
             let scope = utils::get_worker_global_context();
 
-            let (fs, fr) = futures::channel::oneshot::channel();
-            let mut fs = Some(fs);
+            let (fs, fr) :(futures::channel::oneshot::Sender<OffscreenCanvas>,_)= futures::channel::oneshot::channel();
+            let fs = Some(fs);
 
-            let (bags, bagf) = futures::channel::mpsc::unbounded();
+            let (bags, bagf):(futures::channel::mpsc::UnboundedSender<MW>,_) = futures::channel::mpsc::unbounded();
 
-            let _handle = gloo::events::EventListener::new(&scope, "message", move |event| {
-                let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
-                let data = event.data();
+            let fff=MyListen3{
+                fs,
+                bags
+            };
 
-                let data: js_sys::Array = data.dyn_into().unwrap_throw();
-                let offscreen = data.get(0);
-                let payload = data.get(1);
-
-                if !offscreen.is_null() {
-                    let offscreen: web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
-                    if let Some(fs) = fs.take() {
-                        fs.send(offscreen).unwrap_throw();
-                    }
-                }
-
-                if !payload.is_null() {
-                    let e = payload.into_serde().unwrap_throw();
-                    bags.unbounded_send(e).unwrap_throw();
-                }
-            });
+            let _handle=gloop::EventListen::new(&scope,"message",fff);
 
             let data = js_sys::Array::new();
             data.set(0, JsValue::from_str("ready"));
@@ -449,6 +372,35 @@ mod worker {
             data.set(1, JsValue::from_serde(&a).unwrap_throw());
 
             scope.post_message(&data).unwrap_throw();
+        }
+    }
+}
+
+
+pub struct MyListen3<MW>{
+    fs:Option<futures::channel::oneshot::Sender<web_sys::OffscreenCanvas>>,
+    bags:futures::channel::mpsc::UnboundedSender<MW>
+}
+
+impl<MW: for<'a> Deserialize<'a>> gloop::Listen for MyListen3<MW>{
+    fn call(&mut self,event:&web_sys::Event) {
+        let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
+        let data = event.data();
+
+        let data: js_sys::Array = data.dyn_into().unwrap_throw();
+        let offscreen = data.get(0);
+        let payload = data.get(1);
+
+        if !offscreen.is_null() {
+            let offscreen: web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
+            if let Some(fs) = self.fs.take() {
+                fs.send(offscreen).unwrap_throw();
+            }
+        }
+
+        if !payload.is_null() {
+            let e = payload.into_serde().unwrap_throw();
+            self.bags.unbounded_send(e).unwrap_throw();
         }
     }
 }
