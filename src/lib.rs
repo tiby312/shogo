@@ -134,8 +134,9 @@ impl<T, K: Stream<Item = T> + std::marker::Unpin> FrameTimer<T, K> {
             stream,
         }
     }
-    pub async fn next(&mut self) -> &[T] {
-        self.buffer.clear();
+    pub async fn next(&mut self) -> Doop<T> {
+        //self.buffer.clear();
+
         loop {
             futures::select_biased!(
                 _ = self.timer.next().fuse() =>{
@@ -146,9 +147,24 @@ impl<T, K: Stream<Item = T> + std::marker::Unpin> FrameTimer<T, K> {
                 }
             )
         }
-        &self.buffer
+        Doop{inner:&mut self.buffer}
     }
 }
+pub struct Doop<'a,T>{
+    inner:&'a mut Vec<T>
+}
+impl<'a,T> Doop<'a,T>{
+    pub fn events(&self)->&[T]{
+        &self.inner
+    }
+}
+impl<'a,T> Drop for Doop<'a,T>{
+    fn drop(&mut self) {
+        self.inner.clear();
+    }
+}
+
+
 
 pub use main::EngineMain;
 use std::marker::PhantomData;
