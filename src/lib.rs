@@ -164,23 +164,21 @@ use futures::StreamExt;
 //     }
 // }
 
-
-
-pub use main::EngineMain;
-use std::marker::PhantomData;
 use gloop::Listen;
-mod main {
+//pub use main::EngineMain;
+use std::marker::PhantomData;
+pub mod main {
     use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 
     use super::*;
 
-    pub struct MyListen<WM>{
-        ks:UnboundedSender<WM>,
-        fs:Option<futures::channel::oneshot::Sender<()>>
+    pub struct MyListen<WM> {
+        ks: UnboundedSender<WM>,
+        fs: Option<futures::channel::oneshot::Sender<()>>,
     }
 
-    impl<WM: for<'a> Deserialize<'a>> Listen for MyListen<WM>{
-        fn call(&mut self,event:&web_sys::Event) {
+    impl<WM: for<'a> Deserialize<'a>> Listen for MyListen<WM> {
+        fn call(&mut self, event: &web_sys::Event) {
             let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
             let data = event.data();
 
@@ -202,68 +200,22 @@ mod main {
             }
         }
     }
-    ///
-    /// The component of the engine that runs on the main thread.
-    ///
-    pub struct EngineMain<MW, WM> {
-        worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
+
+    pub struct MainReceiver<WM> {
         _handle: gloop::EventListen<MyListen<WM>>,
-        _p: PhantomData<(MW, WM)>,
+        recv: futures::channel::mpsc::UnboundedReceiver<WM>,
+    }
+    impl<WM> MainReceiver<WM> {
+        pub fn recv(&mut self) -> &mut futures::channel::mpsc::UnboundedReceiver<WM> {
+            &mut self.recv
+        }
     }
 
-    impl<MW:  Serialize, WM: for<'a> Deserialize<'a>> EngineMain<MW, WM> {
-        ///
-        /// Create the engine. Blocks until the worker thread reports that
-        /// it is ready to receive the offscreen canvas.
-        ///
-        pub async fn new(
-            web_worker_url: &str,
-            canvas: web_sys::OffscreenCanvas,
-        ) -> (Self, futures::channel::mpsc::UnboundedReceiver<WM>) {
-            let options = web_sys::WorkerOptions::new();
-            options.set_type(web_sys::WorkerType::Module);
-            let worker = Rc::new(RefCell::new(
-                web_sys::Worker::new_with_options(web_worker_url, &options).unwrap_throw(),
-            ));
-
-            let (fs, fr) = futures::channel::oneshot::channel();
-            let fs = Some(fs);
-
-            let (ks, kr) = futures::channel::mpsc::unbounded();
-            let ks:UnboundedSender<WM>=ks;
-            let kr:UnboundedReceiver<WM>=kr;
-
-            let ml=MyListen{
-                ks,
-                fs
-            };
-
-            let _handle = gloop::EventListen::new(&worker.borrow(),"message",ml);
-
-            let _ = fr.await.unwrap_throw();
-
-            let arr = js_sys::Array::new_with_length(1);
-            arr.set(0, canvas.clone().into());
-
-            let data = js_sys::Array::new();
-            data.set(0, canvas.into());
-            data.set(1, JsValue::null());
-
-            worker
-                .borrow()
-                .post_message_with_transfer(&data, &arr)
-                .unwrap_throw();
-
-            (
-                EngineMain {
-                    worker,
-                    _handle,
-                    _p: PhantomData,
-                },
-                kr,
-            )
-        }
-
+    pub struct MainSender<MW> {
+        worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
+        _p: PhantomData<MW>,
+    }
+    impl<MW: Serialize> MainSender<MW> {
         pub fn post_message(&self, val: MW) {
             let a = JsValue::from_serde(&val).unwrap_throw();
 
@@ -273,24 +225,140 @@ mod main {
 
             self.worker.borrow().post_message(&data).unwrap_throw();
         }
-
     }
+
+    pub async fn create_main<MW: Serialize, WM: for<'a> Deserialize<'a>>(
+        web_worker_url: &str,
+        canvas: web_sys::OffscreenCanvas,
+    ) -> (MainSender<MW>, MainReceiver<WM>) {
+        let options = web_sys::WorkerOptions::new();
+        options.set_type(web_sys::WorkerType::Module);
+        let worker = Rc::new(RefCell::new(
+            web_sys::Worker::new_with_options(web_worker_url, &options).unwrap_throw(),
+        ));
+
+        let (fs, fr) = futures::channel::oneshot::channel();
+        let fs = Some(fs);
+
+        let (ks, kr) = futures::channel::mpsc::unbounded();
+        let ks: UnboundedSender<WM> = ks;
+        let kr: UnboundedReceiver<WM> = kr;
+
+        let ml = MyListen { ks, fs };
+
+        let _handle = gloop::EventListen::new(&worker.borrow(), "message", ml);
+
+        let _ = fr.await.unwrap_throw();
+
+        let arr = js_sys::Array::new_with_length(1);
+        arr.set(0, canvas.clone().into());
+
+        let data = js_sys::Array::new();
+        data.set(0, canvas.into());
+        data.set(1, JsValue::null());
+
+        worker
+            .borrow()
+            .post_message_with_transfer(&data, &arr)
+            .unwrap_throw();
+
+        (
+            MainSender {
+                worker,
+                _p: PhantomData,
+            },
+            MainReceiver { _handle, recv: kr },
+        )
+    }
+
+    // ///
+    // /// The component of the engine that runs on the main thread.
+    // ///
+    // pub struct EngineMain<MW, WM> {
+    //     worker: std::rc::Rc<std::cell::RefCell<web_sys::Worker>>,
+    //     _handle: gloop::EventListen<MyListen<WM>>,
+    //     _p: PhantomData<(MW, WM)>,
+    // }
+
+    // impl<MW:  Serialize, WM: for<'a> Deserialize<'a>> EngineMain<MW, WM> {
+    //     ///
+    //     /// Create the engine. Blocks until the worker thread reports that
+    //     /// it is ready to receive the offscreen canvas.
+    //     ///
+    //     pub async fn new(
+    //         web_worker_url: &str,
+    //         canvas: web_sys::OffscreenCanvas,
+    //     ) -> (Self, futures::channel::mpsc::UnboundedReceiver<WM>) {
+    //         let options = web_sys::WorkerOptions::new();
+    //         options.set_type(web_sys::WorkerType::Module);
+    //         let worker = Rc::new(RefCell::new(
+    //             web_sys::Worker::new_with_options(web_worker_url, &options).unwrap_throw(),
+    //         ));
+
+    //         let (fs, fr) = futures::channel::oneshot::channel();
+    //         let fs = Some(fs);
+
+    //         let (ks, kr) = futures::channel::mpsc::unbounded();
+    //         let ks:UnboundedSender<WM>=ks;
+    //         let kr:UnboundedReceiver<WM>=kr;
+
+    //         let ml=MyListen{
+    //             ks,
+    //             fs
+    //         };
+
+    //         let _handle = gloop::EventListen::new(&worker.borrow(),"message",ml);
+
+    //         let _ = fr.await.unwrap_throw();
+
+    //         let arr = js_sys::Array::new_with_length(1);
+    //         arr.set(0, canvas.clone().into());
+
+    //         let data = js_sys::Array::new();
+    //         data.set(0, canvas.into());
+    //         data.set(1, JsValue::null());
+
+    //         worker
+    //             .borrow()
+    //             .post_message_with_transfer(&data, &arr)
+    //             .unwrap_throw();
+
+    //         (
+    //             EngineMain {
+    //                 worker,
+    //                 _handle,
+    //                 _p: PhantomData,
+    //             },
+    //             kr,
+    //         )
+    //     }
+
+    //     pub fn post_message(&self, val: MW) {
+    //         let a = JsValue::from_serde(&val).unwrap_throw();
+
+    //         let data = js_sys::Array::new();
+    //         data.set(0, JsValue::null());
+    //         data.set(1, a);
+
+    //         self.worker.borrow().post_message(&data).unwrap_throw();
+    //     }
+
+    // }
 }
 
-
-pub struct MyListen2<F>{
-    func:F,
-    e:web_sys::EventTarget,
+pub struct MyListen2<F> {
+    func: F,
+    e: web_sys::EventTarget,
     event_type: &'static str,
     //TODO dont use reference counting
-    w:Rc<RefCell<web_sys::Worker>>
+    w: Rc<RefCell<web_sys::Worker>>,
 }
-impl<'a,MW:Serialize,F:FnMut(EventData)->Option<MW>> gloop::Listen for MyListen2<F>{
-    fn call(&mut self,event:&web_sys::Event){
+impl<'a, MW: Serialize, F: FnMut(EventData) -> Option<MW>> gloop::Listen for MyListen2<F> {
+    fn call(&mut self, event: &web_sys::Event) {
         let e = EventData {
             elem: &self.e,
             event,
-            event_type:self.event_type,
+            event_type: self.event_type,
         };
 
         if let Some(val) = (self.func)(e) {
@@ -305,8 +373,6 @@ impl<'a,MW:Serialize,F:FnMut(EventData)->Option<MW>> gloop::Listen for MyListen2
     }
 }
 
-
-
 ///
 /// Data that can be accessed when handling events in the main thread to help
 /// construct the data to be passed to the worker thread.
@@ -318,7 +384,7 @@ pub struct EventData<'a> {
 }
 
 pub use worker::EngineWorker;
-mod worker {
+pub mod worker {
     use web_sys::OffscreenCanvas;
 
     use super::*;
@@ -331,56 +397,11 @@ mod worker {
         _p: PhantomData<(MW, WM)>,
     }
 
-    impl<MW: for<'a> Deserialize<'a>, WM: Serialize> EngineWorker<MW, WM> {
-        ///
-        /// Get the offscreen canvas.
-        ///
-        pub fn canvas(&self) -> web_sys::OffscreenCanvas {
-            self.canvas.clone()
-        }
-
-        ///
-        /// Create the worker component of the engine.
-        /// Specify the frame rate.
-        /// Blocks until it receives the offscreen canvas from the main thread.
-        ///
-        pub async fn new() -> (
-            EngineWorker<MW, WM>,
-            futures::channel::mpsc::UnboundedReceiver<MW>,
-        ) {
-            let scope = utils::get_worker_global_context();
-
-            let (fs, fr) :(futures::channel::oneshot::Sender<OffscreenCanvas>,_)= futures::channel::oneshot::channel();
-            let fs = Some(fs);
-
-            let (bags, bagf):(futures::channel::mpsc::UnboundedSender<MW>,_) = futures::channel::mpsc::unbounded();
-
-            let fff=MyListen3{
-                fs,
-                bags
-            };
-
-            let _handle=gloop::EventListen::new(&scope,"message",fff);
-
-            let data = js_sys::Array::new();
-            data.set(0, JsValue::from_str("ready"));
-            data.set(1, JsValue::null());
-
-            scope.post_message(&data).unwrap_throw();
-
-            let canvas = fr.await.unwrap_throw();
-
-            (
-                EngineWorker {
-                    _handle,
-                    canvas,
-                    _p: PhantomData,
-                },
-                bagf,
-            )
-        }
-
-        pub fn post_message(&mut self, a: WM) {
+    pub struct WorkerSender<WM> {
+        _p: PhantomData<WM>,
+    }
+    impl<WM: Serialize> WorkerSender<WM> {
+        pub fn post_message(&self, a: WM) {
             let scope = utils::get_worker_global_context();
 
             let data = js_sys::Array::new();
@@ -390,16 +411,119 @@ mod worker {
             scope.post_message(&data).unwrap_throw();
         }
     }
+
+    pub struct WorkerRecv<MW> {
+        _handle: gloop::EventListen<MyListen3<MW>>,
+        //canvas: web_sys::OffscreenCanvas,
+        recv: futures::channel::mpsc::UnboundedReceiver<MW>,
+    }
+    impl<MW> WorkerRecv<MW> {
+        pub fn recv(&mut self) -> &mut futures::channel::mpsc::UnboundedReceiver<MW> {
+            &mut self.recv
+        }
+    }
+
+    pub async fn create_worker<WM: Serialize, MW: for<'a> Deserialize<'a>>(
+    ) -> (web_sys::OffscreenCanvas, WorkerSender<WM>, WorkerRecv<MW>) {
+        let scope = utils::get_worker_global_context();
+
+        let (fs, fr): (futures::channel::oneshot::Sender<OffscreenCanvas>, _) =
+            futures::channel::oneshot::channel();
+        let fs = Some(fs);
+
+        let (bags, bagf): (futures::channel::mpsc::UnboundedSender<MW>, _) =
+            futures::channel::mpsc::unbounded();
+
+        let fff = MyListen3 { fs, bags };
+
+        let _handle = gloop::EventListen::new(&scope, "message", fff);
+
+        let data = js_sys::Array::new();
+        data.set(0, JsValue::from_str("ready"));
+        data.set(1, JsValue::null());
+
+        scope.post_message(&data).unwrap_throw();
+
+        let canvas = fr.await.unwrap_throw();
+
+        (
+            canvas,
+            WorkerSender { _p: PhantomData },
+            WorkerRecv {
+                _handle,
+                recv: bagf,
+            },
+        )
+    }
+
+    // impl<MW: for<'a> Deserialize<'a>, WM: Serialize> EngineWorker<MW, WM> {
+    //     ///
+    //     /// Get the offscreen canvas.
+    //     ///
+    //     pub fn canvas(&self) -> web_sys::OffscreenCanvas {
+    //         self.canvas.clone()
+    //     }
+
+    //     ///
+    //     /// Create the worker component of the engine.
+    //     /// Specify the frame rate.
+    //     /// Blocks until it receives the offscreen canvas from the main thread.
+    //     ///
+    //     pub async fn new() -> (
+    //         EngineWorker<MW, WM>,
+    //         futures::channel::mpsc::UnboundedReceiver<MW>,
+    //     ) {
+    //         let scope = utils::get_worker_global_context();
+
+    //         let (fs, fr) :(futures::channel::oneshot::Sender<OffscreenCanvas>,_)= futures::channel::oneshot::channel();
+    //         let fs = Some(fs);
+
+    //         let (bags, bagf):(futures::channel::mpsc::UnboundedSender<MW>,_) = futures::channel::mpsc::unbounded();
+
+    //         let fff=MyListen3{
+    //             fs,
+    //             bags
+    //         };
+
+    //         let _handle=gloop::EventListen::new(&scope,"message",fff);
+
+    //         let data = js_sys::Array::new();
+    //         data.set(0, JsValue::from_str("ready"));
+    //         data.set(1, JsValue::null());
+
+    //         scope.post_message(&data).unwrap_throw();
+
+    //         let canvas = fr.await.unwrap_throw();
+
+    //         (
+    //             EngineWorker {
+    //                 _handle,
+    //                 canvas,
+    //                 _p: PhantomData,
+    //             },
+    //             bagf,
+    //         )
+    //     }
+
+    //     pub fn post_message(&mut self, a: WM) {
+    //         let scope = utils::get_worker_global_context();
+
+    //         let data = js_sys::Array::new();
+    //         data.set(0, JsValue::null());
+    //         data.set(1, JsValue::from_serde(&a).unwrap_throw());
+
+    //         scope.post_message(&data).unwrap_throw();
+    //     }
+    // }
 }
 
-
-pub struct MyListen3<MW>{
-    fs:Option<futures::channel::oneshot::Sender<web_sys::OffscreenCanvas>>,
-    bags:futures::channel::mpsc::UnboundedSender<MW>
+pub struct MyListen3<MW> {
+    fs: Option<futures::channel::oneshot::Sender<web_sys::OffscreenCanvas>>,
+    bags: futures::channel::mpsc::UnboundedSender<MW>,
 }
 
-impl<MW: for<'a> Deserialize<'a>> gloop::Listen for MyListen3<MW>{
-    fn call(&mut self,event:&web_sys::Event) {
+impl<MW: for<'a> Deserialize<'a>> gloop::Listen for MyListen3<MW> {
+    fn call(&mut self, event: &web_sys::Event) {
         let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
         let data = event.data();
 
