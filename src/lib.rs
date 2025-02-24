@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use gloo::timers::future::TimeoutFuture;
+use main::Transferable;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -227,9 +228,15 @@ pub mod main {
         }
     }
 
-    pub async fn create_main<MW: Serialize, WM: for<'a> Deserialize<'a>>(
+    pub trait Transferable : Clone+Into<JsValue>+wasm_bindgen::JsCast+ std::fmt::Debug{
+
+    }
+    impl Transferable for web_sys::OffscreenCanvas{}
+    impl Transferable for js_sys::ArrayBuffer{}
+    
+    pub async fn create_main<MW: Serialize, WM: for<'a> Deserialize<'a>,T:Transferable>(
         web_worker_url: &str,
-        canvas: web_sys::OffscreenCanvas,
+        canvas: T,
     ) -> (MainSender<MW>, MainReceiver<WM>) {
         let options = web_sys::WorkerOptions::new();
         options.set_type(web_sys::WorkerType::Module);
@@ -383,19 +390,21 @@ pub struct EventData<'a> {
     pub event_type: &'static str,
 }
 
-pub use worker::EngineWorker;
+//pub use worker::EngineWorker;
 pub mod worker {
     use web_sys::OffscreenCanvas;
 
+    use crate::main::Transferable;
+
     use super::*;
-    ///
-    /// The component of the engine that runs on the worker thread spawn inside of worker.js.
-    ///
-    pub struct EngineWorker<MW, WM> {
-        _handle: gloop::EventListen<MyListen3<MW>>,
-        canvas: web_sys::OffscreenCanvas,
-        _p: PhantomData<(MW, WM)>,
-    }
+    // ///
+    // /// The component of the engine that runs on the worker thread spawn inside of worker.js.
+    // ///
+    // pub struct EngineWorker<MW, WM> {
+    //     _handle: gloop::EventListen<MyListen3<MW>>,
+    //     canvas: web_sys::OffscreenCanvas,
+    //     _p: PhantomData<(MW, WM)>,
+    // }
 
     pub struct WorkerSender<WM> {
         _p: PhantomData<WM>,
@@ -412,22 +421,22 @@ pub mod worker {
         }
     }
 
-    pub struct WorkerRecv<MW> {
-        _handle: gloop::EventListen<MyListen3<MW>>,
+    pub struct WorkerRecv<MW,T:Transferable> {
+        _handle: gloop::EventListen<MyListen3<MW,T>>,
         //canvas: web_sys::OffscreenCanvas,
         recv: futures::channel::mpsc::UnboundedReceiver<MW>,
     }
-    impl<MW> WorkerRecv<MW> {
+    impl<MW,T:Transferable> WorkerRecv<MW,T> {
         pub fn recv(&mut self) -> &mut futures::channel::mpsc::UnboundedReceiver<MW> {
             &mut self.recv
         }
     }
 
-    pub async fn create_worker<WM: Serialize, MW: for<'a> Deserialize<'a>>(
-    ) -> (web_sys::OffscreenCanvas, WorkerSender<WM>, WorkerRecv<MW>) {
+    pub async fn create_worker<WM: Serialize, MW: for<'a> Deserialize<'a>,T:Transferable>(
+    ) -> (T, WorkerSender<WM>, WorkerRecv<MW,T>) {
         let scope = utils::get_worker_global_context();
 
-        let (fs, fr): (futures::channel::oneshot::Sender<OffscreenCanvas>, _) =
+        let (fs, fr): (futures::channel::oneshot::Sender<T>, _) =
             futures::channel::oneshot::channel();
         let fs = Some(fs);
 
@@ -517,12 +526,12 @@ pub mod worker {
     // }
 }
 
-pub struct MyListen3<MW> {
-    fs: Option<futures::channel::oneshot::Sender<web_sys::OffscreenCanvas>>,
+pub struct MyListen3<MW,T:main::Transferable> {
+    fs: Option<futures::channel::oneshot::Sender<T>>,
     bags: futures::channel::mpsc::UnboundedSender<MW>,
 }
 
-impl<MW: for<'a> Deserialize<'a>> gloop::Listen for MyListen3<MW> {
+impl<MW: for<'a> Deserialize<'a>,T:Transferable> gloop::Listen for MyListen3<MW,T> {
     fn call(&mut self, event: &web_sys::Event) {
         let event = event.dyn_ref::<web_sys::MessageEvent>().unwrap_throw();
         let data = event.data();
@@ -532,7 +541,7 @@ impl<MW: for<'a> Deserialize<'a>> gloop::Listen for MyListen3<MW> {
         let payload = data.get(1);
 
         if !offscreen.is_null() {
-            let offscreen: web_sys::OffscreenCanvas = offscreen.dyn_into().unwrap_throw();
+            let offscreen: T = offscreen.dyn_into().unwrap_throw();
             if let Some(fs) = self.fs.take() {
                 fs.send(offscreen).unwrap_throw();
             }
