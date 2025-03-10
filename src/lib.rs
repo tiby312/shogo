@@ -114,10 +114,6 @@ impl Timer {
     }
 }
 
-use futures::FutureExt;
-use futures::Stream;
-use futures::StreamExt;
-
 // ///
 // /// Takes a stream, and continually returns a list of its items that have accumulated over
 // /// the specified period.
@@ -392,8 +388,7 @@ pub struct EventData<'a> {
 
 //pub use worker::EngineWorker;
 pub mod worker {
-    use web_sys::OffscreenCanvas;
-
+    
     use crate::main::Transferable;
 
     use super::*;
