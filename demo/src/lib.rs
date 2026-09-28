@@ -1,9 +1,11 @@
-use futures::{FutureExt, SinkExt, select};
+use std::borrow::Cow;
+
+use futures::{FutureExt, SinkExt, channel::mpsc::UnboundedSender, select};
 use gloo::console::log;
 use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
-use web_sys::MouseEvent;
+use web_sys::{Event, EventTarget, MouseEvent};
 
 const COLORS: &[[f32; 4]] = &[
     [1.0, 0.0, 0.0, 0.5],
@@ -19,7 +21,12 @@ pub enum MEvent {
     ShutdownClick,
 }
 
-
+fn reg< S: Into<Cow<'static, str>>>(tx:&UnboundedSender<MEvent>,target:&EventTarget, event: S, mut handler: impl FnMut(&UnboundedSender<MEvent>,&Event) + 'static) ->gloo::events::EventListener{
+    let tx=tx.clone();
+    gloo::events::EventListener::new(target,event,move |e|{
+        handler(&tx,e)
+    })
+}
 
 #[wasm_bindgen]
 pub async fn main_entry() {
@@ -40,26 +47,25 @@ pub async fn main_entry() {
     ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
     
 
+    
     let (tx,mut rx)=futures::channel::mpsc::unbounded();
  
-    let tx2=tx.clone();
-    let _e=gloo::events::EventListener::new(&canvas, "mousemove",move |e| {
-        //let [x, y] = convert_coord(e.elem, e.event);
-        let e:&MouseEvent = e.dyn_ref().unwrap_throw();
-        let x=e.x() as f32;
-        let y = e.y() as f32;
-        tx2.unbounded_send(MEvent::CanvasMouseMove { x, y }).unwrap_throw();
-    });
 
-    let tx2=tx.clone();
-    let _e=gloo::events::EventListener::new(&button, "click", move |_| {
-        tx2.unbounded_send(MEvent::ButtonClick).unwrap_throw();
-    });
-
-    let tx2=tx.clone();
-    let _e=gloo::events::EventListener::new(&shutdown_button, "click",move |_| {
-        tx2.clone().unbounded_send(MEvent::ShutdownClick).unwrap_throw();
-    }); 
+    let _e=[
+        reg(&tx, &canvas, "mousemove", move |tx, e| {
+            let e:&MouseEvent = e.dyn_ref().unwrap_throw();
+            let x=e.x() as f32;
+            let y = e.y() as f32;
+            tx.unbounded_send(MEvent::CanvasMouseMove { x, y }).unwrap_throw();
+        }),
+        reg(&tx, &button, "click", move |tx, _| {
+            tx.unbounded_send(MEvent::ButtonClick).unwrap_throw();
+        }),
+        reg(&tx, &shutdown_button, "click", move |tx, _| {
+            tx.unbounded_send(MEvent::ShutdownClick).unwrap_throw();
+        })
+    ];
+    
 
 
     let mut frame_timer = shogo::Timer::new(30);
@@ -76,11 +82,22 @@ pub async fn main_entry() {
             }
         }
 
-        
+        ctx.set_fill_style_str("white");
+        draw_triangle(&ctx,[50.0,50.0]);
 
 
     }
 }
+
+fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: [f64; 2]) {
+    ctx.begin_path();
+    ctx.move_to(center[0] - 25.0, center[1] + 25.0);
+    ctx.line_to(center[0] + 25.0, center[1] + 25.0);
+    ctx.line_to(center[0], center[1] - 25.0);
+    ctx.close_path();
+    ctx.fill();
+}
+
 
 // #[wasm_bindgen]
 // pub async fn worker_entry() {
