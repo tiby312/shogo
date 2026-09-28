@@ -19,6 +19,8 @@ pub enum MEvent {
     ShutdownClick,
 }
 
+
+
 #[wasm_bindgen]
 pub async fn main_entry() {
     use futures::StreamExt;
@@ -30,6 +32,13 @@ pub async fn main_entry() {
         utils::get_by_id_elem("mybutton"),
         utils::get_by_id_elem("shutdownbutton"),
     );
+
+    let ctx=canvas.get_context("2d").unwrap_throw().unwrap_throw();
+    let ctx=ctx.dyn_ref::<web_sys::CanvasRenderingContext2d>().unwrap_throw();
+
+    ctx.set_fill_style_str("red");
+    ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    
 
     let (tx,mut rx)=futures::channel::mpsc::unbounded();
  
