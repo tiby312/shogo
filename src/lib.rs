@@ -68,11 +68,20 @@ pub mod utils {
 
 
 
-   
+    pub struct Data{
+        timestamp:f64,
+        last_timestamp: f64,
+    }
+    impl Data{
+        pub fn delta(&self)->f64{
+            self.timestamp - self.last_timestamp
+        }
+    }
     pub struct RequestAnimationFrameMan{
         tx_frame: UnboundedSender<f64>,
         anim_frame:Option<AnimationFrame>,
-        rx_frame:UnboundedReceiver<f64>
+        rx_frame:UnboundedReceiver<f64>,
+        last_timestamp: f64,
     }
 
     impl RequestAnimationFrameMan {
@@ -85,11 +94,18 @@ pub mod utils {
             Self{
                 tx_frame,
                 anim_frame,
-                rx_frame
+                rx_frame,
+                last_timestamp: 0.0,
             }
         }
-        pub async fn next(&mut self)->f64{
-            self.rx_frame.recv().await.unwrap_throw()
+        pub async fn next(&mut self)->Data{
+            let timestamp=self.rx_frame.recv().await.unwrap_throw();
+            let d=Data{
+                timestamp,
+                last_timestamp: self.last_timestamp,
+            };
+            self.last_timestamp=timestamp;
+            d
         }
         pub fn request_animation_frame(&mut self) {
             let tx_frame=self.tx_frame.clone();

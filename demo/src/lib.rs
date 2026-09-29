@@ -74,18 +74,14 @@ pub async fn main_entry() {
     rr.request_animation_frame();
   
 
-    let mut last=0.0;
     loop{
         loop{
             select!{
                 timestamp = rr.next().fuse() => {
-                    //log!("received frame delta: {}", timestamp-last);
-                    last=timestamp;
-                
+                    log!("received frame delta: {}", timestamp.delta());
                     break;
                 }
                 e = rx.next() => {
-
                     log!("received event: {}", format!("{:?}", e));
                     match e.unwrap_throw()
                     {
