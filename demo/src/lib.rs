@@ -1,7 +1,7 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use futures::{FutureExt, SinkExt, channel::mpsc::UnboundedSender, select};
-use gloo::console::log;
+use futures::{FutureExt, SinkExt, channel::mpsc::{UnboundedReceiver, UnboundedSender}, select};
+use gloo::{console::log, net::http::Request};
 use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
@@ -61,30 +61,24 @@ pub async fn main_entry() {
     
 
 
-    let mut frame_timer = shogo::Timer::new(30);
 
     let mut ship_pos=[50.0,50.0];
     let mut rotation=0.0;
     let mut mouse_pos=[0.0,0.0];
 
 
-    let (tx_frame,mut rx_frame)=futures::channel::mpsc::unbounded();
-    
 
-    // A shared reference to hold the current AnimationFrame handle
-    let anim_frame: Rc<RefCell<Option<AnimationFrame>>> = Rc::new(RefCell::new(None));
 
-    {//TODO put this in a struct.
-        let tx_frame = tx_frame.clone();
-        *anim_frame.borrow_mut() = Some(request_animation_frame(move |time: f64| {
-                tx_frame.unbounded_send(time).unwrap_throw();
-        }));
-    }
+
+    let (mut rr,mut an)=shogo::RequestAnimationFrameMan::new();
+    rr.request_animation_frame();
+  
+
     let mut last=0.0;
     loop{
         loop{
             select!{
-                timestamp = rx_frame.next() => {
+                timestamp = an.next() => {
                     if let Some(timestamp) = timestamp {
                         //log!("received frame delta: {}", timestamp-last);
                         last=timestamp;
@@ -122,10 +116,9 @@ pub async fn main_entry() {
         draw_triangle(&ctx,ship_pos,rotation);
 
         
-        let tx_frame = tx_frame.clone();
-        *anim_frame.borrow_mut() = Some(request_animation_frame(move |time: f64| {
-             tx_frame.unbounded_send(time).unwrap_throw();
-        }));
+        rr.request_animation_frame();
+
+      
 
 
     }

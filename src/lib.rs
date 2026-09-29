@@ -1,20 +1,16 @@
 #![allow(non_upper_case_globals)]
 
+use futures::channel::mpsc::UnboundedReceiver;
 use futures::channel::mpsc::UnboundedSender;
+use gloo::render::AnimationFrame;
 use gloo::timers::future::TimeoutFuture;
-//use main::Transferable;
-use serde::{Deserialize, Serialize};
+
 use web_sys::Event;
 use std::borrow::Cow;
-use std::cell::RefCell;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::EventTarget;
 
-use gloo::utils::format::JsValueSerdeExt;
-
-//pub mod simple2d;
 
 pub mod utils {
     //!
@@ -70,6 +66,34 @@ pub mod utils {
 }
 
 
+
+
+   
+    pub struct RequestAnimationFrameMan{
+        tx_frame: UnboundedSender<f64>,
+        anim_frame:Option<AnimationFrame>
+    }
+
+    impl RequestAnimationFrameMan {
+        pub fn new()->(Self,UnboundedReceiver<f64>){
+            let (tx_frame,rx_frame)=futures::channel::mpsc::unbounded();
+    
+            // A shared reference to hold the current AnimationFrame handle
+            let anim_frame=None;
+
+            (Self{
+                tx_frame,
+                anim_frame
+            }, rx_frame)
+        }
+
+        pub fn request_animation_frame(&mut self) {
+            let tx_frame=self.tx_frame.clone();
+            self.anim_frame = Some(gloo::render::request_animation_frame(move |time: f64| {
+                tx_frame.unbounded_send(time).unwrap_throw();
+            }));
+        }
+    }
 
 
 pub fn reg< S: Into<Cow<'static, str>>,T:'static>(tx:&UnboundedSender<T>,target:&EventTarget, event: S, mut handler: impl FnMut(&UnboundedSender<T>,&Event) + 'static) ->gloo::events::EventListener{
