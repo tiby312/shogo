@@ -70,7 +70,7 @@ pub async fn main_entry() {
 
 
 
-    let (mut rr,mut an)=shogo::RequestAnimationFrameMan::new();
+    let mut rr=shogo::RequestAnimationFrameMan::new();
     rr.request_animation_frame();
   
 
@@ -78,11 +78,10 @@ pub async fn main_entry() {
     loop{
         loop{
             select!{
-                timestamp = an.next() => {
-                    if let Some(timestamp) = timestamp {
-                        //log!("received frame delta: {}", timestamp-last);
-                        last=timestamp;
-                    }
+                timestamp = rr.next().fuse() => {
+                    //log!("received frame delta: {}", timestamp-last);
+                    last=timestamp;
+                
                     break;
                 }
                 e = rx.next() => {

@@ -71,22 +71,26 @@ pub mod utils {
    
     pub struct RequestAnimationFrameMan{
         tx_frame: UnboundedSender<f64>,
-        anim_frame:Option<AnimationFrame>
+        anim_frame:Option<AnimationFrame>,
+        rx_frame:UnboundedReceiver<f64>
     }
 
     impl RequestAnimationFrameMan {
-        pub fn new()->(Self,UnboundedReceiver<f64>){
+        pub fn new()->Self{
             let (tx_frame,rx_frame)=futures::channel::mpsc::unbounded();
     
             // A shared reference to hold the current AnimationFrame handle
             let anim_frame=None;
 
-            (Self{
+            Self{
                 tx_frame,
-                anim_frame
-            }, rx_frame)
+                anim_frame,
+                rx_frame
+            }
         }
-
+        pub async fn next(&mut self)->f64{
+            self.rx_frame.recv().await.unwrap_throw()
+        }
         pub fn request_animation_frame(&mut self) {
             let tx_frame=self.tx_frame.clone();
             self.anim_frame = Some(gloo::render::request_animation_frame(move |time: f64| {
