@@ -116,10 +116,13 @@ pub mod utils {
     }
 
 
-pub fn reg< S: Into<Cow<'static, str>>,T:'static>(tx:&UnboundedSender<T>,target:&EventTarget, event: S, mut handler: impl FnMut(&UnboundedSender<T>,&Event) + 'static) ->gloo::events::EventListener{
+pub fn reg< S: Into<Cow<'static, str>>,T:'static>(tx: &UnboundedSender<T>, target:&EventTarget, event: S, mut handler: impl FnMut(&Event)->Option<T> + 'static) ->gloo::events::EventListener{
     let tx=tx.clone();
     gloo::events::EventListener::new(target,event,move |e|{
-        handler(&tx,e)
+        let j=handler(e);
+        if let Some(j)=j{
+            tx.unbounded_send(j).unwrap_throw();
+        }
     })
 }
 

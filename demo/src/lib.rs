@@ -45,17 +45,17 @@ pub async fn main_entry() {
  
 
     let _e=[
-        shogo::reg(&tx, &canvas, "mousemove", move |tx, e| {
+        shogo::reg(&tx, &canvas, "mousemove", move | e| {
             let e:&MouseEvent = e.dyn_ref().unwrap_throw();
             let x=e.x() as f64;
             let y = e.y() as f64;
-            tx.unbounded_send(MEvent::CanvasMouseMove { x, y }).unwrap_throw();
+            Some(MEvent::CanvasMouseMove { x, y })
         }),
-        shogo::reg(&tx, &button, "click", move |tx, _| {
-            tx.unbounded_send(MEvent::ButtonClick).unwrap_throw();
+        shogo::reg(&tx, &button, "click", move | _| {
+            Some(MEvent::ButtonClick)
         }),
-        shogo::reg(&tx, &shutdown_button, "click", move |tx, _| {
-            tx.unbounded_send(MEvent::ShutdownClick).unwrap_throw();
+        shogo::reg(&tx, &shutdown_button, "click", move | _| {
+            Some(MEvent::ShutdownClick)
         })
     ];
     
