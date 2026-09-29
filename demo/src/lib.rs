@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 use futures::{FutureExt, SinkExt, channel::mpsc::UnboundedSender, select};
 use gloo::console::log;
@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
 use web_sys::{Event, EventTarget, MouseEvent};
+use gloo::render::{request_animation_frame, AnimationFrame};
 
 const COLORS: &[[f32; 4]] = &[
     [1.0, 0.0, 0.0, 0.5],
@@ -16,17 +17,11 @@ const COLORS: &[[f32; 4]] = &[
 ///Common data sent from the main thread to the worker.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MEvent {
-    CanvasMouseMove { x: f32, y: f32 },
+    CanvasMouseMove { x: f64, y: f64 },
     ButtonClick,
     ShutdownClick,
 }
 
-fn reg< S: Into<Cow<'static, str>>>(tx:&UnboundedSender<MEvent>,target:&EventTarget, event: S, mut handler: impl FnMut(&UnboundedSender<MEvent>,&Event) + 'static) ->gloo::events::EventListener{
-    let tx=tx.clone();
-    gloo::events::EventListener::new(target,event,move |e|{
-        handler(&tx,e)
-    })
-}
 
 #[wasm_bindgen]
 pub async fn main_entry() {
@@ -43,8 +38,6 @@ pub async fn main_entry() {
     let ctx=canvas.get_context("2d").unwrap_throw().unwrap_throw();
     let ctx=ctx.dyn_ref::<web_sys::CanvasRenderingContext2d>().unwrap_throw();
 
-    ctx.set_fill_style_str("red");
-    ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
     
 
     
@@ -52,16 +45,16 @@ pub async fn main_entry() {
  
 
     let _e=[
-        reg(&tx, &canvas, "mousemove", move |tx, e| {
+        shogo::reg(&tx, &canvas, "mousemove", move |tx, e| {
             let e:&MouseEvent = e.dyn_ref().unwrap_throw();
-            let x=e.x() as f32;
-            let y = e.y() as f32;
+            let x=e.x() as f64;
+            let y = e.y() as f64;
             tx.unbounded_send(MEvent::CanvasMouseMove { x, y }).unwrap_throw();
         }),
-        reg(&tx, &button, "click", move |tx, _| {
+        shogo::reg(&tx, &button, "click", move |tx, _| {
             tx.unbounded_send(MEvent::ButtonClick).unwrap_throw();
         }),
-        reg(&tx, &shutdown_button, "click", move |tx, _| {
+        shogo::reg(&tx, &shutdown_button, "click", move |tx, _| {
             tx.unbounded_send(MEvent::ShutdownClick).unwrap_throw();
         })
     ];
@@ -70,32 +63,85 @@ pub async fn main_entry() {
 
     let mut frame_timer = shogo::Timer::new(30);
 
+    let mut ship_pos=[50.0,50.0];
+    let mut rotation=0.0;
+    let mut mouse_pos=[0.0,0.0];
+
+
+    let (tx_frame,mut rx_frame)=futures::channel::mpsc::unbounded();
+    
+
+    // A shared reference to hold the current AnimationFrame handle
+    let anim_frame: Rc<RefCell<Option<AnimationFrame>>> = Rc::new(RefCell::new(None));
+
+    {//TODO put this in a struct.
+        let tx_frame = tx_frame.clone();
+        *anim_frame.borrow_mut() = Some(request_animation_frame(move |time: f64| {
+                tx_frame.unbounded_send(time).unwrap_throw();
+        }));
+    }
+    let mut last=0.0;
     loop{
         loop{
             select!{
-                _ = frame_timer.next().fuse() => {
+                timestamp = rx_frame.next() => {
+                    if let Some(timestamp) = timestamp {
+                        //log!("received frame delta: {}", timestamp-last);
+                        last=timestamp;
+                    }
                     break;
                 }
                 e = rx.next() => {
+
                     log!("received event: {}", format!("{:?}", e));
+                    match e.unwrap_throw()
+                    {
+                        MEvent::CanvasMouseMove { x, y } => {
+                            mouse_pos=[x,y];
+                        },
+                        MEvent::ButtonClick => {
+                            // Handle button click event if needed
+                        },
+                        MEvent::ShutdownClick => {
+                            // Handle shutdown click event if needed
+                        }
+                    }
                 }
             }
         }
 
+        let offset = [mouse_pos[0] - ship_pos[0], mouse_pos[1] - ship_pos[1]];
+
+        let rotation = offset[1].atan2(offset[0]);
+
+        ctx.set_fill_style_str("gray");
+        ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    
+
         ctx.set_fill_style_str("white");
-        draw_triangle(&ctx,[50.0,50.0]);
+        draw_triangle(&ctx,ship_pos,rotation);
+
+        
+        let tx_frame = tx_frame.clone();
+        *anim_frame.borrow_mut() = Some(request_animation_frame(move |time: f64| {
+             tx_frame.unbounded_send(time).unwrap_throw();
+        }));
 
 
     }
 }
 
-fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: [f64; 2]) {
+fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: [f64; 2], rotation: f64) {
+    ctx.save();
+    ctx.translate(center[0], center[1]).unwrap_throw();
+    ctx.rotate(rotation).unwrap_throw();
     ctx.begin_path();
-    ctx.move_to(center[0] - 25.0, center[1] + 25.0);
-    ctx.line_to(center[0] + 25.0, center[1] + 25.0);
-    ctx.line_to(center[0], center[1] - 25.0);
+    ctx.move_to(-25.0, 25.0);
+    ctx.line_to(25.0, 25.0);
+    ctx.line_to(0.0, -25.0);
     ctx.close_path();
     ctx.fill();
+    ctx.restore();
 }
 
 

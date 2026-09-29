@@ -1,12 +1,16 @@
 #![allow(non_upper_case_globals)]
 
+use futures::channel::mpsc::UnboundedSender;
 use gloo::timers::future::TimeoutFuture;
 //use main::Transferable;
 use serde::{Deserialize, Serialize};
+use web_sys::Event;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use web_sys::EventTarget;
 
 use gloo::utils::format::JsValueSerdeExt;
 
@@ -66,6 +70,16 @@ pub mod utils {
 }
 
 
+
+
+pub fn reg< S: Into<Cow<'static, str>>,T:'static>(tx:&UnboundedSender<T>,target:&EventTarget, event: S, mut handler: impl FnMut(&UnboundedSender<T>,&Event) + 'static) ->gloo::events::EventListener{
+    let tx=tx.clone();
+    gloo::events::EventListener::new(target,event,move |e|{
+        handler(&tx,e)
+    })
+}
+
+
 pub struct Timer {
     last: f64,
     frame_rate: usize,
@@ -76,10 +90,7 @@ impl Timer {
 
         assert!(frame_rate > 0);
         let window = gloo::utils::window();
-        // let performance = utils::get_worker_global_context()
-        //     .performance()
-        //     .unwrap_throw();
-
+        
         let performance = window.performance().unwrap_throw();
 
         Timer {
@@ -88,13 +99,10 @@ impl Timer {
         }
     }
 
-    pub async fn next(&mut self) {
+    pub async fn next(&mut self)->f64 {
         let window = gloo::utils::window();
         let performance = window.performance().unwrap_throw();
-        // let performance = utils::get_worker_global_context()
-        //     .performance()
-        //     .unwrap_throw();
-
+        
         let tt = performance.now();
         let diff = performance.now() - self.last;
 
@@ -104,6 +112,7 @@ impl Timer {
         }
 
         self.last = tt;
+        diff
     }
 }
 
