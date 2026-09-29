@@ -98,7 +98,7 @@ pub mod utils {
                 last_timestamp: 0.0,
             }
         }
-        pub async fn next(&mut self)->Data{
+        pub async fn next(&mut self)-> Data{
             let timestamp=self.rx_frame.recv().await.unwrap_throw();
             let d=Data{
                 timestamp,
