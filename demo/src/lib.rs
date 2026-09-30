@@ -1,6 +1,7 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 use futures::{FutureExt, SinkExt, channel::mpsc::{UnboundedReceiver, UnboundedSender}, select};
+use glam::{DVec2, Vec2};
 use gloo::{console::log, net::http::Request};
 use serde::{Deserialize, Serialize};
 use shogo::utils;
@@ -62,9 +63,9 @@ pub async fn main_entry() {
 
 
 
-    let mut ship_pos=[50.0,50.0];
+    let mut ship_pos=DVec2::new(50.0, 50.0);
     let mut rotation=0.0;
-    let mut mouse_pos=[0.0,0.0];
+    let mut mouse_pos=DVec2::new(0.0, 0.0);
 
 
 
@@ -75,18 +76,18 @@ pub async fn main_entry() {
   
 
     loop{
-        loop{
+        let dt=loop{
             select!{
                 timestamp = rr.next().fuse() => {
                     log!("received frame delta: {}", timestamp.delta());
-                    break;
+                    break timestamp.delta();
                 }
                 e = rx.next() => {
                     log!("received event: {}", format!("{:?}", e));
                     match e.unwrap_throw()
                     {
                         MEvent::CanvasMouseMove { x, y } => {
-                            mouse_pos=[x,y];
+                            mouse_pos=DVec2::new(x , y );
                         },
                         MEvent::ButtonClick => {
                             // Handle button click event if needed
@@ -97,11 +98,13 @@ pub async fn main_entry() {
                     }
                 }
             }
-        }
+        };
 
-        let offset = [mouse_pos[0] - ship_pos[0], mouse_pos[1] - ship_pos[1]];
+        let offset = mouse_pos-ship_pos;
 
-        let rotation = offset[1].atan2(offset[0]);
+        ship_pos = ship_pos + offset * 0.001 * dt;
+        
+        let rotation = offset.y.atan2(offset.x);
 
         ctx.set_fill_style_str("gray");
         ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
@@ -119,9 +122,9 @@ pub async fn main_entry() {
     }
 }
 
-fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: [f64; 2], rotation: f64) {
+fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: DVec2, rotation: f64) {
     ctx.save();
-    ctx.translate(center[0], center[1]).unwrap_throw();
+    ctx.translate(center.x , center.y).unwrap_throw();
     ctx.rotate(rotation).unwrap_throw();
     ctx.begin_path();
     ctx.move_to(-25.0, 25.0);
