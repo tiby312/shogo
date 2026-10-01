@@ -67,7 +67,7 @@ pub async fn main_entry() {
     let mut ship_vel=DVec2::new(0.0, 0.0);
     let mut rotation=0.0;
     let mut mouse_pos=DVec2::new(0.0, 0.0);
-
+    let mut ship_rot=0.0f64;
 
 
  
@@ -117,16 +117,16 @@ pub async fn main_entry() {
         let offset = mouse_pos-middle;
 
         if offset.length_squared()>100.0*100.0{
-            ship_vel+=offset.normalize()*0.0005*dt;
+            let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
+            ship_vel+=k*0.0005*dt;
         }
 
         ship_pos += ship_vel * dt;
-        //ship_pos = ship_pos + offset * 0.001 * dt;
         
-        let rotation = offset.y.atan2(offset.x);
-
-        //ctx.set_fill_style_str("gray");
-        //ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+        let rot=DVec2::new(ship_rot.cos(),ship_rot.sin());
+        let rot=rot*100.0+offset.normalize();
+        ship_rot=rot.y.atan2(rot.x);
+        
         
        
         
@@ -139,7 +139,7 @@ pub async fn main_entry() {
         
 
         ctx.set_fill_style_str("white");
-        draw_triangle(&ctx,ship_pos,rotation);
+        draw_triangle(&ctx,ship_pos,ship_rot);
 
         ctx.restore();
         ctx.begin_path();
