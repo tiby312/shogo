@@ -112,20 +112,28 @@ pub async fn main_entry() {
             }
         };
 
-        let offset = mouse_pos-ship_pos;
+        let middle = DVec2::new(canvas.width() as f64 / 2.0, canvas.height() as f64 / 2.0);
+        let offset = mouse_pos-middle;
 
         ship_pos = ship_pos + offset * 0.001 * dt;
         
         let rotation = offset.y.atan2(offset.x);
 
-        ctx.set_fill_style_str("gray");
-        ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
-    
-        ctx.draw_image_with_html_image_element_and_dw_and_dh(&image, 0.0, 0.0, canvas.width() as f64, canvas.height() as f64).unwrap_throw();
+        //ctx.set_fill_style_str("gray");
+        //ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
         
+        ctx.save();
+        // Center the camera on the spaceship
+        ctx.translate(canvas.width() as f64/ 2. - ship_pos.x, canvas.height() as f64 / 2. - ship_pos.y).unwrap_throw();
+  
+        ctx.draw_image_with_html_image_element_and_dw_and_dh(&image, 0.0, 0.0,2000.0, 2000.0).unwrap_throw();
+        
+        
+
         ctx.set_fill_style_str("white");
         draw_triangle(&ctx,ship_pos,rotation);
 
+        ctx.restore();
         
         rr.request_animation_frame();
 
