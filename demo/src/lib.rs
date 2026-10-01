@@ -63,7 +63,8 @@ pub async fn main_entry() {
 
 
 
-    let mut ship_pos=DVec2::new(50.0, 50.0);
+    let mut ship_pos=DVec2::new(500.0, 500.0);
+    let mut ship_vel=DVec2::new(0.0, 0.0);
     let mut rotation=0.0;
     let mut mouse_pos=DVec2::new(0.0, 0.0);
 
@@ -115,12 +116,19 @@ pub async fn main_entry() {
         let middle = DVec2::new(canvas.width() as f64 / 2.0, canvas.height() as f64 / 2.0);
         let offset = mouse_pos-middle;
 
-        ship_pos = ship_pos + offset * 0.001 * dt;
+        if offset.length_squared()>100.0*100.0{
+            ship_vel+=offset.normalize()*0.0005*dt;
+        }
+
+        ship_pos += ship_vel * dt;
+        //ship_pos = ship_pos + offset * 0.001 * dt;
         
         let rotation = offset.y.atan2(offset.x);
 
         //ctx.set_fill_style_str("gray");
         //ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+        
+       
         
         ctx.save();
         // Center the camera on the spaceship
@@ -134,6 +142,11 @@ pub async fn main_entry() {
         draw_triangle(&ctx,ship_pos,rotation);
 
         ctx.restore();
+        ctx.begin_path();
+        ctx.arc(middle.x, middle.y, 100.0, 0.0, std::f64::consts::PI * 2.0).unwrap_throw();
+        ctx.set_line_width(1.0);
+        ctx.set_stroke_style_str("white");
+        ctx.stroke();
         
         rr.request_animation_frame();
 
@@ -148,9 +161,9 @@ fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: DVec2, rotatio
     ctx.translate(center.x , center.y).unwrap_throw();
     ctx.rotate(rotation).unwrap_throw();
     ctx.begin_path();
-    ctx.move_to(-25.0, 25.0);
-    ctx.line_to(25.0, 25.0);
-    ctx.line_to(0.0, -25.0);
+    ctx.move_to(-10.0, -25.0);
+    ctx.line_to(25.0, 0.0);
+    ctx.line_to(-10.0, 25.0);
     ctx.close_path();
     ctx.fill();
     ctx.restore();
