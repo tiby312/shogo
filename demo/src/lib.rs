@@ -6,7 +6,7 @@ use gloo::{console::log, net::http::Request};
 use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
-use web_sys::{Event, EventTarget, MouseEvent};
+use web_sys::{Event, EventTarget, HtmlImageElement, MouseEvent};
 use gloo::render::{request_animation_frame, AnimationFrame};
 
 const COLORS: &[[f32; 4]] = &[
@@ -69,6 +69,18 @@ pub async fn main_entry() {
 
 
 
+ 
+    // 3. Instantiate a new Image element
+    let image = HtmlImageElement::new().unwrap_throw();
+    image.set_src("background.png");
+
+    // 4. Await the image decoding promise to ensure it's loaded
+    //let image_promise = image.decode();
+    //JsFuture::from(image_promise).await?;
+
+    // 5. Draw the image to the canvas context
+    // Parameters: image, dx, dy
+    
 
 
     let mut rr=shogo::RequestAnimationFrameMan::new();
@@ -109,7 +121,8 @@ pub async fn main_entry() {
         ctx.set_fill_style_str("gray");
         ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
     
-
+        ctx.draw_image_with_html_image_element_and_dw_and_dh(&image, 0.0, 0.0, canvas.width() as f64, canvas.height() as f64).unwrap_throw();
+        
         ctx.set_fill_style_str("white");
         draw_triangle(&ctx,ship_pos,rotation);
 

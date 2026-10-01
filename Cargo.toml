@@ -55,6 +55,7 @@ features = [
   'Document',
   'Element',
   'HtmlCanvasElement',
+  'HtmlImageElement',
   'KeyboardEvent',
   'WebGlBuffer',
   'WebGlVertexArrayObject',
