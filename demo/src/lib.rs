@@ -149,9 +149,15 @@ pub async fn main_entry() {
         }
         
 
-        if point_in_triangle(mouse_pos, middle, middle+DVec2::from_angle(ship_rot+1.0)*1000.0, middle+DVec2::from_angle(ship_rot-1.0)*1000.0) {
-            log!("yoooo");
+        let i=InfiniteFan2D{
+            origin: middle,
+            direction: DVec2::from_angle(ship_rot),
+            angle_radians: 2.0, // Example angle, adjust as needed
+        };
+        if i.contains_point(mouse_pos){
+            log!("yooo");
         }
+
        
         
         ctx.save();
@@ -220,26 +226,57 @@ fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: DVec2, rotatio
     ctx.restore();
 }
 
-
-pub fn point_in_triangle(p: DVec2, a: DVec2, b: DVec2, c: DVec2) -> bool {
-    let v0 = c - a;
-    let v1 = b - a;
-    let v2 = p - a;
-
-    let dot00 = v0.dot(v0);
-    let dot01 = v0.dot(v1);
-    let dot02 = v0.dot(v2);
-    let dot11 = v1.dot(v1);
-    let dot12 = v1.dot(v2);
-
-    // Compute barycentric coordinates
-    let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
-    let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
-    let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
-
-    // Check if point is in triangle
-    (u >= 0.0) && (v >= 0.0) && (u + v <= 1.0)
+pub struct InfiniteFan2D {
+    pub origin: DVec2,
+    /// Must be a normalized vector pointing in the center direction of the fan
+    pub direction: DVec2,
+    /// The total field of view angle of the fan in radians
+    pub angle_radians: f64,
 }
+
+impl InfiniteFan2D {
+    pub fn contains_point(&self, point: DVec2) -> bool {
+        // 1. Get vector from origin to target point
+        let to_point = point - self.origin;
+
+        // Handle the edge case where the point is exactly on the origin
+        if to_point == DVec2::ZERO {
+            return true; 
+        }
+
+        // 2. Normalize the target vector
+        let to_point_dir = to_point.normalize();
+
+        // 3. Calculate dot product (cosine of the angle between them)
+        let dot = self.direction.dot(to_point_dir);
+
+        // 4. Compare against the cosine of half the fan angle
+        let half_angle_cos = (self.angle_radians * 0.5).cos();
+
+        // If the dot product is higher, the angle is smaller, meaning it's inside
+        dot >= half_angle_cos
+    }
+}
+
+// pub fn point_in_triangle(p: DVec2, a: DVec2, b: DVec2, c: DVec2) -> bool {
+//     let v0 = c - a;
+//     let v1 = b - a;
+//     let v2 = p - a;
+
+//     let dot00 = v0.dot(v0);
+//     let dot01 = v0.dot(v1);
+//     let dot02 = v0.dot(v2);
+//     let dot11 = v1.dot(v1);
+//     let dot12 = v1.dot(v2);
+
+//     // Compute barycentric coordinates
+//     let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+//     let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+//     let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+//     // Check if point is in triangle
+//     (u >= 0.0) && (v >= 0.0) && (u + v <= 1.0)
+// }
 
 // #[wasm_bindgen]
 // pub async fn worker_entry() {
