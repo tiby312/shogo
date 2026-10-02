@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{any, borrow::Cow, cell::RefCell, rc::Rc};
 
 use futures::{FutureExt, SinkExt, channel::mpsc::{UnboundedReceiver, UnboundedSender}, select};
 use glam::{DVec2, Vec2};
@@ -22,7 +22,16 @@ pub enum MEvent {
     ButtonClick,
     ShutdownClick,
 }
+use std::f64::consts::PI;
+            
 
+#[test]
+fn test(){
+    let angle_diff=180.0;
+    let g=(angle_diff + PI).rem_euclid(2.0 * PI) - PI;
+    dbg!(g);
+    panic!();
+}
 
 #[wasm_bindgen]
 pub async fn main_entry() {
@@ -75,15 +84,6 @@ pub async fn main_entry() {
     let image = HtmlImageElement::new().unwrap_throw();
     image.set_src("background.png");
 
-    // 4. Await the image decoding promise to ensure it's loaded
-    //let image_promise = image.decode();
-    //JsFuture::from(image_promise).await?;
-
-    // 5. Draw the image to the canvas context
-    // Parameters: image, dx, dy
-    
-
-
     let mut rr=shogo::RequestAnimationFrameMan::new();
     rr.request_animation_frame();
   
@@ -92,11 +92,11 @@ pub async fn main_entry() {
         let dt=loop{
             select!{
                 timestamp = rr.next().fuse() => {
-                    log!("received frame delta: {}", timestamp.delta());
+                    //log!("received frame delta: {}", timestamp.delta());
                     break timestamp.delta();
                 }
                 e = rx.next() => {
-                    log!("received event: {}", format!("{:?}", e));
+                    //log!("received event: {}", format!("{:?}", e));
                     match e.unwrap_throw()
                     {
                         MEvent::CanvasMouseMove { x, y } => {
@@ -123,11 +123,35 @@ pub async fn main_entry() {
 
         ship_pos += ship_vel * dt;
         
-        let rot=DVec2::new(ship_rot.cos(),ship_rot.sin());
-        let rot=rot*100.0+offset.normalize();
-        ship_rot=rot.y.atan2(rot.x);
+        if offset.length_squared()>20.0*20.0
+        {
+
+            let target_angle = offset.y.atan2(offset.x);
+
+            // 3. Find the shortest angular distance between current and target angle
+            // This prevents the ship from spinning the long way around
+            let mut angle_diff = target_angle - ship_rot;
+            
+            use std::f64::consts::PI;
+            // Normalize the angle difference to the range [-PI, PI]
+            angle_diff = (angle_diff + PI).rem_euclid(2.0 * PI) - PI;
+
+            // 4. Calculate maximum rotation allowed this frame
+            let max_rotation = 0.001 * dt;
+
+            // 5. Clamp the rotation step so it doesn't overshoot
+            let rotation_step = angle_diff.clamp(-max_rotation, max_rotation);
+
+            // 6. Apply the rotation
+            ship_rot += rotation_step;
+
+
+        }
         
-        
+
+        if point_in_triangle(mouse_pos, middle, middle+DVec2::from_angle(ship_rot+1.0)*1000.0, middle+DVec2::from_angle(ship_rot-1.0)*1000.0) {
+            log!("yoooo");
+        }
        
         
         ctx.save();
@@ -141,7 +165,34 @@ pub async fn main_entry() {
         ctx.set_fill_style_str("white");
         draw_triangle(&ctx,ship_pos,ship_rot);
 
+
+
+
+
+
         ctx.restore();
+
+        
+        let line=|x1, y1, x2, y2| {
+            ctx.begin_path();
+            ctx.move_to(x1, y1);
+            ctx.line_to(x2, y2);
+            ctx.stroke();
+        };
+
+        let rot=DVec2::from_angle(ship_rot+1.0);
+        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+
+        let rot=DVec2::from_angle(ship_rot-1.0);
+        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+
+
+        // ctx.begin_path();
+        // ctx.move_to(middle.x, middle.y);
+        // ctx.line_to(middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+        // ctx.stroke();
+
+
         ctx.begin_path();
         ctx.arc(middle.x, middle.y, 100.0, 0.0, std::f64::consts::PI * 2.0).unwrap_throw();
         ctx.set_line_width(1.0);
@@ -169,6 +220,26 @@ fn draw_triangle(ctx: &web_sys::CanvasRenderingContext2d, center: DVec2, rotatio
     ctx.restore();
 }
 
+
+pub fn point_in_triangle(p: DVec2, a: DVec2, b: DVec2, c: DVec2) -> bool {
+    let v0 = c - a;
+    let v1 = b - a;
+    let v2 = p - a;
+
+    let dot00 = v0.dot(v0);
+    let dot01 = v0.dot(v1);
+    let dot02 = v0.dot(v2);
+    let dot11 = v1.dot(v1);
+    let dot12 = v1.dot(v2);
+
+    // Compute barycentric coordinates
+    let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+    let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+    let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+    // Check if point is in triangle
+    (u >= 0.0) && (v >= 0.0) && (u + v <= 1.0)
+}
 
 // #[wasm_bindgen]
 // pub async fn worker_entry() {
