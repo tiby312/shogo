@@ -76,9 +76,10 @@ pub async fn main_entry() {
     let mut ship_vel=DVec2::new(0.0, 0.0);
     let mut rotation=0.0;
     let mut mouse_pos=DVec2::new(0.0, 0.0);
+    let mut last_mouse_pos=DVec2::new(0.0, 0.0);
     let mut ship_rot=0.0f64;
 
-
+    let mut going_forwards=true;
  
     // 3. Instantiate a new Image element
     let image = HtmlImageElement::new().unwrap_throw();
@@ -112,32 +113,89 @@ pub async fn main_entry() {
                 }
             }
         };
+        
 
         let middle = DVec2::new(canvas.width() as f64 / 2.0, canvas.height() as f64 / 2.0);
         let offset = mouse_pos-middle;
+        let last_offset=last_mouse_pos-middle;
 
-        if offset.length_squared()>100.0*100.0{
-            let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
-            ship_vel+=k*0.0005*dt;
+        
+        let forward_fan=InfiniteFan2D{
+            origin: middle,
+            direction: DVec2::from_angle(ship_rot),
+            angle_radians: 2.0, // Example angle, adjust as needed
+        };
+
+        let backward_fan=InfiniteFan2D{
+            origin: middle,
+            direction: DVec2::from_angle(ship_rot+std::f64::consts::PI),
+            angle_radians: 2.0, // Example angle, adjust as needed
+        };
+
+
+        
+
+        let inner_ring=Ring{
+            radius:40.0
+        };
+
+        let outer_ring=Ring { radius: 100.0 };
+
+
+        if inner_ring.is_outside(offset.length()) && inner_ring.is_inside(last_offset.length())
+        {
+            log!("inside ring");
+            if forward_fan.contains_point(mouse_pos){
+                //we entered the inner ring from the forward fan
+                going_forwards=true;
+                log!("switching to forward");
+            }else if backward_fan.contains_point(mouse_pos){
+                //we entered the inner ring from the backward fan
+                going_forwards=false;
+                log!("switching to backward");
+            }
+        }
+
+
+        if going_forwards{
+            if forward_fan.contains_point(mouse_pos) && outer_ring.is_outside(offset.length()){
+                let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
+                ship_vel+=k*0.0005*dt;
+                
+            }
+        }else{
+            if backward_fan.contains_point(mouse_pos) && outer_ring.is_outside(offset.length()){
+                let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
+                ship_vel-=k*0.0005*dt;
+            }
         }
 
         ship_pos += ship_vel * dt;
         
-        if offset.length_squared()>20.0*20.0
+        
+
+
+        if inner_ring.is_outside(offset.length())
         {
+
+            let ee=if going_forwards{
+                0.0
+            }else{
+                std::f64::consts::PI
+            };
 
             let target_angle = offset.y.atan2(offset.x);
 
             // 3. Find the shortest angular distance between current and target angle
             // This prevents the ship from spinning the long way around
-            let mut angle_diff = target_angle - ship_rot;
+            let mut angle_diff = target_angle - (ship_rot+ee);
             
             use std::f64::consts::PI;
             // Normalize the angle difference to the range [-PI, PI]
             angle_diff = (angle_diff + PI).rem_euclid(2.0 * PI) - PI;
 
             // 4. Calculate maximum rotation allowed this frame
-            let max_rotation = 0.001 * dt;
+            let max_rotation = 0.002 * dt;
 
             // 5. Clamp the rotation step so it doesn't overshoot
             let rotation_step = angle_diff.clamp(-max_rotation, max_rotation);
@@ -149,14 +207,6 @@ pub async fn main_entry() {
         }
         
 
-        let i=InfiniteFan2D{
-            origin: middle,
-            direction: DVec2::from_angle(ship_rot),
-            angle_radians: 2.0, // Example angle, adjust as needed
-        };
-        if i.contains_point(mouse_pos){
-            log!("yooo");
-        }
 
        
         
@@ -193,21 +243,28 @@ pub async fn main_entry() {
         line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
 
-        // ctx.begin_path();
-        // ctx.move_to(middle.x, middle.y);
-        // ctx.line_to(middle.x+rot.x*500.0, middle.y+rot.y*500.0);
-        // ctx.stroke();
+        let rot=DVec2::from_angle(ship_rot+1.0+PI);
+        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+
+        let rot=DVec2::from_angle(ship_rot-1.0+PI);
+        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
 
-        ctx.begin_path();
-        ctx.arc(middle.x, middle.y, 100.0, 0.0, std::f64::consts::PI * 2.0).unwrap_throw();
-        ctx.set_line_width(1.0);
-        ctx.set_stroke_style_str("white");
-        ctx.stroke();
+        let circle=|x,y,radius|{
+            ctx.begin_path();
+            ctx.arc(x, y, radius, 0.0, std::f64::consts::PI * 2.0).unwrap_throw();
+            ctx.set_line_width(1.0);
+            ctx.set_stroke_style_str("white");
+            ctx.stroke();
+        };
+
+        circle(middle.x, middle.y, inner_ring.radius);
+        circle(middle.x, middle.y, outer_ring.radius);
+        
         
         rr.request_animation_frame();
 
-      
+        last_mouse_pos = mouse_pos;
 
 
     }
@@ -257,6 +314,22 @@ impl InfiniteFan2D {
         dot >= half_angle_cos
     }
 }
+
+
+        struct Ring{
+            radius:f64
+        }
+
+        impl Ring{
+            fn is_inside(&self, length:f64) -> bool {
+                length * length < self.radius * self.radius
+            }
+            fn is_outside(&self, length: f64) -> bool {
+                length * length >= self.radius * self.radius
+            }
+        }
+        
+
 
 // pub fn point_in_triangle(p: DVec2, a: DVec2, b: DVec2, c: DVec2) -> bool {
 //     let v0 = c - a;
