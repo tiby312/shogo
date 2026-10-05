@@ -141,30 +141,76 @@ pub async fn main_entry() {
 
         let outer_ring=Ring { radius: 100.0 };
 
+        let shooting_ring=Ring { radius: 200.0 };
+        
 
-        if inner_ring.is_outside(offset.length()) && inner_ring.is_inside(last_offset.length())
+        if inner_ring.is_outside(offset.length())
         {
-            log!("inside ring");
-            if forward_fan.contains_point(mouse_pos){
-                //we entered the inner ring from the forward fan
+
+
+            let target_angle = offset.y.atan2(offset.x);
+
+            // 3. Find the shortest angular distance between current and target angle
+            // This prevents the ship from spinning the long way around
+            let mut angle_diff1 = target_angle - ship_rot;
+            
+            // Normalize the angle difference to the range [-PI, PI]
+            angle_diff1 = (angle_diff1 + PI).rem_euclid(2.0 * PI) - PI;
+
+
+            let mut angle_diff2 = target_angle - ship_rot+PI;
+            
+            // Normalize the angle difference to the range [-PI, PI]
+            angle_diff2 = (angle_diff2 + PI).rem_euclid(2.0 * PI) - PI;
+
+            
+            
+            
+            // 4. Calculate maximum rotation allowed this frame
+            let max_rotation = 0.002 * dt;
+
+
+            let rotation_step=if angle_diff1.abs()<=angle_diff2.abs(){
+                log!("f");
                 going_forwards=true;
-                log!("switching to forward");
-            }else if backward_fan.contains_point(mouse_pos){
-                //we entered the inner ring from the backward fan
+                angle_diff1
+            }else{
+                log!("b");
                 going_forwards=false;
-                log!("switching to backward");
-            }
+                angle_diff2
+            }.clamp(-max_rotation, max_rotation);
+
+            // 6. Apply the rotation
+            ship_rot += rotation_step;
+
+
         }
+        
+
+
+        // if inner_ring.is_outside(offset.length()) && inner_ring.is_inside(last_offset.length())
+        // {
+        //     log!("inside ring");
+        //     if forward_fan.contains_point(mouse_pos){
+        //         //we entered the inner ring from the forward fan
+        //         going_forwards=true;
+        //         log!("switching to forward");
+        //     }else if backward_fan.contains_point(mouse_pos){
+        //         //we entered the inner ring from the backward fan
+        //         going_forwards=false;
+        //         log!("switching to backward");
+        //     }
+        // }
 
 
         if going_forwards{
-            if forward_fan.contains_point(mouse_pos) && outer_ring.is_outside(offset.length()){
+            if outer_ring.is_outside(offset.length()){
                 let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
                 ship_vel+=k*0.0005*dt;
                 
             }
         }else{
-            if backward_fan.contains_point(mouse_pos) && outer_ring.is_outside(offset.length()){
+            if outer_ring.is_outside(offset.length()){
                 let k=DVec2::new(ship_rot.cos(), ship_rot.sin());
                 ship_vel-=k*0.0005*dt;
             }
@@ -174,38 +220,6 @@ pub async fn main_entry() {
         
         
 
-
-        if inner_ring.is_outside(offset.length())
-        {
-
-            let ee=if going_forwards{
-                0.0
-            }else{
-                std::f64::consts::PI
-            };
-
-            let target_angle = offset.y.atan2(offset.x);
-
-            // 3. Find the shortest angular distance between current and target angle
-            // This prevents the ship from spinning the long way around
-            let mut angle_diff = target_angle - (ship_rot+ee);
-            
-            use std::f64::consts::PI;
-            // Normalize the angle difference to the range [-PI, PI]
-            angle_diff = (angle_diff + PI).rem_euclid(2.0 * PI) - PI;
-
-            // 4. Calculate maximum rotation allowed this frame
-            let max_rotation = 0.002 * dt;
-
-            // 5. Clamp the rotation step so it doesn't overshoot
-            let rotation_step = angle_diff.clamp(-max_rotation, max_rotation);
-
-            // 6. Apply the rotation
-            ship_rot += rotation_step;
-
-
-        }
-        
 
 
        
@@ -236,18 +250,18 @@ pub async fn main_entry() {
             ctx.stroke();
         };
 
-        let rot=DVec2::from_angle(ship_rot+1.0);
-        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+        // let rot=DVec2::from_angle(ship_rot+1.0);
+        // line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
-        let rot=DVec2::from_angle(ship_rot-1.0);
-        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+        // let rot=DVec2::from_angle(ship_rot-1.0);
+        // line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
 
-        let rot=DVec2::from_angle(ship_rot+1.0+PI);
-        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+        // let rot=DVec2::from_angle(ship_rot+1.0+PI);
+        // line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
-        let rot=DVec2::from_angle(ship_rot-1.0+PI);
-        line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
+        // let rot=DVec2::from_angle(ship_rot-1.0+PI);
+        // line(middle.x, middle.y, middle.x+rot.x*500.0, middle.y+rot.y*500.0);
 
 
         let circle=|x,y,radius|{
@@ -260,6 +274,7 @@ pub async fn main_entry() {
 
         circle(middle.x, middle.y, inner_ring.radius);
         circle(middle.x, middle.y, outer_ring.radius);
+        circle(middle.x, middle.y, shooting_ring.radius);
         
         
         rr.request_animation_frame();
