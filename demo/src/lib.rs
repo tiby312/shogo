@@ -1,7 +1,4 @@
-
-use futures::{
-    select, FutureExt,
-};
+use futures::{select, FutureExt};
 use glam::DVec2;
 use gloo::console::log;
 use serde::{Deserialize, Serialize};
