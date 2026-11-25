@@ -1,16 +1,13 @@
-use std::{any, borrow::Cow, cell::RefCell, rc::Rc};
 
 use futures::{
-    channel::mpsc::{UnboundedReceiver, UnboundedSender},
-    select, FutureExt, SinkExt,
+    select, FutureExt,
 };
-use glam::{DVec2, Vec2};
-use gloo::render::{request_animation_frame, AnimationFrame};
-use gloo::{console::log, net::http::Request};
+use glam::DVec2;
+use gloo::console::log;
 use serde::{Deserialize, Serialize};
 use shogo::utils;
 use wasm_bindgen::prelude::*;
-use web_sys::{Event, EventTarget, HtmlImageElement, MouseEvent};
+use web_sys::{HtmlImageElement, MouseEvent};
 
 ///Common data sent from the main thread to the worker.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -55,9 +52,9 @@ pub async fn main_entry() {
 
     let mut ship_pos = DVec2::new(500.0, 500.0);
     let mut ship_vel = DVec2::new(0.0, 0.0);
-    let mut rotation = 0.0;
+    let _rotation = 0.0;
     let mut mouse_pos = DVec2::new(0.0, 0.0);
-    let mut last_mouse_pos = DVec2::new(0.0, 0.0);
+    let _last_mouse_pos = DVec2::new(0.0, 0.0);
     let mut ship_rot = 0.0f64;
 
     let mut going_forwards = true;
@@ -201,9 +198,6 @@ struct Ring {
 }
 
 impl Ring {
-    fn is_inside(&self, length: f64) -> bool {
-        length * length < self.radius * self.radius
-    }
     fn is_outside(&self, length: f64) -> bool {
         length * length >= self.radius * self.radius
     }
